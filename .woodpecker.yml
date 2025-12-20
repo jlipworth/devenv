@@ -2,8 +2,8 @@
 # CI/CD configuration for devenv (Emacs build testing)
 #
 # MULTI-FORGE SUPPORT:
-# - GitLab (private): Uses SSH clone with deploy key
-# - GitHub (public): Uses default HTTPS clone
+# - GitLab (private): Uses SSH clone with deploy key (requires ssh_key secret)
+# - GitHub (public): Uses default HTTPS clone (no secret needed)
 #
 # ARCHITECTURE:
 # - Uses custom base image with dependencies pre-installed (see ci/Dockerfile)
@@ -14,39 +14,37 @@
 # - If you add new dependencies, rebuild: ./ci/build-image.sh --push
 # - Image source: ci/Dockerfile
 
-# Clone configuration
-# - GitHub (public): Default clone works, no special config needed
-# - GitLab (private): Requires SSH key
+when:
+  event: [push, pull_request, manual]
+
+# Clone configuration:
+# - GitHub: Public repo, uses default HTTPS clone (no SSH needed)
+# - GitLab: Private repo, uses SSH clone with deploy key
 clone:
   - name: clone
+    image: woodpeckerci/plugin-git:2.5.2
+    settings:
+      depth: 1
+    when:
+      - evaluate: 'CI_FORGE == "github"'
+
+  - name: clone-gitlab
     image: alpine/git
     environment:
       SSH_KEY:
         from_secret: ssh_key
     commands:
       - |
-        # Detect forge and clone accordingly
-        echo "Forge: ${CI_FORGE:-unknown}"
-        echo "Repo: ${CI_REPO}"
-
-        if [ "${CI_FORGE}" = "github" ] || [ -z "$SSH_KEY" ]; then
-          # GitHub (public) or no SSH key - use HTTPS
-          echo "Using HTTPS clone..."
-          git clone --depth=1 --branch=${CI_COMMIT_BRANCH} https://github.com/${CI_REPO}.git .
-        else
-          # GitLab (private) - use SSH
-          echo "Using SSH clone..."
-          mkdir -p ~/.ssh
-          echo "$SSH_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -t ed25519 gitlab.com >> ~/.ssh/known_hosts 2>/dev/null
-          git clone --depth=1 --branch=${CI_COMMIT_BRANCH} git@gitlab.com:${CI_REPO}.git .
-        fi
-
+        mkdir -p ~/.ssh
+        echo "$SSH_KEY" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
+        ssh-keyscan -t ed25519 gitlab.com >> ~/.ssh/known_hosts 2>/dev/null
+        git clone --depth=1 --branch=${CI_COMMIT_BRANCH} git@gitlab.com:${CI_REPO}.git .
         git fetch origin ${CI_COMMIT_SHA} --depth=1
         git checkout ${CI_COMMIT_SHA}
-        # Fix permissions - ignore failures (some volumes don't allow chmod)
         chmod -R a+rwX . || true
+    when:
+      - evaluate: 'CI_FORGE == "gitlab"'
 
 variables:
   - &ci_image "jlipworth/gnu-files-ci:latest"
@@ -290,4 +288,4 @@ steps:
     commands:
       - renovate
     when:
-      event: cron
+      - event: cron
