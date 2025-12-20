@@ -1,0 +1,181 @@
+# .woodpecker/layers.yml
+# Language layer tests - run in parallel
+# All use the pre-built CI image with dependencies already installed
+
+when:
+  event: [push, pull_request, manual]
+
+variables:
+  - &ci_image "jlipworth/gnu-files-ci:latest"
+
+steps:
+  - name: layer-shell
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make shell-layer
+
+  - name: layer-git
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make git-layer
+
+  - name: layer-yaml
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make yaml
+
+  - name: layer-markdown
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make markdown
+
+  - name: layer-vimscript
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make vimscript
+
+  - name: layer-latex
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make latex
+
+  - name: layer-python
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make python
+
+  - name: layer-python-env
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make python-env
+
+  - name: layer-r
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make r
+
+  - name: layer-c_cpp
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make c_cpp
+
+  - name: layer-sql
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make sql
+
+  - name: layer-js
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make js
+
+  - name: layer-html_css
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make html_css
+
+  - name: layer-docker
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make docker
+
+  - name: layer-ocaml
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make ocaml
+
+  - name: layer-terraform
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make terraform
+
+  - name: layer-rust
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make rust
+
+  - name: layer-ai-tools
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make ai-tools
+
+  - name: layer-cli_tools
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make cli_tools

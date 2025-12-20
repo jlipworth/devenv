@@ -2,3 +2,4 @@
 # Install: brew bundle --file=brewfiles/Brewfile.git
 
 brew "git-delta"
+brew "gh"

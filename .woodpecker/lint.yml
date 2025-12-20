@@ -1,0 +1,11 @@
+# .woodpecker/lint.yml
+# Shell script linting
+
+when:
+  event: [push, pull_request, manual]
+
+steps:
+  - name: shellcheck
+    image: koalaman/shellcheck-alpine:stable
+    commands:
+      - shellcheck --source-path=SCRIPTDIR -x *.sh

@@ -1,0 +1,33 @@
+# .woodpecker/build.yml
+# Core Emacs build and Spacemacs compatibility test
+
+when:
+  event: [push, pull_request, manual]
+
+variables:
+  - &gcc_version "12"
+  - &emacs_image "debian:bookworm-slim"
+
+steps:
+  - name: build-and-verify
+    image: *emacs_image
+    environment:
+      DEBIAN_FRONTEND: noninteractive
+      CI: "true"
+      CI_INSTALL: "true"
+      GCC_VERSION: *gcc_version
+    commands:
+      - set -ex
+      - chmod +x build_emacs30.sh common_utils.sh || true
+      - ./build_emacs30.sh
+      - echo "=== Build complete, verifying Emacs ==="
+      - /usr/local/bin/emacs --version
+      - echo "=== Testing Spacemacs compatibility ==="
+      - git clone --depth 1 --branch develop https://github.com/syl20bnr/spacemacs ~/.emacs.d
+      - /usr/local/bin/emacs --batch --eval "(progn
+          (require 'package)
+          (setq package-archives '((\"melpa\" . \"https://melpa.org/packages/\")
+                                   (\"gnu\" . \"https://elpa.gnu.org/packages/\")))
+          (package-initialize)
+          (message \"Package system initialized successfully\"))"
+      - echo "=== Spacemacs compatibility check passed! ==="

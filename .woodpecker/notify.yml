@@ -1,0 +1,26 @@
+# .woodpecker/notify.yml
+# Discord notification after main pipeline completes
+
+when:
+  event: [push, pull_request, manual]
+
+depends_on:
+  - build
+  - layers
+  - lint
+
+runs_on: [success, failure]
+
+steps:
+  - name: notify-discord
+    image: appleboy/drone-discord
+    settings:
+      webhook_id:
+        from_secret: discord_id
+      webhook_token:
+        from_secret: discord_token
+      message: >
+        {{#success build.status}}✅ Success{{else}}❌ Failed{{/success}}:
+        **{{repo.name}}** ({{commit.branch}})
+        {{commit.message}}
+        {{build.link}}
