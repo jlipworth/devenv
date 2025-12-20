@@ -1,0 +1,200 @@
+#!/bin/bash
+# Shell Aliases for Modern CLI Tools
+# Managed by devenv repository
+# Source this file from your .zshrc or .bashrc
+#
+# NOTE: These aliases are conditional - they only apply if the tools are installed.
+# Install via: make cli_tools
+
+# ======================================================================
+# EZA - Modern ls replacement
+# ======================================================================
+if command -v eza &> /dev/null; then
+    alias ls='eza --icons --group-directories-first'
+    alias l='eza -l --icons --group-directories-first --git --header'
+    alias la='eza -la --icons --group-directories-first --git --header'
+    alias ll='eza -l --icons --group-directories-first --git --header'
+    alias lla='eza -la --icons --group-directories-first --git --header'
+    # Tree views - show everything by default
+    alias lt='eza -T --icons --level=2 --group-directories-first'
+    alias lta='eza -Ta --icons --level=2 --group-directories-first'
+    alias ltree='eza -T --icons --group-directories-first'
+
+    # Tree views - git-aware (respects .gitignore)
+    alias ltg='eza -T --icons --git-ignore --level=2 --group-directories-first'
+    alias ltag='eza -Ta --icons --git-ignore --level=2 --group-directories-first'
+    alias ltreeg='eza -T --icons --git-ignore --group-directories-first'
+
+    alias l.='eza -ld --icons .*'  # Show only dotfiles
+    alias lS='eza -1 --icons'  # Single column
+fi
+
+# ======================================================================
+# BAT - Cat with syntax highlighting
+# ======================================================================
+if command -v bat &> /dev/null; then
+    alias cat='bat --paging=never'
+    alias batp='bat'  # bat with paging enabled
+    alias bathelp='bat --plain --language=help'  # Use bat for help pages
+
+    # Helper function for help pages with bat
+    help() {
+        "$@" --help 2>&1 | bathelp
+    }
+fi
+
+# ======================================================================
+# RIPGREP - Fast grep replacement
+# ======================================================================
+if command -v rg &> /dev/null; then
+    alias rg='rg'    # Explicit, but good for clarity (respects .gitignore by default)
+    alias rgi='rg -i'   # Case insensitive
+    alias rgl='rg -l'   # List files with matches
+    alias rgc='rg -c'   # Count matches
+    alias rgall='rg --no-ignore -uuu'  # Search everything, ignore .gitignore and hidden files
+fi
+
+# ======================================================================
+# FD - Fast find replacement
+# ======================================================================
+# On Debian/Ubuntu, the package is fd-find and binary is fdfind
+if command -v fdfind &> /dev/null && ! command -v fd &> /dev/null; then
+    alias fd='fdfind'
+    alias fda='fdfind -H'
+    alias fdall='fdfind --no-ignore -H'
+    alias fde='fdfind -e'
+elif command -v fd &> /dev/null; then
+    alias fda='fd -H'      # Include hidden files (still respects .gitignore)
+    alias fdall='fd --no-ignore -H'  # Show everything, ignore .gitignore
+    alias fde='fd -e'      # Search by extension: fde txt
+fi
+
+# ======================================================================
+# DUST - Better du
+# ======================================================================
+if command -v dust &> /dev/null; then
+    alias du='dust'        # Replace du with dust
+    alias dua='dust -d 1'  # Depth 1
+    alias dus='dust -r'    # Reverse sort (smallest first)
+fi
+
+# ======================================================================
+# RANGER - Terminal file manager
+# ======================================================================
+if command -v ranger &> /dev/null; then
+    alias r='ranger'
+fi
+
+# ======================================================================
+# FZF - Fuzzy finder
+# ======================================================================
+if command -v fzf &> /dev/null; then
+    # fzf is typically used in scripts/pipelines, not as an alias
+    # But we can add some useful patterns here
+
+    # Interactive cd with fzf (uses fd to respect .gitignore by default)
+    fcd() {
+        local dir
+        if command -v fd &> /dev/null; then
+            dir=$(fd --type d --hidden ${1:-.} | fzf +m) && cd "$dir"
+        else
+            dir=$(find ${1:-.} -type d 2> /dev/null | fzf +m) && cd "$dir"
+        fi
+    }
+
+    # Interactive cd showing ALL directories (ignores .gitignore)
+    fcdall() {
+        local dir
+        if command -v fd &> /dev/null; then
+            dir=$(fd --type d --hidden --no-ignore ${1:-.} | fzf +m) && cd "$dir"
+        else
+            dir=$(find ${1:-.} -type d 2> /dev/null | fzf +m) && cd "$dir"
+        fi
+    }
+
+    # Open file with fzf (cross-platform)
+    fo() {
+        local opener="${OPENER:-xdg-open}"
+        [[ "$OSTYPE" == "darwin"* ]] && opener="open"
+        fzf --print0 | xargs -0 "$opener"
+    }
+fi
+
+# ======================================================================
+# ZOXIDE - Smart cd (already has 'z' command from init)
+# ======================================================================
+# zoxide provides: z, zi (interactive) via eval "$(zoxide init)"
+# These are set up automatically in cli_tools installation
+# Optional: Make cd use zoxide (uncomment if desired)
+# if command -v zoxide &> /dev/null; then
+#     alias cd='z'
+# fi
+
+# ======================================================================
+# LAZYGIT - Git TUI
+# ======================================================================
+if command -v lazygit &> /dev/null; then
+    alias lg='lazygit'
+    alias lzg='lazygit'
+fi
+
+# ======================================================================
+# GIT-DELTA - Better diffs
+# ======================================================================
+if command -v delta &> /dev/null; then
+    # Note: These create pipelines, so we use functions instead of aliases
+    diffview() {
+        diff -u "$@" | delta
+    }
+
+    diffside() {
+        diff -u "$@" | delta --side-by-side
+    }
+fi
+
+# ======================================================================
+# HTOP - Process viewer
+# ======================================================================
+if command -v htop &> /dev/null; then
+    alias top='htop'
+fi
+
+# ======================================================================
+# Useful Functions (always available)
+# ======================================================================
+
+# Create directory and cd into it
+mkcd() {
+    mkdir -p "$1" && cd "$1"
+}
+
+# Extract archives easily
+extract() {
+    if [ -f "$1" ] ; then
+        case "$1" in
+            *.tar.bz2)   tar xjf "$1"     ;;
+            *.tar.gz)    tar xzf "$1"     ;;
+            *.bz2)       bunzip2 "$1"     ;;
+            *.rar)       unrar x "$1"     ;;
+            *.gz)        gunzip "$1"      ;;
+            *.tar)       tar xf "$1"      ;;
+            *.tbz2)      tar xjf "$1"     ;;
+            *.tgz)       tar xzf "$1"     ;;
+            *.zip)       unzip "$1"       ;;
+            *.Z)         uncompress "$1"  ;;
+            *.7z)        7z x "$1"        ;;
+            *)           echo "'$1' cannot be extracted via extract()" ;;
+        esac
+    else
+        echo "'$1' is not a valid file"
+    fi
+}
+
+# ======================================================================
+# User Customization Area
+# ======================================================================
+# Add your own aliases and functions below this line
+# They will be preserved across updates
+
+# Examples:
+# alias proj='cd ~/projects'

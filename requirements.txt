@@ -1,0 +1,16 @@
+# Python development tools and language servers
+# Managed by pipx for isolated installations
+# Renovate tracks these - auto-merge minor/patch
+
+# LSP and debugging
+pyright>=1.1.380
+debugpy>=1.8.0
+
+# Code quality tools
+autoflake>=2.3.0
+flake8>=7.1.0
+ruff>=0.8.0
+pre-commit>=4.0.0
+
+# Notebook tooling
+jupytext>=1.16.0

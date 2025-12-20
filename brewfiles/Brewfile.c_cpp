@@ -1,0 +1,4 @@
+# C/C++ layer
+# Install: brew bundle --file=brewfiles/Brewfile.c_cpp
+
+brew "llvm"

@@ -1,0 +1,26 @@
+# Emacs 30.x build dependencies
+# Install: brew bundle --file=brewfiles/Brewfile.emacs-30
+
+# Core build tools
+brew "gcc"
+brew "autoconf"
+brew "automake"
+brew "cmake"
+brew "texinfo"
+brew "pkg-config"
+brew "wget"
+
+# Emacs libraries
+brew "jansson"
+brew "tree-sitter"
+brew "sqlite3"
+brew "libxml2"
+brew "webp"
+brew "little-cms2"
+brew "cairo"
+brew "imagemagick"
+brew "gnutls"
+brew "libvterm"
+brew "glib"
+brew "librsvg"
+brew "harfbuzz"

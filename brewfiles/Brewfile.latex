@@ -1,0 +1,6 @@
+# LaTeX layer
+# Install: brew bundle --file=brewfiles/Brewfile.latex
+
+brew "texlab"
+brew "poppler"
+brew "aspell"

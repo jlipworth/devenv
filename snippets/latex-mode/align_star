@@ -1,0 +1,7 @@
+#key: al*
+#name: align*
+# --
+\begin{align*}
+  $1
+\end{align*}
+$0

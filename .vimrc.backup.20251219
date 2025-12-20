@@ -1,0 +1,182 @@
+set nocompatible
+filetype off
+
+
+"Vundle ~~
+"set the runtime path to include Vundle and initialize
+
+if has('win32') || has('win64')
+  set rtp+=~/vimfiles/bundle/Vundle.vim/
+  call vundle#begin('~/vimfiles/bundle/')
+else
+  set rtp+=~/.vim/bundle/Vundle.vim
+  call vundle#begin()
+endif
+
+Plugin 'VundleVim/Vundle.vim'
+Plugin 'scrooloose/nerdtree'
+Plugin 'ctrlpvim/ctrlp.vim'
+Plugin 'jceb/vim-orgmode' "Need to learn. Not compiled with python, so doesn't work.
+Plugin 'tpope/vim-speeddating'
+Plugin 'mattn/calendar-vim'
+Plugin 'scrooloose/syntastic' "Need more checkers
+Plugin 'junegunn/vim-easy-align'
+Plugin 'scrooloose/nerdcommenter' "Dunno if I should use
+Plugin 'tpope/vim-fugitive'
+Plugin 'auto-pairs-gentle'
+Plugin 'tpope/vim-surround'
+Plugin 'LaTeX-Suite-aka-Vim-LaTeX' "Badly documented
+Plugin 'bling/vim-airline'
+Plugin 'vim-airline/vim-airline-themes'
+Plugin 'tomasr/molokai'
+Plugin 'rhysd/vim-grammarous'
+"Plugin 'valloric/youcompleteme'
+Plugin 'powerline/fonts'
+
+call vundle#end()
+filetype plugin indent on
+"c~~
+"Setting options~~
+set fmr=~~,c~~
+
+set number
+
+set fillchars+=vert:\
+
+syntax enable
+
+set backspace=indent,eol,start
+
+set expandtab
+
+set tabstop=4
+
+set shiftwidth=4
+
+set autoindent
+
+filetype indent on
+
+set breakindent
+
+set linebreak
+
+set tw=100
+
+set guioptions-=m
+
+set guioptions-=T
+
+set guioptions-=r
+
+set guioptions-=L
+
+if filereadable(expand("~/.vim/bundle/molokai/colors/molokai.vim"))
+  colorscheme molokai
+else
+  colorscheme default
+endif
+
+let g:AirlineTheme='powerlineish'
+"c~~
+"Autocmd groups~~
+augroup tex_group
+  autocmd!
+  autocmd Filetype tex setlocal formatoptions-=t
+  autocmd Filetype tex setlocal spell
+  autocmd Filetype tex let b:AutoPairs={'(':')', '[':']', '{':'}','``':'"'}
+  autocmd Filetype tex nnoremap <buffer> j gj
+  autocmd Filetype tex nnoremap <buffer> k gk
+  autocmd Filetype tex nnoremap <buffer> $ g$
+  autocmd Filetype tex nnoremap <buffer> 0 g0
+  autocmd Filetype tex nnoremap <buffer> A g$a
+  autocmd Filetype tex nnoremap <buffer> ^ g^
+    autocmd Filetype tex call IMAP('SS*','\section*{<++>}<++>','tex')
+    autocmd Filetype tex call IMAP('`i','\item <++>','tex')
+    autocmd Filetype tex let g:ycm_auto_trigger=0
+augroup end
+augroup text_group
+  autocmd!
+  autocmd Filetype text setlocal formatoptions-=t
+    autocmd Filetype text let g:ycm_auto_trigger=0
+augroup end
+augroup vimrc_group
+    autocmd! Filetype vim setlocal fdm=marker
+augroup end
+"c~~
+"Format~~
+set formatoptions+=w
+
+set guifont=DejaVu\ Sans\ Mono\ for\ Powerline:h10
+
+set encoding=utf-8
+
+set timeoutlen=400
+"c~~
+"Remaps~~
+cnoremap <c-h> <left>
+
+cnoremap <c-l> <right>
+
+cnoremap <c-j> <down>
+
+cnoremap <c-k> <up>
+
+cnoremap <c-^> <home>
+
+cnoremap <c-$> <end>
+
+inoremap jk <Esc>
+
+nnoremap ;m i <Esc>r
+nnoremap <leader>dat "=strftime("%b %d, %Y")<CR>
+nnoremap <leader>ne :NERDTree
+
+nnoremap j gj
+nnoremap k gk
+
+"c~~
+"Latex~~
+let g:tex_flavor                 = 'latex'
+let g:Tex_CompileRule_pdf        = 'pdflatex -synctex=1 -interaction=nonstopmode $*'
+let g:Tex_DefaultTargetFormat    = 'pdf'
+"This is for latex
+if has("win32") || has("win64")
+  set shellslash
+  let g:Tex_ViewRule_pdf='SumatraPDF'
+endif
+"c~~
+"Syntastic ~~
+set statusline+=%#warningmsg#
+set statusline+=%{SyntasticStatuslineFlag()}
+set statusline+=%*
+
+let g:syntastic_always_populate_loc_list = 1
+let g:syntastic_auto_loc_list            = 1
+let g:syntastic_check_on_open            = 1
+let g:syntastic_check_on_wq              = 0
+
+
+let g:syntastic_always_populate_loc_list = 1
+let g:syntastic_check_on_open            = 1
+let g:syntastic_check_on_wq              = 0
+let g:syntastic_auto_loc_list            = 1
+let g:syntastic_enable_signs             = 1
+
+let g:syntastic_sql_checkers    = ['sqlint']
+let g:syntastic_tex_checkers    = ['chktex', 'text/language_check']
+let g:syntastic_python_checkers = ['python']
+
+let g:syntastic_mode_map = {'mode': 'passive',
+      \'active_filetypes': ['python', 'sql' ],
+      \ 'passive_filetypes': []}
+
+"c~~
+"Airline~~
+set laststatus=2
+let g:airline#extensions#tabline#enabled = 1
+let g:airline_powerline_fonts            = 1
+"c~~
+"CtrlP~~
+let g:ctrlp_cmd = 'CtrlPMRU'
+"c~~

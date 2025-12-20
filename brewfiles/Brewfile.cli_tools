@@ -1,0 +1,12 @@
+# CLI tools layer
+# Install: brew bundle --file=brewfiles/Brewfile.cli_tools
+
+brew "ripgrep"
+brew "fd"
+brew "bat"
+brew "eza"
+brew "fzf"
+brew "dust"
+brew "lazygit"
+brew "zoxide"
+brew "ranger"

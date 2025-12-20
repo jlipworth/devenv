@@ -1,0 +1,30 @@
+# .shellcheckrc - ShellCheck configuration for GNU_files
+# https://www.shellcheck.net/wiki/
+
+# Disabled checks with rationale:
+#
+# SC2034: "X appears unused"
+#   Variables ARE used - exported for scripts that source common_utils.sh
+#
+# SC2016: "Expressions don't expand in single quotes"
+#   Intentional - we want literal strings like 'eval "$(opam env)"' in RC files
+#
+# SC2155: "Declare and assign separately to avoid masking return values"
+#   Style preference - our patterns are safe and readable as-is
+#
+# SC2012: "Use find instead of ls"
+#   We're listing known paths (gcc versions) - ls is simpler and sufficient
+#
+# SC2162: "read without -r will mangle backslashes"
+#   Interactive prompts don't expect backslash input
+#
+# SC2015: "A && B || C is not if-then-else"
+#   Intentional pattern for "do X or log warning" - C is just logging
+#
+# SC2064: "Use single quotes in trap"
+#   We intentionally capture variable at trap definition time, not execution
+#
+# SC2129: "Consider using { cmd1; cmd2; } >> file"
+#   Style preference - sequential echoes are clearer for our use case
+
+disable=SC2034,SC2016,SC2155,SC2012,SC2162,SC2015,SC2064,SC2129

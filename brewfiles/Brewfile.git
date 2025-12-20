@@ -1,0 +1,4 @@
+# Git layer
+# Install: brew bundle --file=brewfiles/Brewfile.git
+
+brew "git-delta"

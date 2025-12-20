@@ -1,0 +1,4 @@
+# Docker layer
+# Install: brew bundle --file=brewfiles/Brewfile.docker
+
+brew "hadolint"

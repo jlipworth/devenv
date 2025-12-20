@@ -1,0 +1,74 @@
+# Pre-commit hooks for devenv repository
+# See https://pre-commit.com for more information
+
+repos:
+  # General file formatting hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=10000']
+      - id: check-merge-conflict
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+      - id: detect-private-key
+
+  # Shell script linting with shellcheck
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        args: ['-x', '-e', 'SC1090,SC1091', '--severity=error']  # Only fail on errors
+        files: \.(sh|bash)$
+
+  # Shell script formatting with shfmt
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.12.0-2
+    hooks:
+      - id: shfmt
+        args: ['-i', '4', '-ci', '-sr', '-w']  # 4 spaces, case indent, space redirects, write
+        files: \.(sh|bash)$
+
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.37.1
+    hooks:
+      - id: yamllint
+        args:
+          - '-d'
+          - |
+            extends: default
+            rules:
+              line-length:
+                max: 120
+              document-start: disable
+              truthy:
+                check-keys: false
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.47.0
+    hooks:
+      - id: markdownlint
+        args: ['--fix', '--disable', 'MD013', 'MD033', 'MD041']  # Disable line-length, inline HTML, first-line-h1
+
+  # Check for common misspellings
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        args: ['-L', 'crate,hda,ser,thru,ot']  # Ignore false positives
+        exclude: '\.org$'
+
+  # Dockerfile linting
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        args: ['--ignore', 'DL3008', '--ignore', 'DL3013']  # Ignore pin versions warnings

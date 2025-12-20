@@ -1,0 +1,5 @@
+# OCaml layer
+# Install: brew bundle --file=brewfiles/Brewfile.ocaml
+
+brew "ocaml"
+brew "opam"
