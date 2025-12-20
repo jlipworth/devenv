@@ -5,6 +5,28 @@
 when:
   event: [push, pull_request, manual]
 
+# Conditional clone based on repo
+clone:
+  gitlab-clone:
+    image: alpine/git
+    when:
+      - evaluate: 'CI_REPO == "jlipworth/GNU_files"'
+    environment:
+      SSH_KEY:
+        from_secret: ssh_key
+    commands:
+      - mkdir -p ~/.ssh
+      - echo "$SSH_KEY" > ~/.ssh/id_ed25519
+      - chmod 600 ~/.ssh/id_ed25519
+      - ssh-keyscan -t ed25519 gitlab.com >> ~/.ssh/known_hosts 2>/dev/null
+      - git clone --depth=1 --branch=$CI_COMMIT_BRANCH git@gitlab.com:jlipworth/GNU_files.git .
+      - git fetch origin $CI_COMMIT_SHA --depth=1
+      - git checkout $CI_COMMIT_SHA
+  github-clone:
+    image: woodpeckerci/plugin-git
+    when:
+      - evaluate: 'CI_REPO == "jlipworth/devenv"'
+
 variables:
   - &ci_image "jlipworth/gnu-files-ci:latest"
 

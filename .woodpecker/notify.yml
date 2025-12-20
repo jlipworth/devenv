@@ -4,6 +4,8 @@
 when:
   event: [push, pull_request, manual]
 
+skip_clone: true
+
 depends_on:
   - build
   - layers
@@ -12,15 +14,30 @@ depends_on:
 runs_on: [success, failure]
 
 steps:
-  - name: notify-discord
+  - name: notify-success
     image: appleboy/drone-discord
+    when:
+      - status: success
     settings:
       webhook_id:
         from_secret: discord_id
       webhook_token:
         from_secret: discord_token
       message: >
-        {{#success build.status}}✅ Success{{else}}❌ Failed{{/success}}:
-        **{{repo.name}}** ({{commit.branch}})
+        ✅ **Success**: {{repo.name}} ({{commit.branch}})
+        {{commit.message}}
+        {{build.link}}
+
+  - name: notify-failure
+    image: appleboy/drone-discord
+    when:
+      - status: failure
+    settings:
+      webhook_id:
+        from_secret: discord_id
+      webhook_token:
+        from_secret: discord_token
+      message: >
+        ❌ **Failed**: {{repo.name}} ({{commit.branch}})
         {{commit.message}}
         {{build.link}}
