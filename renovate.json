@@ -48,5 +48,6 @@
   },
 
   "dependencyDashboard": true,
+  "dependencyDashboardAutoclose": true,
   "dependencyDashboardTitle": "Renovate Dependency Dashboard"
 }
