@@ -2,7 +2,6 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "description": "Renovate configuration for devenv Emacs development environment",
-  "platform": "github",
   "labels": ["dependencies", "renovate"],
   "assignees": ["@jlipworth"],
   "timezone": "America/New_York",
@@ -14,11 +13,6 @@
       "description": "Group Python packages",
       "matchManagers": ["pip_requirements"],
       "groupName": "python dependencies"
-    },
-    {
-      "description": "Group Homebrew packages by file",
-      "matchManagers": ["homebrew"],
-      "groupName": "homebrew dependencies"
     },
     {
       "description": "Auto-merge minor and patch updates",
@@ -41,13 +35,8 @@
 
   "enabledManagers": [
     "pip_requirements",
-    "homebrew",
     "dockerfile"
   ],
-
-  "homebrew": {
-    "fileMatch": ["^brewfiles/Brewfile\\..*$"]
-  },
 
   "prConcurrentLimit": 5,
   "prCreation": "not-pending",
