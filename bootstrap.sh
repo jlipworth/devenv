@@ -37,12 +37,12 @@ echo ""
 echo "=== Repository ready ==="
 echo ""
 echo "Run one of the following:"
-echo "  cd $INSTALL_DIR && make full-setup    # Complete installation"
-echo "  cd $INSTALL_DIR && make spacemacs     # Emacs only"
+echo "  cd $INSTALL_DIR && make spacemacs     # Emacs + Spacemacs"
+echo "  cd $INSTALL_DIR && make full-setup    # Complete installation (all layers)"
 echo "  cd $INSTALL_DIR && make help          # Show all options"
 echo ""
-echo "Or run full-setup now? [y/N]"
+echo "Install Emacs + Spacemacs now? [y/N]"
 read -r response
 if [[ "$response" =~ ^[Yy]$ ]]; then
-    make full-setup
+    make spacemacs
 fi
