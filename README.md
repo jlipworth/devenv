@@ -14,12 +14,15 @@ Automated setup for Emacs 30.1 with Spacemacs, language servers for 13+ language
 
 ## Quick Start
 
+**One-liner install:**
 ```bash
-# Clone the repo
+curl -fsSL https://raw.githubusercontent.com/jlipworth/devenv/master/bootstrap.sh | bash
+```
+
+**Or manually:**
+```bash
 git clone https://github.com/jlipworth/devenv.git ~/GNU_files
 cd ~/GNU_files
-
-# Full setup (Emacs + all language servers + fonts)
 make full-setup
 
 # Or individual components
