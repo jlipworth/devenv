@@ -409,6 +409,14 @@ install_terraform_support() {
         # terraform-ls can be latest
         install_packages "terraform-ls"
 
+        # Cloud provider CLIs via Brewfile (Linuxbrew)
+        if is_installed "brew"; then
+            if [[ -f "$GNU_DIR/brewfiles/Brewfile.terraform" ]]; then
+                log "Installing cloud provider CLIs via Linuxbrew..."
+                brew bundle --file="$GNU_DIR/brewfiles/Brewfile.terraform" || log "Error with Brewfile.terraform" "WARNING"
+            fi
+        fi
+
     elif [[ $OS == "Darwin" ]]; then
         log "Adding HashiCorp tap to Homebrew..."
         brew tap hashicorp/tap || log "Error adding hashicorp/tap." "WARNING"
@@ -439,6 +447,12 @@ install_terraform_support() {
 
         # terraform-ls can be latest
         install_packages "terraform-ls"
+
+        # Cloud provider CLIs via Brewfile
+        if [[ -f "$GNU_DIR/brewfiles/Brewfile.terraform" ]]; then
+            log "Installing cloud provider CLIs..."
+            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.terraform" || log "Error with Brewfile.terraform" "WARNING"
+        fi
     fi
 }
 
