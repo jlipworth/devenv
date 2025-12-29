@@ -70,7 +70,7 @@ python:
 	@./prereq_packages.sh install_python_prereqs
 
 python-env:
-	@echo "Installing Python data analysis environment (miniconda + poetry)..."
+	@echo "Installing Python environment (uv)..."
 	@./prereq_packages.sh install_python_env
 
 r:
@@ -135,7 +135,7 @@ help:
 	@echo ""
 	@echo "Language layers:"
 	@echo "  python      - Python LSP, debugpy, linters"
-	@echo "  python-env  - Miniconda + Poetry (data science environment)"
+	@echo "  python-env  - uv package manager + global tools"
 	@echo "  c_cpp       - clangd/LLVM for C/C++"
 	@echo "  js          - TypeScript, Prettier, ESLint"
 	@echo "  sql         - sqls language server"

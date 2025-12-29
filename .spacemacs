@@ -119,16 +119,11 @@ This function should only modify configuration layer settings."
 
      pdf
 
-     (conda :variables
-            conda-anaconda-home (expand-file-name "miniconda3" (getenv "HOME")))
-
-
      (python :variables
              python-backend 'lsp
              python-lsp-server 'pyright
              python-formatter 'ruff
-             python-poetry-activate nil
-             python-enable-tools '(pip poetry)
+             python-enable-tools '(pip)
              ;; python-format-on-save t
              ;; python-sort-imports-on-save t
              )
