@@ -1,0 +1,5 @@
+# Terraform layer - cloud provider CLIs
+# Install: brew bundle --file=brewfiles/Brewfile.terraform
+
+brew "awscli"
+brew "vultr"

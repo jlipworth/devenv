@@ -1,5 +1,10 @@
 # devenv
 
+![CI](https://img.shields.io/github/checks-status/jlipworth/devenv/master)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-blue)
+![Emacs](https://img.shields.io/badge/Emacs-30.1-purple?logo=gnu-emacs)
+![License](https://img.shields.io/github/license/jlipworth/devenv)
+
 Personal Emacs build, dotfiles, and fonts.
 
 Automated setup for Emacs 30.1 with Spacemacs, language servers for 13+ languages, and cross-platform support (macOS and Linux).
@@ -14,12 +19,15 @@ Automated setup for Emacs 30.1 with Spacemacs, language servers for 13+ language
 
 ## Quick Start
 
+**One-liner install:**
 ```bash
-# Clone the repo
+curl -fsSL https://raw.githubusercontent.com/jlipworth/devenv/master/bootstrap.sh | bash
+```
+
+**Or manually:**
+```bash
 git clone https://github.com/jlipworth/devenv.git ~/GNU_files
 cd ~/GNU_files
-
-# Full setup (Emacs + all language servers + fonts)
 make full-setup
 
 # Or individual components

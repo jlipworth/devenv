@@ -117,6 +117,10 @@ install_markdown_support() {
     else
         install_packages "pandoc"
     fi
+
+    # Mermaid CLI for rendering mermaid diagrams in markdown
+    log "Installing mermaid-cli for diagram rendering..."
+    $NODE_CMD install -g @mermaid-js/mermaid-cli || log "Error installing mermaid-cli." "WARNING"
 }
 
 create_snippet_symlink() {
@@ -385,13 +389,16 @@ install_terraform_support() {
     if [[ $OS == "Linux" ]]; then
         log "Installing terraform \"repo\"..."
         # Add GPG key
-        if ! gpg --list-keys | grep -q "HashiCorp"; then
-            wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
+        if [[ ! -f /usr/share/keyrings/hashicorp-archive-keyring.gpg ]]; then
+            wget -qO- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
         fi
-        # Add repository (use focal if jammy is unsupported)
+        # Add repository - detect distro codename from /etc/os-release
+        # Works for both Debian (bookworm, bullseye) and Ubuntu (focal, jammy, noble)
+        DISTRO_CODENAME=$(grep -oP '(?<=VERSION_CODENAME=).+' /etc/os-release || echo "bookworm")
         if ! grep -q "https://apt.releases.hashicorp.com" /etc/apt/sources.list.d/hashicorp.list 2> /dev/null; then
-            echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com focal main" |
-                sudo tee /etc/apt/sources.list.d/hashicorp.list
+            log "Adding HashiCorp apt repository for $DISTRO_CODENAME..."
+            echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $DISTRO_CODENAME main" |
+                sudo tee /etc/apt/sources.list.d/hashicorp.list > /dev/null
         fi
 
         # Install specific version for Proxmox compatibility
@@ -404,6 +411,14 @@ install_terraform_support() {
 
         # terraform-ls can be latest
         install_packages "terraform-ls"
+
+        # Cloud provider CLIs via Brewfile (Linuxbrew)
+        if is_installed "brew"; then
+            if [[ -f "$GNU_DIR/brewfiles/Brewfile.terraform" ]]; then
+                log "Installing cloud provider CLIs via Linuxbrew..."
+                brew bundle --file="$GNU_DIR/brewfiles/Brewfile.terraform" || log "Error with Brewfile.terraform" "WARNING"
+            fi
+        fi
 
     elif [[ $OS == "Darwin" ]]; then
         log "Adding HashiCorp tap to Homebrew..."
@@ -435,6 +450,12 @@ install_terraform_support() {
 
         # terraform-ls can be latest
         install_packages "terraform-ls"
+
+        # Cloud provider CLIs via Brewfile
+        if [[ -f "$GNU_DIR/brewfiles/Brewfile.terraform" ]]; then
+            log "Installing cloud provider CLIs..."
+            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.terraform" || log "Error with Brewfile.terraform" "WARNING"
+        fi
     fi
 }
 

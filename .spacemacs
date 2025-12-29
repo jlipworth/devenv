@@ -187,6 +187,8 @@ This function should only modify configuration layer settings."
              docker-dockerfile-backend 'lsp
              )
 
+     kubernetes
+
      windows-scripts
 
      )
@@ -204,6 +206,8 @@ This function should only modify configuration layer settings."
    dotspacemacs-additional-packages
    '(
      exec-path-from-shell
+     mermaid-mode
+     ob-mermaid
      ;; esup
      )
 
@@ -744,6 +748,22 @@ before packages are loaded."
   (spacemacs/set-leader-keys-for-major-mode 'latex-mode
     "oc" 'jal/insert-current-date)
 
+  ;; mermaid-mode
+  (with-eval-after-load 'mermaid-mode
+    (spacemacs/set-leader-keys-for-major-mode 'mermaid-mode
+      "c" 'mermaid-compile
+      "b" 'mermaid-compile-buffer
+      "r" 'mermaid-compile-region
+      "o" 'mermaid-open-browser
+      "d" 'mermaid-open-doc))
+
+  ;; ob-mermaid for org-mode babel integration
+  (with-eval-after-load 'org
+    (require 'ob-mermaid)
+    (add-to-list 'org-babel-load-languages '(mermaid . t))
+    (org-babel-do-load-languages 'org-babel-load-languages org-babel-load-languages)
+    (setq ob-mermaid-cli-path (executable-find "mmdc")))
+
   ;; Formatting section
 
   (setq spaceline-minor-modes-p nil)
@@ -822,7 +842,7 @@ This function is called at the very end of Spacemacs initialization."
                 helm-lsp helm-make helm-mode-manager helm-org helm-org-rifle
                 helm-projectile helm-purpose helm-pydoc helm-swoop helm-xref
                 hide-comnt highlight-indentation highlight-numbers
-                highlight-parentheses hl-todo holy-mode hungry-delete hybrid-mode
+                highlight-parentheses hl-todo holy-mode hungry-delete
                 ibuffer-projectile impatient-mode indent-guide info+
                 insert-shebang inspector jinja2-mode js-doc js2-refactor json-mode
                 json-navigator json-reformat link-hint live-py-mode livid-mode
