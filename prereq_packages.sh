@@ -606,116 +606,29 @@ install_cli_tools() {
 }
 
 install_python_env() {
-    log "Installing Python data analysis environment (miniconda + poetry)..."
+    log "Installing Python environment manager (uv)..."
 
-    local MINICONDA_DIR="$HOME/miniconda3"
-    local shell_rc
-    shell_rc="$(get_shell_rc)"
-
-    # Install miniconda if not already installed
-    if [[ ! -d "$MINICONDA_DIR" ]]; then
-        log "Installing Miniconda..."
-
-        if [[ "$OS" == "Darwin" ]]; then
-            # macOS ARM only (M1/M2/M3)
-            MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh"
-        else
-            # Linux - check architecture
-            if [[ "$(uname -m)" == "aarch64" ]]; then
-                MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh"
-            else
-                MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
-            fi
-        fi
-
-        # Download and install miniconda
-        if [[ "$OS" == "Darwin" ]]; then
-            curl -fsSL "$MINICONDA_URL" -o /tmp/miniconda.sh || {
-                log "Failed to download Miniconda." "ERROR"
-                return 1
-            }
-        else
-            wget "$MINICONDA_URL" -O /tmp/miniconda.sh || {
-                log "Failed to download Miniconda." "ERROR"
-                return 1
-            }
-        fi
-
-        bash /tmp/miniconda.sh -b -p "$MINICONDA_DIR" || {
-            log "Failed to install Miniconda." "ERROR"
-            return 1
+    # Install uv if not present (brew is prereq for both macOS and Linux)
+    if ! is_installed "uv"; then
+        log "Installing uv..."
+        brew install uv || {
+            log "Brew install failed, falling back to curl..." "WARNING"
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            export PATH="$HOME/.local/bin:$PATH"
+            add_to_path "$HOME/.local/bin" "uv"
         }
-
-        rm /tmp/miniconda.sh
-        log "Miniconda installed successfully." "SUCCESS"
-
-        # Initialize conda for shell
-        "$MINICONDA_DIR/bin/conda" init "$(basename "$SHELL")" || log "Failed to initialize conda." "WARNING"
-
+        log "uv installed successfully." "SUCCESS"
     else
-        log "Miniconda is already installed at $MINICONDA_DIR."
+        log "uv already installed, updating..."
+        uv self update || log "Failed to update uv." "WARNING"
     fi
 
-    # Add conda to PATH for this session
-    export PATH="$MINICONDA_DIR/bin:$PATH"
+    # Install global tools via uv
+    log "Installing global Python tools via uv..."
+    uv tool install ipython || log "Failed to install ipython." "WARNING"
+    uv tool install jupyterlab || log "Failed to install jupyterlab." "WARNING"
 
-    # Accept conda Terms of Service
-    log "Accepting conda Terms of Service..."
-    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main 2> /dev/null || true
-    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r 2> /dev/null || true
-
-    # Update conda
-    log "Updating conda..."
-    conda update -n base -c defaults conda -y || log "Failed to update conda." "WARNING"
-
-    log "Ensuring Conda data analysis tools are installed..."
-    local conda_tools=("ipython" "jupyterlab")
-    for tool in "${conda_tools[@]}"; do
-        if conda list --name base "$tool" 2> /dev/null | grep -Eq "^${tool}[[:space:]]"; then
-            log "$tool already present in base environment."
-        else
-            log "Installing $tool via conda..."
-            conda install -n base -y "$tool" || log "Failed to install $tool via conda." "WARNING"
-        fi
-    done
-
-    # Install poetry if not already installed
-    if ! is_installed "poetry"; then
-        log "Installing Poetry..."
-
-        # Install poetry via pip (recommended method)
-        if is_installed "pipx"; then
-            # Prefer pipx if available (isolated installation)
-            pipx install poetry || {
-                log "Failed to install poetry via pipx. Trying curl method..." "WARNING"
-                curl -sSL https://install.python-poetry.org | python3 - || log "Failed to install Poetry." "ERROR"
-            }
-        else
-            # Fall back to official installer
-            curl -sSL https://install.python-poetry.org | python3 - || log "Failed to install Poetry." "ERROR"
-        fi
-
-        # Add poetry to PATH for current session and future sessions
-        POETRY_BIN="$HOME/.local/bin"
-        if [[ -d "$POETRY_BIN" ]]; then
-            export PATH="$POETRY_BIN:$PATH"
-            add_to_path "$POETRY_BIN" "Poetry"
-        fi
-
-        log "Poetry installed successfully." "SUCCESS"
-    else
-        log "Poetry is already installed."
-
-        # Update poetry
-        log "Updating Poetry..."
-        poetry self update || log "Failed to update Poetry." "WARNING"
-    fi
-
-    # Configure poetry to create virtual environments in project directories
-    poetry config virtualenvs.in-project true || log "Failed to configure poetry." "WARNING"
-
-    log "Python data analysis environment setup complete." "SUCCESS"
-    log "NOTE: You may need to restart your shell or run 'source $shell_rc' for conda to work." "WARNING"
+    log "Python environment setup complete." "SUCCESS"
 }
 
 install_ai_tools() {
