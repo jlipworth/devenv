@@ -608,22 +608,15 @@ install_cli_tools() {
 install_python_env() {
     log "Installing Python environment manager (uv)..."
 
-    # Install uv if not present
+    # Install uv if not present (brew is prereq for both macOS and Linux)
     if ! is_installed "uv"; then
         log "Installing uv..."
-        if [[ "$OS" == "Darwin" ]]; then
-            brew install uv || {
-                log "Brew install failed, falling back to curl..." "WARNING"
-                curl -LsSf https://astral.sh/uv/install.sh | sh
-            }
-        else
+        brew install uv || {
+            log "Brew install failed, falling back to curl..." "WARNING"
             curl -LsSf https://astral.sh/uv/install.sh | sh
-        fi
-
-        # Add uv to PATH for this session
-        export PATH="$HOME/.local/bin:$PATH"
-        add_to_path "$HOME/.local/bin" "uv"
-
+            export PATH="$HOME/.local/bin:$PATH"
+            add_to_path "$HOME/.local/bin" "uv"
+        }
         log "uv installed successfully." "SUCCESS"
     else
         log "uv already installed, updating..."
