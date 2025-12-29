@@ -303,6 +303,10 @@ install_sql_tools() {
 install_js_tools() {
     log "Installing JavaScript tools..."
 
+    # Install pnpm for project dependency management (T4 stack, webapps)
+    log "Installing pnpm..."
+    npm install -g pnpm || log "Error installing pnpm." "WARNING"
+
     # JavaScript language servers and tools (always install latest)
     local js_packages=(
         "import-js"
