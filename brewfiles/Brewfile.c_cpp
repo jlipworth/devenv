@@ -2,3 +2,7 @@
 # Install: brew bundle --file=brewfiles/Brewfile.c_cpp
 
 brew "llvm"
+brew "cmake"
+brew "conan"
+brew "ninja"
+brew "boost"
