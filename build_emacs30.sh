@@ -238,6 +238,19 @@ else
     fi
     log "System installation complete" "SUCCESS"
 
+    # Clean up stale org .elc files to prevent version mismatch warnings
+    # These can cause issues when org's .el files are updated but .elc files remain from previous builds
+    ORG_LISP_DIR="/usr/local/share/emacs/${EMACS_VERSION}/lisp/org"
+    if [[ -d "$ORG_LISP_DIR" ]]; then
+        log "Removing stale org .elc files to prevent version mismatch..."
+        if [[ "$CI" == "true" ]]; then
+            rm -f "$ORG_LISP_DIR"/*.elc
+        else
+            sudo rm -f "$ORG_LISP_DIR"/*.elc
+        fi
+        log "Org .elc cleanup complete" "SUCCESS"
+    fi
+
     if [[ "$OS" == "Darwin" ]]; then
         log "Building Emacs.app bundle…"
         make -C nextstep install
