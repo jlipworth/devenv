@@ -261,6 +261,14 @@ install_c_cpp_prereqs() {
     if is_installed "brew"; then
         log "Installing C/C++ tools via Homebrew..."
         brew bundle --file="$GNU_DIR/brewfiles/Brewfile.c_cpp" || log "Error with Brewfile.c_cpp" "WARNING"
+
+        # Add LLVM to PATH for clangd, clang-format, etc.
+        local LLVM_BIN_DIR
+        LLVM_BIN_DIR="$(brew --prefix llvm)/bin"
+        if [[ -d "$LLVM_BIN_DIR" ]]; then
+            export PATH="$LLVM_BIN_DIR:$PATH"
+            add_to_path "$LLVM_BIN_DIR" "LLVM/Clang (C++ toolchain)"
+        fi
     else
         # Fallback for systems without brew
         install_packages "llvm"

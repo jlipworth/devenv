@@ -718,6 +718,9 @@ before packages are loaded."
   (if (string= system-type "gnu/linux")
       (setenv "SUDO_ASKPASS" "/usr/bin/ksshaskpass"))
 
+  ;; C++20 module file extensions
+  (add-to-list 'auto-mode-alist '("\\.cppm\\'" . c++-mode))
+  (add-to-list 'auto-mode-alist '("\\.ixx\\'" . c++-mode))
 
   ;; keybindings global
 
@@ -840,18 +843,19 @@ This function is called at the very end of Spacemacs initialization."
                 highlight-parentheses hl-todo holy-mode hungry-delete
                 ibuffer-projectile impatient-mode indent-guide info+
                 insert-shebang inspector jinja2-mode js-doc js2-refactor json-mode
-                json-navigator json-reformat link-hint live-py-mode livid-mode
-                lorem-ipsum lsp-latex lsp-origami lsp-pyright lsp-ui macrostep
-                magic-latex-buffer magit-delta markdown-toc merlin-company
-                merlin-eldoc merlin-iedit multi-line multi-term multi-vterm
-                nameless nginx-mode nodejs-repl npm-mode ocamlformat ocp-indent
+                json-navigator json-reformat kubernetes kubernetes-evil link-hint
+                live-py-mode livid-mode lorem-ipsum lsp-latex lsp-origami
+                lsp-pyright lsp-ui macrostep magic-latex-buffer magit-delta
+                magit-popup markdown-toc merlin-company merlin-eldoc merlin-iedit
+                mermaid-mode multi-line multi-term multi-vterm nameless nginx-mode
+                nodejs-repl npm-mode ob-mermaid ocamlformat ocp-indent
                 open-junk-file org-cliplink org-download org-mime org-rich-yank
                 org-superstar orgit-forge overseer ox-gfm page-break-lines paradox
                 password-generator pcre2el pdf-view-restore pet pip-requirements
                 pipenv pippel poetry popwin powershell prettier-js pug-mode
                 py-isort pydoc pyenv-mode pylookup python-pytest quickrun
-                rainbow-delimiters ranger restart-emacs sass-mode scss-mode
-                shell-pop shfmt slim-mode smeargle space-doc spaceline
+                rainbow-delimiters ranger request restart-emacs sass-mode
+                scss-mode shell-pop shfmt slim-mode smeargle space-doc spaceline
                 spacemacs-purpose-popwin spacemacs-whitespace-cleanup sphinx-doc
                 sql-indent sqlup-mode string-edit-at-point string-inflection
                 symbol-overlay symon tagedit term-cursor terminal-here toc-org
