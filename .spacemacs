@@ -700,6 +700,9 @@ If you are unsure, try setting them in `dotspacemacs/user-config' first."
   (setq tls-checktrust t)
   ;; (setq custom-file "~/.emacs.d/temp-custom.el")
   ;; (load-file custom-file)
+
+  ;; Load custom functions from GNU_files (natively compiled on first load)
+  (add-to-list 'load-path "~/GNU_files")
   )
 
 (defun dotspacemacs/user-config ()
@@ -708,6 +711,9 @@ This function is called at the very end of Spacemacs startup, after layer
 configuration.
 Put your configuration code here, except for variables that should be set
 before packages are loaded."
+
+  ;; Load custom functions
+  (require 'jal-functions)
 
   ;; global emacs settings
   (global-auto-revert-mode t)
@@ -731,37 +737,6 @@ before packages are loaded."
   ;; find out a better way to do this
   (global-set-key (kbd "<escape>") #'keyboard-quit)
 
-  ;; good date function for latex
-  (defun jal/insert-current-date ()
-    (interactive)
-    (evil-append 1)
-    (insert (format-time-string "%b %d, %Y")))
-
-  ;; keybindings modal
-  ;; org-mode
-  (spacemacs/set-leader-keys-for-major-mode 'org-mode
-    "oc" 'jal/insert-current-date)
-
-  ;; latex-mode
-  (spacemacs/set-leader-keys-for-major-mode 'latex-mode
-    "oc" 'jal/insert-current-date)
-
-  ;; mermaid-mode
-  (with-eval-after-load 'mermaid-mode
-    (spacemacs/set-leader-keys-for-major-mode 'mermaid-mode
-      "c" 'mermaid-compile
-      "b" 'mermaid-compile-buffer
-      "r" 'mermaid-compile-region
-      "o" 'mermaid-open-browser
-      "d" 'mermaid-open-doc))
-
-  ;; ob-mermaid for org-mode babel integration
-  (with-eval-after-load 'org
-    (require 'ob-mermaid)
-    (add-to-list 'org-babel-load-languages '(mermaid . t))
-    (org-babel-do-load-languages 'org-babel-load-languages org-babel-load-languages)
-    (setq ob-mermaid-cli-path (executable-find "mmdc")))
-
   ;; Formatting section
 
   (setq spaceline-minor-modes-p nil)
@@ -772,19 +747,8 @@ before packages are loaded."
     (setq org-startup-indented t))
 
 
-  ;; Fix for WSL2 not loading from terminal first
-  (unless (getenv "SSH_AUTH_SOCK")
-    ;; Load exec-path-from-shell only if SSH_AUTH_SOCK is not already set
-    (message "No SSH_AUTH_SOCK set. Setting SSH_AUTH_SOCK")
-    (use-package exec-path-from-shell
-      :ensure t
-      :config
-      (exec-path-from-shell-initialize)
-      (exec-path-from-shell-copy-env "SSH_AUTH_SOCK")))
-
-  ;; Additional check to confirm SSH_AUTH_SOCK is set
-  (when (getenv "SSH_AUTH_SOCK")
-    (message "Current SSH_AUTH_SOCK: %s" (getenv "SSH_AUTH_SOCK")))
+  ;; WSL2 SSH agent fix (defined in jal-functions.el)
+  (jal/setup-ssh-agent)
 
   ;; For high dpi rendering
   (setq pdf-view-use-scaling t)
