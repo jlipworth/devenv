@@ -59,28 +59,31 @@
   (when (getenv "SSH_AUTH_SOCK")
     (message "Current SSH_AUTH_SOCK: %s" (getenv "SSH_AUTH_SOCK"))))
 
-;;;; Keybindings
+;;;; Configuration
 
-;; org-mode: date keybinding + ob-mermaid babel integration
+;; ob-mermaid babel integration (must defer until org loads)
 (with-eval-after-load 'org
-  (when (boundp 'spacemacs/set-leader-keys-for-major-mode)
-    (spacemacs/set-leader-keys-for-major-mode 'org-mode
-      "oc" 'jal/insert-current-date))
   (require 'ob-mermaid)
   (add-to-list 'org-babel-load-languages '(mermaid . t))
   (org-babel-do-load-languages 'org-babel-load-languages org-babel-load-languages)
   (setq ob-mermaid-cli-path (executable-find "mmdc")))
 
-(with-eval-after-load 'latex
-  (when (boundp 'spacemacs/set-leader-keys-for-major-mode)
-    (spacemacs/set-leader-keys-for-major-mode 'latex-mode
-      "oc" 'jal/insert-current-date)))
+;;;; Keybindings
+;; Direct calls - this file is loaded from user-config after layers init
 
-;; Mermaid in markdown
-(with-eval-after-load 'markdown-mode
-  (when (boundp 'spacemacs/set-leader-keys-for-major-mode)
-    (spacemacs/set-leader-keys-for-major-mode 'markdown-mode
-      "cm" 'jal/markdown-compile-mermaid-at-point)))
+;; org-mode: SPC m o c - insert date
+(spacemacs/set-leader-keys-for-major-mode 'org-mode
+  "oc" 'jal/insert-current-date)
+
+;; latex-mode: SPC m o c - insert date
+(spacemacs/set-leader-keys-for-major-mode 'latex-mode
+  "oc" 'jal/insert-current-date)
+
+;; markdown/gfm-mode: SPC m M - compile mermaid at point
+(spacemacs/set-leader-keys-for-major-mode 'markdown-mode
+  "M" 'jal/markdown-compile-mermaid-at-point)
+(spacemacs/set-leader-keys-for-major-mode 'gfm-mode
+  "M" 'jal/markdown-compile-mermaid-at-point)
 
 (provide 'jal-functions)
 ;;; jal-functions.el ends here

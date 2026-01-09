@@ -703,6 +703,9 @@ If you are unsure, try setting them in `dotspacemacs/user-config' first."
 
   ;; Load custom functions from GNU_files (natively compiled on first load)
   (add-to-list 'load-path "~/GNU_files")
+
+  ;; Ignore empty WSL2 env vars that cause stringp errors
+  (add-to-list 'spacemacs-ignored-environment-variables "^WSLENV$")
   )
 
 (defun dotspacemacs/user-config ()
