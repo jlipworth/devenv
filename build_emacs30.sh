@@ -238,17 +238,17 @@ else
     fi
     log "System installation complete" "SUCCESS"
 
-    # Clean up stale org .elc files to prevent version mismatch warnings
-    # These can cause issues when org's .el files are updated but .elc files remain from previous builds
+    # Recompile org .elc files to prevent version mismatch warnings
+    # Fresh compilation ensures .elc files match the installed .el sources
     ORG_LISP_DIR="/usr/local/share/emacs/${EMACS_VERSION}/lisp/org"
     if [[ -d "$ORG_LISP_DIR" ]]; then
-        log "Removing stale org .elc files to prevent version mismatch..."
+        log "Recompiling org-mode to ensure .elc files are fresh..."
         if [[ "$CI" == "true" ]]; then
-            rm -f "$ORG_LISP_DIR"/*.elc
+            emacs --batch -L "$ORG_LISP_DIR" --eval "(byte-recompile-directory \"$ORG_LISP_DIR\" 0 t)" 2> /dev/null
         else
-            sudo rm -f "$ORG_LISP_DIR"/*.elc
+            sudo emacs --batch -L "$ORG_LISP_DIR" --eval "(byte-recompile-directory \"$ORG_LISP_DIR\" 0 t)" 2> /dev/null
         fi
-        log "Org .elc cleanup complete" "SUCCESS"
+        log "Org-mode recompilation complete" "SUCCESS"
     fi
 
     if [[ "$OS" == "Darwin" ]]; then
