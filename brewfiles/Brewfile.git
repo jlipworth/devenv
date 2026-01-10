@@ -3,3 +3,4 @@
 
 brew "git-delta"
 brew "gh"
+brew "glab"
