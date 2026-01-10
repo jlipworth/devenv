@@ -702,7 +702,11 @@ If you are unsure, try setting them in `dotspacemacs/user-config' first."
   ;; (load-file custom-file)
 
   ;; Load custom functions from GNU_files (natively compiled on first load)
-  (add-to-list 'load-path "~/GNU_files")
+  ;; Derive path from symlinked .spacemacs location for portability
+  (defvar jal-gnu-files-dir
+    (file-name-directory (file-truename (or load-file-name buffer-file-name)))
+    "Directory containing GNU_files repository.")
+  (add-to-list 'load-path jal-gnu-files-dir)
 
   ;; Ignore empty WSL2 env vars that cause stringp errors
   (add-to-list 'spacemacs-ignored-environment-variables "^WSLENV$")
