@@ -703,8 +703,10 @@ If you are unsure, try setting them in `dotspacemacs/user-config' first."
 
   ;; Load custom functions from GNU_files (natively compiled on first load)
   ;; Derive path from symlinked .spacemacs location for portability
+  ;; Use dotspacemacs-filepath (Spacemacs variable) since load-file-name points
+  ;; to ~/.emacs.d/init.el when this function is called
   (defvar jal-gnu-files-dir
-    (file-name-directory (file-truename (or load-file-name buffer-file-name)))
+    (file-name-directory (file-truename dotspacemacs-filepath))
     "Directory containing GNU_files repository.")
   (add-to-list 'load-path jal-gnu-files-dir)
 
