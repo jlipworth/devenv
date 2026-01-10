@@ -4,3 +4,4 @@ publicssh
 /nodesource_setup.sh
 emacs-*.tar.gz
 emacs-*/
+*.elc

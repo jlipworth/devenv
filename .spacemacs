@@ -555,7 +555,7 @@ It should only modify the values of Spacemacs settings."
    ;;   :size-limit-kb 1000)
    ;; When used in a plist, `visual' takes precedence over `relative'.
    ;; (default nil)
-   dotspacemacs-line-numbers nil
+   dotspacemacs-line-numbers '(:relative t)
 
    ;; Code folding method. Possible values are `evil', `origami' and `vimish'.
    ;; (default 'evil)
@@ -700,6 +700,16 @@ If you are unsure, try setting them in `dotspacemacs/user-config' first."
   (setq tls-checktrust t)
   ;; (setq custom-file "~/.emacs.d/temp-custom.el")
   ;; (load-file custom-file)
+
+  ;; Load custom functions from GNU_files (natively compiled on first load)
+  ;; Derive path from symlinked .spacemacs location for portability
+  (defvar jal-gnu-files-dir
+    (file-name-directory (file-truename (or load-file-name buffer-file-name)))
+    "Directory containing GNU_files repository.")
+  (add-to-list 'load-path jal-gnu-files-dir)
+
+  ;; Ignore empty WSL2 env vars that cause stringp errors
+  (add-to-list 'spacemacs-ignored-environment-variables "^WSLENV$")
   )
 
 (defun dotspacemacs/user-config ()
@@ -708,6 +718,9 @@ This function is called at the very end of Spacemacs startup, after layer
 configuration.
 Put your configuration code here, except for variables that should be set
 before packages are loaded."
+
+  ;; Load custom functions
+  (require 'jal-functions)
 
   ;; global emacs settings
   (global-auto-revert-mode t)
@@ -718,6 +731,9 @@ before packages are loaded."
   (if (string= system-type "gnu/linux")
       (setenv "SUDO_ASKPASS" "/usr/bin/ksshaskpass"))
 
+  ;; C++20 module file extensions
+  (add-to-list 'auto-mode-alist '("\\.cppm\\'" . c++-mode))
+  (add-to-list 'auto-mode-alist '("\\.ixx\\'" . c++-mode))
 
   ;; keybindings global
 
@@ -727,37 +743,6 @@ before packages are loaded."
 
   ;; find out a better way to do this
   (global-set-key (kbd "<escape>") #'keyboard-quit)
-
-  ;; good date function for latex
-  (defun jal/insert-current-date ()
-    (interactive)
-    (evil-append 1)
-    (insert (format-time-string "%b %d, %Y")))
-
-  ;; keybindings modal
-  ;; org-mode
-  (spacemacs/set-leader-keys-for-major-mode 'org-mode
-    "oc" 'jal/insert-current-date)
-
-  ;; latex-mode
-  (spacemacs/set-leader-keys-for-major-mode 'latex-mode
-    "oc" 'jal/insert-current-date)
-
-  ;; mermaid-mode
-  (with-eval-after-load 'mermaid-mode
-    (spacemacs/set-leader-keys-for-major-mode 'mermaid-mode
-      "c" 'mermaid-compile
-      "b" 'mermaid-compile-buffer
-      "r" 'mermaid-compile-region
-      "o" 'mermaid-open-browser
-      "d" 'mermaid-open-doc))
-
-  ;; ob-mermaid for org-mode babel integration
-  (with-eval-after-load 'org
-    (require 'ob-mermaid)
-    (add-to-list 'org-babel-load-languages '(mermaid . t))
-    (org-babel-do-load-languages 'org-babel-load-languages org-babel-load-languages)
-    (setq ob-mermaid-cli-path (executable-find "mmdc")))
 
   ;; Formatting section
 
@@ -769,19 +754,8 @@ before packages are loaded."
     (setq org-startup-indented t))
 
 
-  ;; Fix for WSL2 not loading from terminal first
-  (unless (getenv "SSH_AUTH_SOCK")
-    ;; Load exec-path-from-shell only if SSH_AUTH_SOCK is not already set
-    (message "No SSH_AUTH_SOCK set. Setting SSH_AUTH_SOCK")
-    (use-package exec-path-from-shell
-      :ensure t
-      :config
-      (exec-path-from-shell-initialize)
-      (exec-path-from-shell-copy-env "SSH_AUTH_SOCK")))
-
-  ;; Additional check to confirm SSH_AUTH_SOCK is set
-  (when (getenv "SSH_AUTH_SOCK")
-    (message "Current SSH_AUTH_SOCK: %s" (getenv "SSH_AUTH_SOCK")))
+  ;; WSL2 SSH agent fix (defined in jal-functions.el)
+  (jal/setup-ssh-agent)
 
   ;; For high dpi rendering
   (setq pdf-view-use-scaling t)
@@ -840,18 +814,19 @@ This function is called at the very end of Spacemacs initialization."
                 highlight-parentheses hl-todo holy-mode hungry-delete
                 ibuffer-projectile impatient-mode indent-guide info+
                 insert-shebang inspector jinja2-mode js-doc js2-refactor json-mode
-                json-navigator json-reformat link-hint live-py-mode livid-mode
-                lorem-ipsum lsp-latex lsp-origami lsp-pyright lsp-ui macrostep
-                magic-latex-buffer magit-delta markdown-toc merlin-company
-                merlin-eldoc merlin-iedit multi-line multi-term multi-vterm
-                nameless nginx-mode nodejs-repl npm-mode ocamlformat ocp-indent
+                json-navigator json-reformat kubernetes kubernetes-evil link-hint
+                live-py-mode livid-mode lorem-ipsum lsp-latex lsp-origami
+                lsp-pyright lsp-ui macrostep magic-latex-buffer magit-delta
+                magit-popup markdown-toc merlin-company merlin-eldoc merlin-iedit
+                mermaid-mode multi-line multi-term multi-vterm nameless nginx-mode
+                nodejs-repl npm-mode ob-mermaid ocamlformat ocp-indent
                 open-junk-file org-cliplink org-download org-mime org-rich-yank
                 org-superstar orgit-forge overseer ox-gfm page-break-lines paradox
                 password-generator pcre2el pdf-view-restore pet pip-requirements
                 pipenv pippel poetry popwin powershell prettier-js pug-mode
                 py-isort pydoc pyenv-mode pylookup python-pytest quickrun
-                rainbow-delimiters ranger restart-emacs sass-mode scss-mode
-                shell-pop shfmt slim-mode smeargle space-doc spaceline
+                rainbow-delimiters ranger request restart-emacs sass-mode
+                scss-mode shell-pop shfmt slim-mode smeargle space-doc spaceline
                 spacemacs-purpose-popwin spacemacs-whitespace-cleanup sphinx-doc
                 sql-indent sqlup-mode string-edit-at-point string-inflection
                 symbol-overlay symon tagedit term-cursor terminal-here toc-org

@@ -238,6 +238,19 @@ else
     fi
     log "System installation complete" "SUCCESS"
 
+    # Recompile org .elc files to prevent version mismatch warnings
+    # Fresh compilation ensures .elc files match the installed .el sources
+    ORG_LISP_DIR="/usr/local/share/emacs/${EMACS_VERSION}/lisp/org"
+    if [[ -d "$ORG_LISP_DIR" ]]; then
+        log "Recompiling org-mode to ensure .elc files are fresh..."
+        if [[ "$CI" == "true" ]]; then
+            emacs --batch -L "$ORG_LISP_DIR" --eval "(byte-recompile-directory \"$ORG_LISP_DIR\" 0 t)" 2> /dev/null
+        else
+            sudo emacs --batch -L "$ORG_LISP_DIR" --eval "(byte-recompile-directory \"$ORG_LISP_DIR\" 0 t)" 2> /dev/null
+        fi
+        log "Org-mode recompilation complete" "SUCCESS"
+    fi
+
     if [[ "$OS" == "Darwin" ]]; then
         log "Building Emacs.app bundle…"
         make -C nextstep install

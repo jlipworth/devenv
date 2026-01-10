@@ -261,6 +261,14 @@ install_c_cpp_prereqs() {
     if is_installed "brew"; then
         log "Installing C/C++ tools via Homebrew..."
         brew bundle --file="$GNU_DIR/brewfiles/Brewfile.c_cpp" || log "Error with Brewfile.c_cpp" "WARNING"
+
+        # Add LLVM to PATH for clangd, clang-format, etc.
+        local LLVM_BIN_DIR
+        LLVM_BIN_DIR="$(brew --prefix llvm)/bin"
+        if [[ -d "$LLVM_BIN_DIR" ]]; then
+            export PATH="$LLVM_BIN_DIR:$PATH"
+            add_to_path "$LLVM_BIN_DIR" "LLVM/Clang (C++ toolchain)"
+        fi
     else
         # Fallback for systems without brew
         install_packages "llvm"
@@ -642,6 +650,16 @@ install_ai_tools() {
         log "Installing $pkg via npm..."
         $NODE_CMD install -g "$pkg" || log "Error installing $pkg." "WARNING"
     done
+
+    # Create symlink for global Claude Code config
+    log "Setting up Claude Code global config..."
+    mkdir -p "$HOME/.claude"
+    if [[ -f "$GNU_DIR/.claude_global.md" ]]; then
+        ln -sf "$GNU_DIR/.claude_global.md" "$HOME/.claude/CLAUDE.md"
+        log "Symlinked Claude Code global config."
+    else
+        log "Claude global config not found at $GNU_DIR/.claude_global.md" "WARNING"
+    fi
 }
 
 install_all() {

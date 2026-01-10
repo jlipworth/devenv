@@ -79,6 +79,22 @@ if command -v dust &> /dev/null; then
 fi
 
 # ======================================================================
+# SD - Modern sed replacement
+# ======================================================================
+# sd uses regex by default, simpler syntax than sed
+# Usage: sd 'pattern' 'replacement' file
+# No aliases needed - sd's default interface is already clean
+
+# ======================================================================
+# PROCS - Modern ps replacement
+# ======================================================================
+if command -v procs &> /dev/null; then
+    alias ps='procs'
+    alias psa='procs --tree'  # Show process tree
+    alias psg='procs --keyword'  # Search processes by keyword
+fi
+
+# ======================================================================
 # RANGER - Terminal file manager
 # ======================================================================
 if command -v ranger &> /dev/null; then
