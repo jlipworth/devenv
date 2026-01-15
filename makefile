@@ -2,11 +2,11 @@
 
 .PHONY: spacemacs prereq-layers-all linking-prereq system-prereq node-manual \
         shell-layer git-layer yaml markdown completion vimscript \
-        latex python python-env r c_cpp sql js html_css docker ocaml terraform rust ai-tools \
+        latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools \
         cli_tools update-deps full-setup help
 
 # Default target to install all prerequisite layers
-prereq-layers-all: shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker ocaml terraform rust ai-tools
+prereq-layers-all: shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools
 
 cli_tools:
 	@echo "Installing CLI tools only..."
@@ -97,6 +97,10 @@ docker:
 	@echo "Installing Docker and related tools..."
 	@./prereq_packages.sh install_docker_support
 
+kubernetes:
+	@echo "Installing Kubernetes tools..."
+	@./prereq_packages.sh install_kubernetes_support
+
 ocaml:
 	@echo "Installing OCaml and Opam..."
 	@./prereq_packages.sh install_ocaml_support
@@ -141,6 +145,7 @@ help:
 	@echo "  sql         - sqls language server"
 	@echo "  latex       - texlab, TeXLive/MacTeX"
 	@echo "  docker      - dockerfile-language-server, hadolint"
+	@echo "  kubernetes  - kubectl, argocd, k9s, kubectx, stern"
 	@echo "  ocaml       - OCaml + opam + merlin"
 	@echo "  terraform   - terraform-ls (pinned to v1.11.0)"
 	@echo "  rust        - rust-analyzer, cargo tools"

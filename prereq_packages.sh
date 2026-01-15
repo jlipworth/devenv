@@ -354,6 +354,19 @@ install_docker_support() {
     $NODE_CMD install -g dockerfile-language-server-nodejs || log "Error installing dockerfile-language-server." "WARNING"
 }
 
+install_kubernetes_support() {
+    log "Installing Kubernetes tools..."
+    if is_installed "brew"; then
+        log "Installing Kubernetes tools via Homebrew..."
+        brew bundle --file="$GNU_DIR/brewfiles/Brewfile.kubernetes" || log "Error with Brewfile.kubernetes" "WARNING"
+    else
+        # Fallback for systems without brew
+        install_packages "kubectl"
+        log "ArgoCD CLI requires Homebrew or manual install on non-brew systems." "WARNING"
+    fi
+    log "Kubernetes tools installed successfully." "SUCCESS"
+}
+
 install_ocaml_support() {
     log "Installing OCaml and opam..."
     # Ensure base tools are present
@@ -683,6 +696,7 @@ install_all() {
     install_js_tools
     install_html_css_support
     install_docker_support
+    install_kubernetes_support
     install_ocaml_support
     install_terraform_support
     install_ai_tools
@@ -711,6 +725,7 @@ main() {
         "install_js_tools"
         "install_html_css_support"
         "install_docker_support"
+        "install_kubernetes_support"
         "install_ocaml_support"
         "install_terraform_support"
         "install_rust_support"

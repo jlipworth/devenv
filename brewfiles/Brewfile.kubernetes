@@ -1,0 +1,8 @@
+# Kubernetes layer
+# Install: brew bundle --file=brewfiles/Brewfile.kubernetes
+
+brew "kubernetes-cli"
+brew "argocd"
+brew "k9s"
+brew "kubectx"
+brew "stern"
