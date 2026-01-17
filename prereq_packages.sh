@@ -658,7 +658,7 @@ install_python_env() {
 
 install_ai_tools() {
     log "Installing AI coding assistant tools..."
-    ai_packages=("@anthropic-ai/claude-code" "@openai/codex" "@google/gemini-cli")
+    ai_packages=("@anthropic-ai/claude-code" "@openai/codex" "@google/gemini-cli" "opencode-ai")
     for pkg in "${ai_packages[@]}"; do
         log "Installing $pkg via npm..."
         $NODE_CMD install -g "$pkg" || log "Error installing $pkg." "WARNING"
