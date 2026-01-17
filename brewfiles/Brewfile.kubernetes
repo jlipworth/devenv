@@ -6,3 +6,6 @@ brew "argocd"
 brew "k9s"
 brew "kubectx"
 brew "stern"
+
+# GUI tools (only install on systems with a display)
+cask "lens" if OS.mac? || ENV["DISPLAY"]
