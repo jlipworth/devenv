@@ -84,7 +84,8 @@ This function should only modify configuration layer settings."
           )
 
      (markdown :variables
-               markdown-hide-markup t)
+                markdown-hide-markup t
+                markdown-live-preview-engine 'vmd)
 
      (shell :variables
             shell-default-height 30

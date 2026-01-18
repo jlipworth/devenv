@@ -121,6 +121,10 @@ install_markdown_support() {
     # Mermaid CLI for rendering mermaid diagrams in markdown
     log "Installing mermaid-cli for diagram rendering..."
     $NODE_CMD install -g @mermaid-js/mermaid-cli || log "Error installing mermaid-cli." "WARNING"
+
+    # vmd for GitHub-flavored markdown live preview in Spacemacs
+    log "Installing vmd for markdown live preview..."
+    $NODE_CMD install -g vmd || log "Error installing vmd." "WARNING"
 }
 
 create_snippet_symlink() {
