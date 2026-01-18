@@ -592,6 +592,23 @@ install_cli_tools() {
         fi
     fi
 
+    # Install oh-my-tmux (gpakosz/.tmux)
+    log "Setting up oh-my-tmux..."
+    if [[ ! -d "$HOME/.tmux" ]]; then
+        log "Cloning oh-my-tmux..."
+        git clone https://github.com/gpakosz/.tmux.git "$HOME/.tmux" || log "Error cloning oh-my-tmux." "WARNING"
+    else
+        log "oh-my-tmux already installed, updating..."
+        git -C "$HOME/.tmux" pull || log "Error updating oh-my-tmux." "WARNING"
+    fi
+
+    # Create tmux config symlinks
+    if [[ -d "$HOME/.tmux" ]]; then
+        ln -sf "$HOME/.tmux/.tmux.conf" "$HOME/.tmux.conf"
+        ln -sf "$GNU_DIR/.tmux.conf.local" "$HOME/.tmux.conf.local"
+        log "oh-my-tmux configured with vi keybindings and Powerline symbols."
+    fi
+
     # Configure shell aliases
     log "Setting up shell aliases..."
     if [ ! -L "$HOME/.shell_aliases" ]; then
@@ -628,6 +645,35 @@ install_cli_tools() {
         fi
     fi
 
+    # Configure vi mode for shell (matches vim/spacemacs jk escape binding)
+    if ! grep -q '# Vi mode' "$shell_rc" 2> /dev/null; then
+        log "Adding vi mode configuration to $shell_rc..."
+        echo "" >> "$shell_rc"
+        echo "# Vi mode for command line editing" >> "$shell_rc"
+
+        if [[ "$shell_name" == "zsh" ]]; then
+            cat >> "$shell_rc" << 'EOF'
+bindkey -v
+export KEYTIMEOUT=20  # 200ms timeout for key sequences (matches vim/spacemacs)
+bindkey -M viins 'jk' vi-cmd-mode
+bindkey -M viins '^?' backward-delete-char  # Fix backspace in insert mode
+bindkey -M viins '^H' backward-delete-char  # Fix Ctrl+H backspace
+bindkey -M viins '^W' backward-kill-word    # Ctrl+W delete word
+bindkey -M viins '^U' backward-kill-line    # Ctrl+U delete to start of line
+EOF
+        else
+            # Bash configuration
+            cat >> "$shell_rc" << 'EOF'
+set -o vi
+bind '"jk":vi-movement-mode'
+bind 'set keyseq-timeout 200'  # 200ms timeout for key sequences (matches vim/spacemacs)
+EOF
+        fi
+        log "Vi mode configuration added to $shell_rc." "SUCCESS"
+    else
+        log "Vi mode configuration already present in $shell_rc."
+    fi
+
 }
 
 install_python_env() {
@@ -658,20 +704,36 @@ install_python_env() {
 
 install_ai_tools() {
     log "Installing AI coding assistant tools..."
-    ai_packages=("@anthropic-ai/claude-code" "@openai/codex" "@google/gemini-cli")
+    ai_packages=("@anthropic-ai/claude-code" "@openai/codex" "@google/gemini-cli" "opencode-ai")
     for pkg in "${ai_packages[@]}"; do
         log "Installing $pkg via npm..."
         $NODE_CMD install -g "$pkg" || log "Error installing $pkg." "WARNING"
     done
 
-    # Create symlink for global Claude Code config
-    log "Setting up Claude Code global config..."
+    # Create symlinks for Claude Code config
+    log "Setting up Claude Code config..."
     mkdir -p "$HOME/.claude"
     if [[ -f "$GNU_DIR/.claude_global.md" ]]; then
         ln -sf "$GNU_DIR/.claude_global.md" "$HOME/.claude/CLAUDE.md"
-        log "Symlinked Claude Code global config."
+        log "Symlinked Claude Code global instructions (CLAUDE.md)."
     else
         log "Claude global config not found at $GNU_DIR/.claude_global.md" "WARNING"
+    fi
+    if [[ -f "$GNU_DIR/.claude_settings.json" ]]; then
+        ln -sf "$GNU_DIR/.claude_settings.json" "$HOME/.claude/settings.json"
+        log "Symlinked Claude Code settings (vim mode enabled)."
+    else
+        log "Claude settings not found at $GNU_DIR/.claude_settings.json" "WARNING"
+    fi
+
+    # Create symlink for OpenCode config
+    log "Setting up OpenCode config..."
+    mkdir -p "$HOME/.config/opencode"
+    if [[ -f "$GNU_DIR/.opencode.json" ]]; then
+        ln -sf "$GNU_DIR/.opencode.json" "$HOME/.config/opencode/opencode.json"
+        log "Symlinked OpenCode config (vim mode enabled)."
+    else
+        log "OpenCode config not found at $GNU_DIR/.opencode.json" "WARNING"
     fi
 }
 

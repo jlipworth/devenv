@@ -207,6 +207,18 @@ extract() {
 }
 
 # ======================================================================
+# LIBPQ - PostgreSQL client (keg-only, needs PATH)
+# ======================================================================
+# libpq is keg-only so we need to add it to PATH manually
+if [ -d "/home/linuxbrew/.linuxbrew/opt/libpq/bin" ]; then
+    export PATH="/home/linuxbrew/.linuxbrew/opt/libpq/bin:$PATH"
+elif [ -d "/opt/homebrew/opt/libpq/bin" ]; then
+    export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
+elif [ -d "/usr/local/opt/libpq/bin" ]; then
+    export PATH="/usr/local/opt/libpq/bin:$PATH"
+fi
+
+# ======================================================================
 # User Customization Area
 # ======================================================================
 # Add your own aliases and functions below this line
