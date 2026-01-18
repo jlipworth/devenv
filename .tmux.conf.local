@@ -391,6 +391,9 @@ set -g history-limit 50000
 set -g extended-keys on
 set -s extended-keys on
 
+# Enable OSC52 clipboard passthrough for terminal apps (e.g., clipetty in Emacs)
+set -g allow-passthrough on
+
 # start with mouse mode enabled
 set -g mouse on
 

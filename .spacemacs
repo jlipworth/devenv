@@ -203,6 +203,7 @@ This function should only modify configuration layer settings."
      exec-path-from-shell
      mermaid-mode
      ob-mermaid
+     clipetty
      ;; esup
      )
 
@@ -758,6 +759,9 @@ before packages are loaded."
 
   ;; WSL2 SSH agent fix (defined in jal-functions.el)
   (jal/setup-ssh-agent)
+
+  ;; Terminal clipboard support via clipetty (for Emacs -nw in tmux)
+  (jal/setup-terminal-clipboard)
 
   ;; For high dpi rendering
   (setq pdf-view-use-scaling t)
