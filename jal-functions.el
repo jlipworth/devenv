@@ -59,6 +59,16 @@
   (when (getenv "SSH_AUTH_SOCK")
     (message "Current SSH_AUTH_SOCK: %s" (getenv "SSH_AUTH_SOCK"))))
 
+;;;; Terminal clipboard support
+
+(defun jal/setup-terminal-clipboard ()
+  "Enable clipboard integration for terminal Emacs via clipetty.
+Only activates in non-graphical frames (e.g., Emacs -nw in tmux)."
+  (unless (display-graphic-p)
+    (when (require 'clipetty nil t)
+      (global-clipetty-mode 1)
+      (message "Clipetty enabled for terminal clipboard integration"))))
+
 ;;;; Configuration
 
 ;; ob-mermaid babel integration (must defer until org loads)
