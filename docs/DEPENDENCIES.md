@@ -119,27 +119,8 @@ All pinned versions are managed in `versions.conf`:
 ```bash
 # versions.conf
 EMACS_VERSION="30.1"
-TERRAFORM_VERSION="1.11.0"
 GCC_VERSION="auto"
 ```
-
-### Terraform (Pinned: 1.11.0)
-
-Terraform is pinned to ensure compatibility with the Proxmox provider.
-
-**Why Pinned**: Version 1.11.0 has been verified to work correctly with the current Proxmox setup.
-
-**Excluded from Renovate**: Terraform is excluded from automatic updates in `renovate.json`.
-
-**To Change Version**:
-1. Edit `TERRAFORM_VERSION` in `versions.conf`
-2. Run `make terraform`
-3. Verify with `terraform version`
-
-**Update Guidance**:
-- Patch updates (1.11.x): Generally safe
-- Minor updates (1.12.x): Check Proxmox provider compatibility first
-- Major updates (2.x): Test extensively
 
 ### Emacs (Pinned: 30.1)
 
@@ -234,5 +215,3 @@ When Renovate creates PRs that update dependencies in `ci/Dockerfile` or when yo
 ## Resources
 
 - [Renovate Documentation](https://docs.renovatebot.com/)
-- [Terraform Releases](https://releases.hashicorp.com/terraform/)
-- [Proxmox Provider GitHub](https://github.com/Telmate/terraform-provider-proxmox)

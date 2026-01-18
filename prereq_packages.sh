@@ -405,16 +405,10 @@ install_ocaml_support() {
 install_terraform_support() {
     log "Installing Terraform..."
 
-    # Source pinned version from versions.conf
-    if [[ -f "$GNU_DIR/versions.conf" ]]; then
-        source "$GNU_DIR/versions.conf"
-    fi
-    TERRAFORM_VERSION="${TERRAFORM_VERSION:-1.11.0}"
-
     if [[ $OS == "Linux" ]]; then
-        log "Installing terraform \"repo\"..."
         # Add GPG key
         if [[ ! -f /usr/share/keyrings/hashicorp-archive-keyring.gpg ]]; then
+            log "Adding HashiCorp GPG key..."
             wget -qO- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
         fi
         # Add repository - detect distro codename from /etc/os-release
@@ -426,16 +420,8 @@ install_terraform_support() {
                 sudo tee /etc/apt/sources.list.d/hashicorp.list > /dev/null
         fi
 
-        # Install specific version for Proxmox compatibility
-        log "Installing Terraform version $TERRAFORM_VERSION (pinned for Proxmox)..."
         sudo apt update -qq
-        sudo apt install -y terraform="$TERRAFORM_VERSION" || {
-            log "Failed to install Terraform $TERRAFORM_VERSION. Trying latest..." "WARNING"
-            install_packages "terraform"
-        }
-
-        # terraform-ls can be latest
-        install_packages "terraform-ls"
+        install_packages "terraform" "terraform-ls"
 
         # Cloud provider CLIs via Brewfile (Linuxbrew)
         if is_installed "brew"; then
@@ -449,32 +435,7 @@ install_terraform_support() {
         log "Adding HashiCorp tap to Homebrew..."
         brew tap hashicorp/tap || log "Error adding hashicorp/tap." "WARNING"
 
-        # Install specific version for Proxmox compatibility
-        log "Installing Terraform version $TERRAFORM_VERSION (pinned for Proxmox)..."
-        if ! is_installed "terraform" || [[ $(terraform version -json 2> /dev/null | grep -o '"version":"[^"]*' | cut -d'"' -f4) != "$TERRAFORM_VERSION" ]]; then
-            # Use brew install-formula-from-api for specific versions
-            brew install terraform@"$TERRAFORM_VERSION" 2> /dev/null || {
-                log "Version-specific formula not available. Installing via direct download..." "WARNING"
-
-                # Direct download and install (fallback)
-                TF_URL="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_darwin_$(uname -m | sed 's/x86_64/amd64/;s/arm64/arm64/').zip"
-                TF_DIR="/usr/local/bin"
-
-                log "Downloading Terraform $TERRAFORM_VERSION from HashiCorp..."
-                curl -fsSL "$TF_URL" -o /tmp/terraform.zip &&
-                    unzip -o /tmp/terraform.zip -d /tmp &&
-                    sudo mv /tmp/terraform "$TF_DIR/terraform" &&
-                    sudo chmod +x "$TF_DIR/terraform" &&
-                    rm /tmp/terraform.zip &&
-                    log "Terraform $TERRAFORM_VERSION installed successfully." "SUCCESS" ||
-                    log "Failed to install Terraform $TERRAFORM_VERSION." "ERROR"
-            }
-        else
-            log "Terraform $TERRAFORM_VERSION is already installed."
-        fi
-
-        # terraform-ls can be latest
-        install_packages "terraform-ls"
+        install_packages "terraform" "terraform-ls"
 
         # Cloud provider CLIs via Brewfile
         if [[ -f "$GNU_DIR/brewfiles/Brewfile.terraform" ]]; then
