@@ -1,0 +1,6 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/settings-schema.json",
+  "preferences": {
+    "inputMode": "vim"
+  }
+}
