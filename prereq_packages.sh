@@ -592,6 +592,23 @@ install_cli_tools() {
         fi
     fi
 
+    # Install oh-my-tmux (gpakosz/.tmux)
+    log "Setting up oh-my-tmux..."
+    if [[ ! -d "$HOME/.tmux" ]]; then
+        log "Cloning oh-my-tmux..."
+        git clone https://github.com/gpakosz/.tmux.git "$HOME/.tmux" || log "Error cloning oh-my-tmux." "WARNING"
+    else
+        log "oh-my-tmux already installed, updating..."
+        git -C "$HOME/.tmux" pull || log "Error updating oh-my-tmux." "WARNING"
+    fi
+
+    # Create tmux config symlinks
+    if [[ -d "$HOME/.tmux" ]]; then
+        ln -sf "$HOME/.tmux/.tmux.conf" "$HOME/.tmux.conf"
+        ln -sf "$GNU_DIR/.tmux.conf.local" "$HOME/.tmux.conf.local"
+        log "oh-my-tmux configured with vi keybindings and Powerline symbols."
+    fi
+
     # Configure shell aliases
     log "Setting up shell aliases..."
     if [ ! -L "$HOME/.shell_aliases" ]; then
