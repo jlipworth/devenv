@@ -402,12 +402,11 @@ set -g mouse on
 set -g status-keys vi
 set -g mode-keys vi
 
-# replace C-b by C-a instead of using both prefixes
-# set -gu prefix2
-# unbind C-a
-# unbind C-b
-# set -g prefix C-a
-# bind C-a send-prefix
+# use backtick as primary prefix for ergonomics, keep C-b as secondary
+unbind C-a
+set -g prefix `
+set -g prefix2 C-b
+bind ` send-prefix
 
 # if you don't want Oh my tmux! to alter a binding or a setting, use #!important
 # bind c new-window -c '#{pane_current_path}' #!important
