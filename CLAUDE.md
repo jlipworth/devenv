@@ -23,7 +23,7 @@ GNU_files/
 ├── prereq_packages.sh       # Language server installation
 ├── linking_script.sh        # Symlinks and fonts
 ├── common_utils.sh          # Shared utilities
-├── versions.conf            # Pinned versions (Emacs, Terraform)
+├── versions.conf            # Pinned versions (Emacs, GCC)
 ├── requirements.txt         # Python packages (Renovate-tracked)
 ├── renovate.json            # Dependency update config
 ├── .spacemacs               # Spacemacs configuration

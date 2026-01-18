@@ -147,7 +147,7 @@ help:
 	@echo "  docker      - dockerfile-language-server, hadolint"
 	@echo "  kubernetes  - kubectl, argocd, k9s, kubectx, stern"
 	@echo "  ocaml       - OCaml + opam + merlin"
-	@echo "  terraform   - terraform-ls (pinned to v1.11.0)"
+	@echo "  terraform   - terraform, terraform-ls"
 	@echo "  rust        - rust-analyzer, cargo tools"
 	@echo "  r           - R/ESS support"
 	@echo ""
