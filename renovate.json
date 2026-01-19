@@ -5,8 +5,7 @@
   "labels": ["dependencies", "renovate"],
   "assignees": ["@jlipworth"],
   "timezone": "America/New_York",
-
-  "schedule": ["before 6am on monday"],
+  "minimumReleaseAge": "14 days",
 
   "packageRules": [
     {
