@@ -84,8 +84,7 @@ This function should only modify configuration layer settings."
           )
 
      (markdown :variables
-                markdown-hide-markup t
-                markdown-live-preview-engine 'vmd)
+               markdown-hide-markup t)
 
      (shell :variables
             shell-default-height 30
@@ -205,6 +204,7 @@ This function should only modify configuration layer settings."
      mermaid-mode
      ob-mermaid
      clipetty
+     grip-mode
      ;; esup
      )
 
@@ -731,6 +731,11 @@ before packages are loaded."
   (setq vc-follow-symlinks t)
   (set-language-environment "UTF-8")
 
+  ;; grip-mode for GitHub-flavored markdown preview
+  (with-eval-after-load 'markdown-mode
+    (spacemacs/set-leader-keys-for-major-mode 'markdown-mode
+      "cg" 'grip-mode))  ;; SPC m c g or , c g
+
   ;; OS-variable settings
   (if (string= system-type "gnu/linux")
       (setenv "SUDO_ASKPASS" "/usr/bin/ksshaskpass"))
@@ -794,32 +799,32 @@ This function is called at the very end of Spacemacs initialization."
      '(ace-link aggressive-indent all-the-icons ansible ansible-doc auto-compile
                 auto-highlight-symbol auto-yasnippet avy-jump-helm-line bmx-mode
                 cargo-transient centered-cursor-mode claude-code-ide
-                clean-aindent-mode code-cells code-review column-enforce-mode
-                company-ansible company-auctex company-c-headers company-math
-                company-reftex company-shell company-terraform company-web
-                cpp-auto-include csv-mode cython-mode dactyl-mode dap-mode
-                define-word devdocs diminish dired-quick-sort disable-mouse
-                disaster docker dockerfile-mode dotenv-mode drag-stuff dumb-jump
-                dune eat edit-indirect elisp-def elisp-demos elisp-slime-nav
-                emmet-mode emr esh-help eshell-prompt-extras eshell-z
-                ess-R-data-view eval-sexp-fu evil-anzu evil-args evil-cleverparens
-                evil-easymotion evil-escape evil-evilified-state evil-exchange
-                evil-goggles evil-iedit-state evil-indent-plus evil-lion
-                evil-lisp-state evil-matchit evil-mc evil-nerd-commenter
-                evil-numbers evil-surround evil-tex evil-textobj-line evil-tutor
-                evil-unimpaired evil-visual-mark-mode evil-visualstar
-                exec-path-from-shell expand-region eyebrowse fancy-battery
-                fish-mode flycheck-bashate flycheck-elsa flycheck-ocaml
-                flycheck-package flycheck-pos-tip flyspell-correct-helm
-                flyspell-popup gendoxy gh-md git-link git-messenger git-modes
-                git-timemachine gitignore-templates gnuplot golden-ratio
-                google-c-style google-translate helm-ag helm-c-yasnippet
-                helm-comint helm-company helm-css-scss helm-descbinds helm-ls-git
-                helm-lsp helm-make helm-mode-manager helm-org helm-org-rifle
-                helm-projectile helm-purpose helm-pydoc helm-swoop helm-xref
-                hide-comnt highlight-indentation highlight-numbers
-                highlight-parentheses hl-todo holy-mode hungry-delete
-                ibuffer-projectile impatient-mode indent-guide info+
+                clean-aindent-mode clipetty code-cells code-review
+                column-enforce-mode company-ansible company-auctex
+                company-c-headers company-math company-reftex company-shell
+                company-terraform company-web cpp-auto-include csv-mode
+                cython-mode dactyl-mode dap-mode define-word devdocs diminish
+                dired-quick-sort disable-mouse disaster docker dockerfile-mode
+                dotenv-mode drag-stuff dumb-jump dune eat edit-indirect elisp-def
+                elisp-demos elisp-slime-nav emmet-mode emr esh-help
+                eshell-prompt-extras eshell-z ess-R-data-view eval-sexp-fu
+                evil-anzu evil-args evil-cleverparens evil-easymotion evil-escape
+                evil-evilified-state evil-exchange evil-goggles evil-iedit-state
+                evil-indent-plus evil-lion evil-lisp-state evil-matchit evil-mc
+                evil-nerd-commenter evil-numbers evil-surround evil-tex
+                evil-textobj-line evil-tutor evil-unimpaired evil-visual-mark-mode
+                evil-visualstar exec-path-from-shell expand-region eyebrowse
+                fancy-battery fish-mode flycheck-bashate flycheck-elsa
+                flycheck-ocaml flycheck-package flycheck-pos-tip
+                flyspell-correct-helm flyspell-popup gendoxy gh-md git-link
+                git-messenger git-modes git-timemachine gitignore-templates
+                gnuplot golden-ratio google-c-style google-translate grip-mode
+                helm-ag helm-c-yasnippet helm-comint helm-company helm-css-scss
+                helm-descbinds helm-ls-git helm-lsp helm-make helm-mode-manager
+                helm-org helm-org-rifle helm-projectile helm-purpose helm-pydoc
+                helm-swoop helm-xref hide-comnt highlight-indentation
+                highlight-numbers highlight-parentheses hl-todo holy-mode
+                hungry-delete ibuffer-projectile impatient-mode indent-guide info+
                 insert-shebang inspector jinja2-mode js-doc js2-refactor json-mode
                 json-navigator json-reformat kubernetes kubernetes-evil link-hint
                 live-py-mode livid-mode lorem-ipsum lsp-latex lsp-origami
