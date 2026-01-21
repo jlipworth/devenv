@@ -14,3 +14,6 @@ pre-commit>=4.0.0
 
 # Notebook tooling
 jupytext>=1.16.0
+
+# Markdown preview
+grip>=4.6.0
