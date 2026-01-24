@@ -313,28 +313,13 @@ install_sql_tools() {
 install_js_tools() {
     log "Installing JavaScript tools..."
 
-    # Install nvm for Node.js version management
-    log "Installing nvm..."
-    if [[ "$OS" == "Linux" ]]; then
-        # Install nvm via official install script
-        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash || log "Error installing nvm." "WARNING"
+    # Install nvm, bun, pnpm via Homebrew
+    if is_installed "brew"; then
+        log "Installing JavaScript tools via Homebrew..."
+        brew bundle --file="$GNU_DIR/brewfiles/Brewfile.javascript" || log "Error with Brewfile.javascript" "WARNING"
     else
-        # macOS: nvm installed via Brewfile.cli_tools
-        log "nvm should be installed via Homebrew on macOS"
+        log "Homebrew not found. Please install Homebrew first." "WARNING"
     fi
-
-    # Install bun runtime and package manager
-    log "Installing bun..."
-    if [[ "$OS" == "Linux" ]]; then
-        curl -fsSL https://bun.sh/install | bash || log "Error installing bun." "WARNING"
-    else
-        # macOS: bun installed via Brewfile.cli_tools
-        log "bun should be installed via Homebrew on macOS"
-    fi
-
-    # Install pnpm for project dependency management (T4 stack, webapps)
-    log "Installing pnpm..."
-    npm install -g pnpm || log "Error installing pnpm." "WARNING"
 
     # JavaScript language servers and tools (always install latest)
     local js_packages=(
