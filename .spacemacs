@@ -55,6 +55,7 @@ This function should only modify configuration layer settings."
 
      (git :variables
           git-enable-magit-delta-plugin t
+          git-enable-magit-forge-plugin t
           )
 
      (auto-completion :variables
