@@ -33,36 +33,59 @@ install_homebrew() {
 
 # Install NodeJS and NPM for both macOS and Linux using latest Node.js setup
 install_nodejs() {
-    log "Installing NodeJS and NPM..."
+    log "Installing NodeJS and NPM via nvm..."
 
-    if [[ "$OS" == "Linux" ]]; then
-        # Safer approach: download script first, verify, then execute
-        local setup_script
-        setup_script=$(mktemp)
-        trap "rm -f '$setup_script'" RETURN
+    # Default Node version for nvm (override with NODE_VERSION env var)
+    local node_version="${NODE_VERSION:-lts/*}"
 
-        log "Downloading NodeSource setup script..."
-        if ! curl -fsSL https://deb.nodesource.com/setup_current.x -o "$setup_script"; then
-            log "Failed to download NodeSource setup script." "ERROR"
+    if [[ "$OS" == "Darwin" ]]; then
+        if ! is_installed "brew"; then
+            log "Homebrew not found. Please install Homebrew first." "ERROR"
             return 1
         fi
 
-        # Basic verification that it's a NodeSource script
-        if ! grep -q "nodesource" "$setup_script"; then
-            log "Downloaded script doesn't appear to be from NodeSource. Aborting." "ERROR"
-            return 1
+        if ! is_installed "nvm"; then
+            log "Installing nvm via Homebrew..."
+            brew install nvm || {
+                log "Failed to install nvm via Homebrew." "ERROR"
+                return 1
+            }
         fi
 
-        log "Running NodeSource setup script..."
-        sudo bash "$setup_script" || {
-            log "NodeSource setup failed." "ERROR"
-            return 1
-        }
+        export NVM_DIR="$HOME/.nvm"
+        mkdir -p "$NVM_DIR"
+        # shellcheck disable=SC1090
+        [ -s "$(brew --prefix nvm)/nvm.sh" ] && . "$(brew --prefix nvm)/nvm.sh"
+
+    elif [[ "$OS" == "Linux" ]]; then
+        # Install nvm if missing
+        if ! command -v nvm > /dev/null 2>&1; then
+            log "Installing nvm (Linux)..."
+            curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash || {
+                log "Failed to install nvm." "ERROR"
+                return 1
+            }
+        fi
+
+        export NVM_DIR="$HOME/.nvm"
+        # shellcheck disable=SC1090
+        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
     fi
 
-    # Brew should install nodejs current version
-    install_packages "nodejs" "npm"
-    # Easier to upgrade just rolling over npm manually
+    if ! command -v nvm > /dev/null 2>&1; then
+        log "nvm not found after installation attempt." "ERROR"
+        return 1
+    fi
+
+    log "Installing Node version: $node_version"
+    nvm install "$node_version" || {
+        log "nvm install failed." "ERROR"
+        return 1
+    }
+    nvm alias default "$node_version"
+    nvm use "$node_version"
+
+    # Upgrade npm to latest for the active Node version
     npm update -g
 }
 

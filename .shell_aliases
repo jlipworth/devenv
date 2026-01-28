@@ -7,6 +7,19 @@
 # Install via: make cli_tools
 
 # ======================================================================
+# NVM - Node Version Manager (load early so node/npm resolve correctly)
+# ======================================================================
+if [ -z "$NVM_DIR" ]; then
+    export NVM_DIR="$HOME/.nvm"
+fi
+if command -v brew &> /dev/null; then
+    [ -s "$(brew --prefix nvm)/nvm.sh" ] && . "$(brew --prefix nvm)/nvm.sh"
+    [ -s "$(brew --prefix nvm)/etc/bash_completion.d/nvm" ] && . "$(brew --prefix nvm)/etc/bash_completion.d/nvm"
+elif [ -s "$NVM_DIR/nvm.sh" ]; then
+    . "$NVM_DIR/nvm.sh"
+fi
+
+# ======================================================================
 # EZA - Modern ls replacement
 # ======================================================================
 if command -v eza &> /dev/null; then
