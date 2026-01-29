@@ -51,7 +51,44 @@ detect_linux_gcc_version() {
     echo "${gcc_version:-11}"
 }
 
-if [[ "$OS" == "Linux" ]]; then
+if [[ "$OS" == "Linux" && "$DISTRO" == "arch" ]]; then
+    # Arch Linux build dependencies
+    log "Installing dependencies on Arch Linux…"
+
+    # Determine if we need sudo
+    if [[ "$CI" == "true" ]] || [[ $(id -u) -eq 0 ]]; then
+        PACMAN_CMD="pacman"
+    else
+        PACMAN_CMD="sudo pacman"
+    fi
+
+    $PACMAN_CMD -Sy
+
+    log "Installing build packages..."
+    $PACMAN_CMD -S --needed --noconfirm \
+        base-devel cmake pkg-config gtk3 gnutls \
+        libxpm ncurses harfbuzz tree-sitter \
+        wget tar libgccjit autoconf automake texinfo sqlite libx11 \
+        libxft cairo imagemagick libvterm libxml2 \
+        libwebp lcms2 gcc \
+        ca-certificates git
+    log "Dependencies installed successfully" "SUCCESS"
+
+    # Arch uses default gcc, no version suffix needed
+    export CC="gcc"
+    export CXX="g++"
+    log "Using compiler: CC=$CC, CXX=$CXX"
+
+    # Arch library paths are simpler
+    GCC_LIB_PATH="/usr/lib/gcc/x86_64-pc-linux-gnu/$(gcc -dumpversion | cut -d. -f1)"
+    if [[ -d "$GCC_LIB_PATH" ]]; then
+        export LD_LIBRARY_PATH="${GCC_LIB_PATH}:${LD_LIBRARY_PATH:-}"
+        export LIBRARY_PATH="${GCC_LIB_PATH}:${LIBRARY_PATH:-}"
+        log "GCC library paths configured: $GCC_LIB_PATH"
+    fi
+
+elif [[ "$OS" == "Linux" ]]; then
+    # Debian/Ubuntu build dependencies
     # Determine if we need sudo (CI containers run as root)
     if [[ "$CI" == "true" ]] || [[ $(id -u) -eq 0 ]]; then
         APT_CMD="apt"

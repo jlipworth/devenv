@@ -2,6 +2,67 @@
 
 source common_utils.sh
 
+# =============================================================================
+# Arch Linux Package Mappings
+# Maps Debian package names to Arch equivalents
+# =============================================================================
+declare -A ARCH_PKG_MAP=(
+    # Dev libraries
+    ["libsecret-1-0"]="libsecret"
+    ["libsecret-1-dev"]="libsecret"
+    ["libcurl4-openssl-dev"]="curl"
+    ["libssl-dev"]="openssl"
+    ["libxml2-dev"]="libxml2"
+    # R language
+    ["r-base"]="r"
+    ["r-base-dev"]="r"
+    # LaTeX
+    ["texlive-latex-extra"]="texlive-latexextra"
+    # System tools
+    ["cups-client"]="cups"
+    ["lpr"]="" # Part of cups on Arch
+    ["libtool-bin"]="libtool"
+    ["python3-pip"]="python-pip"
+    # lldb
+    ["lldb"]="lldb"
+    # xclip
+    ["xclip"]="xclip"
+)
+
+# Translate package name for current distro
+translate_pkg() {
+    local pkg="$1"
+    if [[ "$DISTRO" == "arch" ]]; then
+        local arch_pkg="${ARCH_PKG_MAP[$pkg]:-}"
+        if [[ -n "$arch_pkg" ]]; then
+            echo "$arch_pkg"
+        elif [[ "${ARCH_PKG_MAP[$pkg]+isset}" ]]; then
+            # Package maps to empty string (not needed on Arch)
+            echo ""
+        else
+            # No mapping, use original name
+            echo "$pkg"
+        fi
+    else
+        echo "$pkg"
+    fi
+}
+
+# Install packages with automatic translation
+install_packages_translated() {
+    local pkgs=()
+    for pkg in "$@"; do
+        local translated
+        translated=$(translate_pkg "$pkg")
+        if [[ -n "$translated" ]]; then
+            pkgs+=("$translated")
+        fi
+    done
+    if [[ ${#pkgs[@]} -gt 0 ]]; then
+        install_packages "${pkgs[@]}"
+    fi
+}
+
 # WSL-specific setup
 setup_wsl_config() {
     if grep -q WSL /proc/version; then
@@ -58,7 +119,7 @@ install_nodejs() {
         [ -s "$(brew --prefix nvm)/nvm.sh" ] && . "$(brew --prefix nvm)/nvm.sh"
 
     elif [[ "$OS" == "Linux" ]]; then
-        # Install nvm if missing
+        # Install nvm if missing (works for Arch, Debian, Ubuntu, etc.)
         if ! command -v nvm > /dev/null 2>&1; then
             log "Installing nvm (Linux)..."
             curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash || {
@@ -92,10 +153,25 @@ install_nodejs() {
 install_git_credential() {
     if [[ "$OS" == "Linux" ]]; then
         log "Installing Git credential helper for Linux..."
-        install_packages "libsecret-1-0" "libsecret-1-dev" "gnome-keyring"
-        sudo make -C /usr/share/doc/git/contrib/credential/libsecret
-        sudo cp /usr/share/doc/git/contrib/credential/libsecret/git-credential-libsecret /usr/local/bin
-        git config --global credential.helper libsecret
+        if [[ "$DISTRO" == "arch" ]]; then
+            install_packages "libsecret" "gnome-keyring"
+            # Arch has git-credential-libsecret in a different location
+            if [[ -f /usr/lib/git-core/git-credential-libsecret ]]; then
+                git config --global credential.helper /usr/lib/git-core/git-credential-libsecret
+            else
+                # Build from source if not available
+                if [[ -d /usr/share/git/credential/libsecret ]]; then
+                    sudo make -C /usr/share/git/credential/libsecret
+                    sudo cp /usr/share/git/credential/libsecret/git-credential-libsecret /usr/local/bin
+                    git config --global credential.helper libsecret
+                fi
+            fi
+        else
+            install_packages "libsecret-1-0" "libsecret-1-dev" "gnome-keyring"
+            sudo make -C /usr/share/doc/git/contrib/credential/libsecret
+            sudo cp /usr/share/doc/git/contrib/credential/libsecret/git-credential-libsecret /usr/local/bin
+            git config --global credential.helper libsecret
+        fi
     else
         log "Skipping Git credential helper setup. macOS uses the built-in keychain."
     fi
@@ -104,7 +180,11 @@ install_git_credential() {
 install_askpass() {
     if [[ "$OS" == "Linux" ]]; then
         log "Installing ksshaskpass..."
-        install_packages "ksshaskpass"
+        if [[ "$DISTRO" == "arch" ]]; then
+            install_packages "ksshaskpass"
+        else
+            install_packages "ksshaskpass"
+        fi
     else
         log "Skipping askpass. I don't think MacOS uses this."
     fi
@@ -187,8 +267,12 @@ install_latex_tools() {
         # Install essential packages: latexextra for functionality, basic font packages only
         # Use amsfonts and ec (European Computer Modern) instead of full collection-fontsrecommended
         sudo tlmgr install collection-latexextra amsfonts ec cm-super
+    elif [[ "$DISTRO" == "arch" ]]; then
+        # Arch: texlab is in official repos
+        log "Installing LaTeX tools for Arch..."
+        install_packages "texlive-latexextra" "okular" "aspell" "texlab"
     else
-        # Install minimal LaTeX with latex-extra for common packages
+        # Debian/Ubuntu: Install minimal LaTeX with latex-extra for common packages
         install_packages "texlive-latex-extra" "okular" "aspell"
 
         # Install texlab from pre-built binary (not available in apt)
@@ -223,8 +307,11 @@ install_python_prereqs() {
     if [[ "$OS" == "Darwin" ]]; then
         # macOS: pip comes with python3, ipython is handled by install_python_env
         install_packages "python3" "pipx"
+    elif [[ "$DISTRO" == "arch" ]]; then
+        # Arch: python-pip is the package name
+        install_packages "python" "python-pip" "python-pipx"
     else
-        # Linux: needs python3-pip separately
+        # Debian/Ubuntu: needs python3-pip separately
         install_packages "python3" "python3-pip" "pipx"
     fi
 
@@ -265,7 +352,11 @@ install_r_support() {
 
     if [[ "$OS" == "Darwin" ]]; then
         install_packages "r"
+    elif [[ "$DISTRO" == "arch" ]]; then
+        # Arch: r package includes development files
+        install_packages "r" "curl" "openssl" "libxml2"
     else
+        # Debian/Ubuntu
         install_packages "r-base" "r-base-dev" "libcurl4-openssl-dev" "libssl-dev" "libxml2-dev"
     fi
 
@@ -434,7 +525,22 @@ install_ocaml_support() {
 install_terraform_support() {
     log "Installing Terraform..."
 
-    if [[ $OS == "Linux" ]]; then
+    if [[ "$DISTRO" == "arch" ]]; then
+        # Arch: terraform is in official repos, terraform-ls is in AUR
+        log "Installing Terraform for Arch..."
+        install_packages "terraform"
+        install_aur_packages "terraform-ls"
+
+        # Cloud provider CLIs via Brewfile (Linuxbrew)
+        if is_installed "brew"; then
+            if [[ -f "$GNU_DIR/brewfiles/Brewfile.terraform" ]]; then
+                log "Installing cloud provider CLIs via Linuxbrew..."
+                brew bundle --file="$GNU_DIR/brewfiles/Brewfile.terraform" || log "Error with Brewfile.terraform" "WARNING"
+            fi
+        fi
+
+    elif [[ $OS == "Linux" ]]; then
+        # Debian/Ubuntu: Add HashiCorp repo
         # Add GPG key
         if [[ ! -f /usr/share/keyrings/hashicorp-archive-keyring.gpg ]]; then
             log "Adding HashiCorp GPG key..."
@@ -571,8 +677,19 @@ install_cli_tools() {
         else
             log "Xcode Command Line Tools are already installed."
         fi
+    elif [[ "$DISTRO" == "arch" ]]; then
+        # Arch: most CLI tools are in official repos
+        install_packages "htop" "gnupg" "cloc" "cups" "xclip" "libtool" "cmake"
+        # Modern CLI tools available in Arch repos
+        install_packages "eza" "bat" "ripgrep" "fd" "fzf" "zoxide" "lazygit" "tmux"
+
+        # Use Brewfile for any remaining tools
+        if is_installed "brew"; then
+            log "Installing additional CLI tools via Homebrew..."
+            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
+        fi
     else
-        # Install system packages via apt
+        # Debian/Ubuntu: Install system packages via apt
         install_packages "htop" "gpg" "cloc" "cups" "cups-client" "lpr" "xclip" "libtool-bin" "cmake"
 
         # Use Brewfile for CLI tools on Linux
