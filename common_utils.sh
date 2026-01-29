@@ -45,6 +45,7 @@ log() {
 # Package manager configuration
 # =============================================================================
 if [[ "$OS" == "Darwin" ]]; then
+    DISTRO="macos"
     INSTALL_CMD="brew install"
     CASK_CMD="brew install --cask"
     PIP_CMD="pipx install --include-deps"
@@ -52,7 +53,26 @@ if [[ "$OS" == "Darwin" ]]; then
     UPDATE_CMD="brew update"
     CHECK_UPGRADE_CMD="brew outdated"
     UPGRADE_CMD="brew upgrade"
-elif grep -qi 'debian\|ubuntu\|mint' /etc/os-release; then
+elif grep -qi 'arch\|endeavour\|manjaro' /etc/os-release 2> /dev/null; then
+    DISTRO="arch"
+    INSTALL_CMD="sudo pacman -S --needed --noconfirm"
+    BREW_MANUAL_CMD="brew install"
+    CASK_CMD="$INSTALL_CMD" # Placeholder, since Linux doesn't use cask
+    PIP_CMD="pipx install --include-deps"
+    NODE_CMD="npm"
+    UPDATE_CMD="sudo pacman -Sy"
+    CHECK_UPGRADE_CMD="pacman -Qu"
+    UPGRADE_CMD="sudo pacman -S --noconfirm"
+    # AUR helper detection
+    if command -v yay &> /dev/null; then
+        AUR_CMD="yay -S --needed --noconfirm"
+    elif command -v paru &> /dev/null; then
+        AUR_CMD="paru -S --needed --noconfirm"
+    else
+        AUR_CMD=""
+    fi
+elif grep -qi 'debian\|ubuntu\|mint' /etc/os-release 2> /dev/null; then
+    DISTRO="debian"
     INSTALL_CMD="sudo apt install -y"
     BREW_MANUAL_CMD="brew install"
     CASK_CMD="$INSTALL_CMD" # Placeholder, since Linux doesn't use cask
@@ -61,7 +81,8 @@ elif grep -qi 'debian\|ubuntu\|mint' /etc/os-release; then
     UPDATE_CMD="sudo apt update -qq"
     CHECK_UPGRADE_CMD="apt list --upgradable 2>/dev/null | grep"
     UPGRADE_CMD="sudo apt install --only-upgrade -y"
-elif grep -qi 'fedora\|rhel\|centos' /etc/os-release; then
+elif grep -qi 'fedora\|rhel\|centos' /etc/os-release 2> /dev/null; then
+    DISTRO="fedora"
     log "Fedora-based. Not tested. Use at your own risk." "WARNING"
     INSTALL_CMD="sudo dnf install -y"
     BREW_MANUAL_CMD="brew install"
@@ -72,8 +93,9 @@ elif grep -qi 'fedora\|rhel\|centos' /etc/os-release; then
     CHECK_UPGRADE_CMD="dnf check-update >/dev/null 2>&1 && echo update_available"
     UPGRADE_CMD="sudo dnf upgrade -y"
 else
+    DISTRO="unknown"
     log "Unsupported OS: $OS"
-    log "Only OS's that are fully supported are MacOS and Debian-based distros."
+    log "Only OS's that are fully supported are MacOS, Arch-based, and Debian-based distros."
     exit 1
 fi
 
@@ -183,11 +205,19 @@ install_packages() {
             log "$package is already installed. Checking for updates..."
 
             # Check if the package needs an update (without unsafe eval)
-            if [[ "$OS" == "Linux" ]]; then
+            if [[ "$DISTRO" == "debian" ]]; then
                 # Check apt upgradable list for this package
                 if apt list --upgradable 2> /dev/null | grep -q "^${package}/"; then
                     log "$package has an update available. Updating..."
                     sudo apt install --only-upgrade -y "$package" || echo "Error updating $package."
+                else
+                    log "$package is up-to-date."
+                fi
+            elif [[ "$DISTRO" == "arch" ]]; then
+                # Check if package needs update via pacman
+                if pacman -Qu "$package" 2> /dev/null | grep -q "^${package}"; then
+                    log "$package has an update available. Updating..."
+                    sudo pacman -S --noconfirm "$package" || echo "Error updating $package."
                 else
                     log "$package is up-to-date."
                 fi
@@ -203,6 +233,28 @@ install_packages() {
                 log "$package is up-to-date."
             fi
 
+        fi
+    done
+}
+
+# Install AUR packages (Arch only)
+install_aur_packages() {
+    if [[ "$DISTRO" != "arch" ]]; then
+        log "AUR packages only available on Arch-based systems." "WARNING"
+        return 0
+    fi
+
+    if [[ -z "$AUR_CMD" ]]; then
+        log "No AUR helper found (yay or paru). Skipping AUR packages." "WARNING"
+        return 1
+    fi
+
+    for package in "$@"; do
+        if ! is_installed "$package"; then
+            log "$package not found. Installing from AUR..."
+            $AUR_CMD "$package" || echo "Error installing AUR package $package."
+        else
+            log "$package is already installed."
         fi
     done
 }
