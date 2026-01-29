@@ -118,7 +118,8 @@ This function should only modify configuration layer settings."
             latex-enable-magic t
             )
 
-     pdf
+     (pdf :variables
+          pdf-view-use-scaling t)
 
      (python :variables
              python-backend 'lsp
@@ -769,9 +770,6 @@ before packages are loaded."
 
   ;; Terminal clipboard support via clipetty (for Emacs -nw in tmux)
   (jal/setup-terminal-clipboard)
-
-  ;; For high dpi rendering
-  (setq pdf-view-use-scaling t)
 
   ;; Ensure lsp-mode launches Ruff via the modern CLI
   ;; (with-eval-after-load 'lsp-ruff
