@@ -92,62 +92,54 @@ install_homebrew() {
     fi
 }
 
-# Install NodeJS and NPM for both macOS and Linux using latest Node.js setup
+# Install NodeJS and NPM via nvm for version management
 install_nodejs() {
-    log "Installing NodeJS and NPM via nvm..."
+    log "Installing Node.js via nvm..."
 
-    # Default Node version for nvm (override with NODE_VERSION env var)
-    local node_version="${NODE_VERSION:-lts/*}"
+    # Source versions.conf for NODE_VERSION
+    source "$GNU_DIR/versions.conf"
+    local node_version="${NODE_VERSION:-22}"
 
-    if [[ "$OS" == "Darwin" ]]; then
-        if ! is_installed "brew"; then
-            log "Homebrew not found. Please install Homebrew first." "ERROR"
+    # Set up NVM_DIR
+    export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+
+    # Install nvm if not present
+    if [[ ! -d "$NVM_DIR" ]]; then
+        log "Installing nvm..."
+        curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash || {
+            log "Failed to install nvm." "ERROR"
             return 1
-        fi
-
-        if ! is_installed "nvm"; then
-            log "Installing nvm via Homebrew..."
-            brew install nvm || {
-                log "Failed to install nvm via Homebrew." "ERROR"
-                return 1
-            }
-        fi
-
-        export NVM_DIR="$HOME/.nvm"
-        mkdir -p "$NVM_DIR"
-        # shellcheck disable=SC1090
-        [ -s "$(brew --prefix nvm)/nvm.sh" ] && . "$(brew --prefix nvm)/nvm.sh"
-
-    elif [[ "$OS" == "Linux" ]]; then
-        # Install nvm if missing (works for Arch, Debian, Ubuntu, etc.)
-        if ! command -v nvm > /dev/null 2>&1; then
-            log "Installing nvm (Linux)..."
-            curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash || {
-                log "Failed to install nvm." "ERROR"
-                return 1
-            }
-        fi
-
-        export NVM_DIR="$HOME/.nvm"
-        # shellcheck disable=SC1090
-        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+        }
+    else
+        log "nvm is already installed at $NVM_DIR"
     fi
 
-    if ! command -v nvm > /dev/null 2>&1; then
-        log "nvm not found after installation attempt." "ERROR"
+    # Source nvm for current shell session
+    # shellcheck source=/dev/null
+    [[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
+
+    if ! command -v nvm &> /dev/null; then
+        log "nvm command not available after installation." "ERROR"
         return 1
     fi
 
-    log "Installing Node version: $node_version"
+    # Install specified Node version
+    log "Installing Node.js v${node_version}..."
     nvm install "$node_version" || {
-        log "nvm install failed." "ERROR"
+        log "Failed to install Node.js v${node_version}." "ERROR"
         return 1
     }
-    nvm alias default "$node_version"
-    nvm use "$node_version"
 
-    # Upgrade npm to latest for the active Node version
-    npm update -g
+    # Set as default
+    nvm alias default "$node_version"
+    nvm use default
+
+    # Verify installation
+    log "Node.js $(node --version) installed successfully." "SUCCESS"
+    log "npm $(npm --version) available."
+
+    # Update npm to latest
+    npm install -g npm@latest || log "Failed to update npm." "WARNING"
 }
 
 install_git_credential() {
