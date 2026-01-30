@@ -1,0 +1,110 @@
+# Alacritty Configuration - Migrated from Tabby
+
+[terminal.shell]
+program = "wsl.exe"
+args = ["-d", "Ubuntu-20.04", "--cd", "~"]
+
+[env]
+TERM = "xterm-256color"
+
+[window]
+decorations = "Full"
+dynamic_padding = true
+opacity = 1.0
+startup_mode = "Windowed"
+
+
+[window.dimensions]
+columns = 120
+lines = 30
+
+[window.padding]
+x = 8
+y = 8
+
+[scrolling]
+history = 10000
+multiplier = 3
+
+[font]
+size = 10.0
+
+[font.normal]
+family = "MesloLGM Nerd Font Mono"
+
+[font.bold]
+family = "MesloLGM Nerd Font Mono"
+
+[font.italic]
+family = "MesloLGM Nerd Font Mono"
+
+[selection]
+save_to_clipboard = true
+
+[cursor]
+unfocused_hollow = true
+
+[cursor.style]
+shape = "Block"
+blinking = "Off"
+
+# Colors - Ayu Mirage
+[colors.primary]
+background = "#1f2430"
+foreground = "#cbccc6"
+
+[colors.cursor]
+text = "#1f2430"
+cursor = "#ffcc66"
+
+[colors.selection]
+text = "#1f2430"
+background = "#3e4451"
+
+[colors.normal]
+black   = "#191e2a"
+red     = "#ed8274"
+green   = "#a6cc70"
+yellow  = "#fad07b"
+blue    = "#6dcbfa"
+magenta = "#cfbafa"
+cyan    = "#90e1c6"
+white   = "#c7c7c7"
+
+[colors.bright]
+black   = "#686868"
+red     = "#f28779"
+green   = "#bae67e"
+yellow  = "#ffd580"
+blue    = "#73d0ff"
+magenta = "#d4bfff"
+cyan    = "#95e6cb"
+white   = "#ffffff"
+
+[keyboard]
+bindings = [
+  # Copy/Paste
+  { key = "C", mods = "Control|Shift", action = "Copy" },
+  { key = "V", mods = "Control|Shift", action = "Paste" },
+
+  # Window management
+  { key = "N", mods = "Control|Shift", action = "SpawnNewInstance" },
+  { key = "P", mods = "Control|Shift", command = { program = "alacritty", args = ["-e", "powershell.exe"] } },
+  { key = "F11", action = "ToggleFullscreen" },
+
+  # Font size
+  { key = "Equals", mods = "Control", action = "IncreaseFontSize" },
+  { key = "Minus", mods = "Control", action = "DecreaseFontSize" },
+  { key = "Key0", mods = "Control", action = "ResetFontSize" },
+
+  # Search
+  { key = "F", mods = "Control|Shift", action = "SearchForward" },
+
+  # Scrolling
+  { key = "PageUp", mods = "Control", action = "ScrollToTop" },
+  { key = "PageDown", mods = "Control", action = "ScrollToBottom" },
+  { key = "PageUp", mods = "Alt", action = "ScrollPageUp" },
+  { key = "PageDown", mods = "Alt", action = "ScrollPageDown" },
+  { key = "Up", mods = "Control|Shift", action = "ScrollLineUp" },
+  { key = "Down", mods = "Control|Shift", action = "ScrollLineDown" },
+]
