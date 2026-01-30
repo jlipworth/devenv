@@ -1,0 +1,282 @@
+version: 8
+appearance:
+  theme: Follow the terminal theme
+  colorScheme: Ayu Mirage
+  vibrancy: false
+  frame: thin
+  tabsOnTop: true
+  opacity: 1
+terminal:
+  frontend: xterm-headless
+  scrollbackLines: 10000
+  bell: 'off'
+  bracketedPaste: true
+  rightClick: menu
+  copyOnSelect: true
+  scrollOnInput: true
+  wordSeparator: ' ()[]{}"'''
+  searchOptions: {}
+  colorScheme:
+    name: Ayu Mirage
+    foreground: '#cbccc6'
+    background: '#1f2430'
+    cursor: '#ffcc66'
+    colors:
+      - '#191e2a'
+      - '#ed8274'
+      - '#a6cc70'
+      - '#fad07b'
+      - '#6dcbfa'
+      - '#cfbafa'
+      - '#90e1c6'
+      - '#c7c7c7'
+      - '#686868'
+      - '#f28779'
+      - '#bae67e'
+      - '#ffd580'
+      - '#73d0ff'
+      - '#d4bfff'
+      - '#95e6cb'
+      - '#ffffff'
+  fontFamily: MesloLGM Nerd Font Mono
+  fontSize: 14
+hotkeys:
+  toggle-fullscreen:
+    - F11
+  new-tab:
+    - Ctrl-Shift-T
+  close-tab:
+    - Ctrl-Shift-W
+  toggle-last-tab:
+    - Ctrl-Tab
+  next-tab:
+    - Ctrl-PageDown
+  previous-tab:
+    - Ctrl-PageUp
+  split-right:
+    - Ctrl-Shift-E
+  split-bottom:
+    - Ctrl-Shift-O
+  split-nav-up:
+    - Alt-Up
+  split-nav-down:
+    - Alt-Down
+  split-nav-left:
+    - Alt-Left
+  split-nav-right:
+    - Alt-Right
+  copy:
+    - Ctrl-Shift-C
+  paste:
+    - Ctrl-Shift-V
+  clear:
+    - Ctrl-L
+  zoom-in:
+    - Ctrl-=
+  zoom-out:
+    - Ctrl--
+  toggle-window:
+    - Ctrl-Space
+  copy-current-path: []
+  ctrl-c:
+    - Ctrl-C
+  select-all:
+    - Ctrl-Shift-A
+  reset-zoom:
+    - Ctrl-0
+  home:
+    - Home
+  end:
+    - End
+  previous-word:
+    - Ctrl-Left
+  next-word:
+    - Ctrl-Right
+  delete-previous-word:
+    - Ctrl-Backspace
+  delete-line:
+    - Ctrl-Shift-Backspace
+  delete-next-word:
+    - Ctrl-Delete
+  search:
+    - Ctrl-Shift-F
+  pane-focus-all:
+    - Ctrl-Shift-I
+  focus-all-tabs:
+    - Ctrl-Alt-Shift-I
+  scroll-to-top:
+    - Ctrl-PageUp
+  scroll-page-up:
+    - Alt-PageUp
+  scroll-up:
+    - Ctrl-Shift-Up
+  scroll-down:
+    - Ctrl-Shift-Down
+  scroll-page-down:
+    - Alt-PageDown
+  scroll-to-bottom:
+    - Ctrl-PageDown
+  restart-telnet-session: []
+  restart-ssh-session: []
+  launch-winscp: []
+  settings-tab: {}
+  settings:
+    - Ctrl-,
+  serial:
+    - Alt-K
+  restart-serial-session: []
+  new-window:
+    - Ctrl-Shift-N
+  profile: {}
+  profile-selectors: {}
+  group-selectors: {}
+  reopen-tab:
+    - Ctrl-Shift-Z
+  rename-tab:
+    - Ctrl-Shift-R
+  move-tab-left:
+    - Ctrl-Shift-PageUp
+  move-tab-right:
+    - Ctrl-Shift-PageDown
+  rearrange-panes:
+    - Ctrl-Shift
+  duplicate-tab: []
+  restart-tab: []
+  reconnect-tab: []
+  disconnect-tab: []
+  explode-tab:
+    - Ctrl-Shift-.
+  combine-tabs:
+    - Ctrl-Shift-,
+  tab-1:
+    - Alt-1
+  tab-2:
+    - Alt-2
+  tab-3:
+    - Alt-3
+  tab-4:
+    - Alt-4
+  tab-5:
+    - Alt-5
+  tab-6:
+    - Alt-6
+  tab-7:
+    - Alt-7
+  tab-8:
+    - Alt-8
+  tab-9:
+    - Alt-9
+  tab-10:
+    - Alt-0
+  tab-11: []
+  tab-12: []
+  tab-13: []
+  tab-14: []
+  tab-15: []
+  tab-16: []
+  tab-17: []
+  tab-18: []
+  tab-19: []
+  tab-20: []
+  split-left: []
+  split-top: []
+  pane-nav-right:
+    - Ctrl-Alt-Right
+  pane-nav-down:
+    - Ctrl-Alt-Down
+  pane-nav-up:
+    - Ctrl-Alt-Up
+  pane-nav-left:
+    - Ctrl-Alt-Left
+  pane-nav-previous:
+    - Ctrl-Alt-[
+  pane-nav-next:
+    - Ctrl-Alt-]
+  pane-nav-1: []
+  pane-nav-2: []
+  pane-nav-3: []
+  pane-nav-4: []
+  pane-nav-5: []
+  pane-nav-6: []
+  pane-nav-7: []
+  pane-nav-8: []
+  pane-nav-9: []
+  pane-maximize:
+    - Ctrl-Alt-Enter
+  close-pane: []
+  pane-increase-vertical: []
+  pane-decrease-vertical: []
+  pane-increase-horizontal: []
+  pane-decrease-horizontal: []
+  switch-profile:
+    - Ctrl-Alt-T
+  profile-selector:
+    - Ctrl-Shift-E
+  command-selector:
+    - Ctrl-Shift-P
+profiles:
+  - id: wsl-ubuntu-default
+    name: WSL Ubuntu
+    type: local
+    icon: fab fa-linux
+    weight: 1
+    options:
+      command: wsl.exe
+      args:
+        - '-d'
+        - Ubuntu-20.04
+      cwd: '~'
+      env: {}
+    color: '#dd4814'
+  - id: powershell-default
+    name: PowerShell
+    type: local
+    icon: fab fa-windows
+    weight: 2
+    options:
+      command: powershell.exe
+      args: []
+      cwd: '~'
+      env: {}
+    color: '#012456'
+  - id: git-bash-default
+    name: Git Bash
+    type: local
+    icon: fas fa-code-branch
+    weight: 3
+    options:
+      command: C:\Program Files\Git\bin\bash.exe
+      args:
+        - '--login'
+        - '-i'
+      cwd: '~'
+      env: {}
+    color: '#f14e32'
+  - id: cmd-default
+    name: Command Prompt
+    type: local
+    icon: fas fa-terminal
+    weight: 4
+    options:
+      command: cmd.exe
+      args: []
+      cwd: '~'
+      env: {}
+    color: '#000000'
+profileDefaults:
+  local:
+    launchAsAdministrator: false
+enableWelcomeTab: false
+recoverTabs: true
+ssh: {}
+serial: {}
+pluginBlacklist: []
+configSync:
+  parts: {}
+clickableLinks: {}
+accessibility: {}
+hacks: {}
+providerBlacklist: []
+commandBlacklist: []
+groups: []
+profileBlacklist: []
