@@ -708,6 +708,16 @@ install_cli_tools() {
         log "oh-my-tmux configured with vi keybindings and Powerline symbols."
     fi
 
+    # Configure Ghostty terminal
+    log "Setting up Ghostty config..."
+    mkdir -p "$HOME/.config/ghostty"
+    if [ ! -L "$HOME/.config/ghostty/config" ]; then
+        ln -sf "$GNU_DIR/ghostty/config" "$HOME/.config/ghostty/config"
+        log "Created symlink for Ghostty config."
+    else
+        log "Ghostty config symlink already exists."
+    fi
+
     # Configure shell aliases
     log "Setting up shell aliases..."
     if [ ! -L "$HOME/.shell_aliases" ]; then
