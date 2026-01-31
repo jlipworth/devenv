@@ -25,6 +25,7 @@ linking-prereq:
 # System prerequisite installations
 system-prereq:
 	@echo "Installing general system prerequisites..."
+	@./prereq_packages.sh install_homebrew
 	@./prereq_packages.sh install_cli_tools
 	@./prereq_packages.sh install_git_credential
 	@./prereq_packages.sh install_askpass
