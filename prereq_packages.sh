@@ -718,6 +718,33 @@ install_cli_tools() {
         log "Ghostty config symlink already exists."
     fi
 
+    # Configure SSH for Ghostty compatibility
+    # Ghostty uses xterm-ghostty terminfo which isn't on most remote servers
+    # Setting TERM=xterm-256color ensures compatibility when SSHing
+    if [ -f "$HOME/.ssh/config" ]; then
+        if ! grep -q 'SetEnv TERM=xterm-256color' "$HOME/.ssh/config"; then
+            log "Adding TERM override to SSH config for Ghostty compatibility..."
+            # Prepend to ensure it applies to all hosts
+            temp_ssh=$(mktemp)
+            echo "Host *" > "$temp_ssh"
+            echo "    SetEnv TERM=xterm-256color" >> "$temp_ssh"
+            echo "" >> "$temp_ssh"
+            cat "$HOME/.ssh/config" >> "$temp_ssh"
+            mv "$temp_ssh" "$HOME/.ssh/config"
+            chmod 600 "$HOME/.ssh/config"
+            log "SSH config updated for Ghostty compatibility."
+        else
+            log "SSH config already has TERM override."
+        fi
+    else
+        log "Creating SSH config with Ghostty TERM override..."
+        mkdir -p "$HOME/.ssh"
+        echo "Host *" > "$HOME/.ssh/config"
+        echo "    SetEnv TERM=xterm-256color" >> "$HOME/.ssh/config"
+        chmod 600 "$HOME/.ssh/config"
+        log "SSH config created with Ghostty compatibility."
+    fi
+
     # Configure shell aliases
     log "Setting up shell aliases..."
     if [ ! -L "$HOME/.shell_aliases" ]; then
