@@ -78,6 +78,20 @@ setup_wsl_config() {
     fi
 }
 
+# Install WSL utilities (wslu) for browser integration
+install_wsl_utils() {
+    if grep -q WSL /proc/version 2> /dev/null; then
+        if ! is_installed "wslview"; then
+            log "Installing wslu for WSL browser integration..."
+            sudo apt-get update && sudo apt-get install -y wslu
+        else
+            log "wslu is already installed."
+        fi
+    else
+        log "Not running on WSL, skipping wslu installation."
+    fi
+}
+
 # Install Homebrew on Linux
 install_homebrew() {
     if [[ "$OS" == "Linux" ]]; then
@@ -877,6 +891,7 @@ install_all() {
 main() {
     valid_functions=(
         "setup_wsl_config"
+        "install_wsl_utils"
         "install_homebrew"
         "install_nodejs"
         "install_git_credential"
