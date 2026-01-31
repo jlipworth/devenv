@@ -20,6 +20,16 @@ elif [ -s "$NVM_DIR/nvm.sh" ]; then
 fi
 
 # ======================================================================
+# WSL - Browser and file opener support
+# ======================================================================
+if grep -q WSL /proc/version 2>/dev/null; then
+    if command -v wslview &> /dev/null; then
+        export BROWSER=wslview   # For OAuth flows (gh auth, etc.)
+        export OPENER=wslview    # For general file opening
+    fi
+fi
+
+# ======================================================================
 # EZA - Modern ls replacement
 # ======================================================================
 if command -v eza &> /dev/null; then
