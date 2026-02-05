@@ -882,6 +882,22 @@ install_ai_tools() {
         log "Claude settings not found at $GNU_DIR/.claude_settings.json" "WARNING"
     fi
 
+    # Create symlink for Codex config
+    log "Setting up Codex config..."
+    mkdir -p "$HOME/.codex"
+    if [[ -f "$GNU_DIR/.codex_config.toml" ]]; then
+        ln -sf "$GNU_DIR/.codex_config.toml" "$HOME/.codex/config.toml"
+        log "Symlinked Codex config (global defaults)."
+    else
+        log "Codex config not found at $GNU_DIR/.codex_config.toml" "WARNING"
+    fi
+    if [[ -f "$GNU_DIR/.codex_instructions.md" ]]; then
+        ln -sf "$GNU_DIR/.codex_instructions.md" "$HOME/.codex/instructions.md"
+        log "Symlinked Codex instructions (tool preferences)."
+    else
+        log "Codex instructions not found at $GNU_DIR/.codex_instructions.md" "WARNING"
+    fi
+
     # Create symlink for OpenCode config
     log "Setting up OpenCode config..."
     mkdir -p "$HOME/.config/opencode"

@@ -1,0 +1,2 @@
+# Codex global defaults (symlinked to ~/.codex/config.toml)
+model_instructions_file = "~/.codex/instructions.md"
