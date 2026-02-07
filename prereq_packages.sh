@@ -534,7 +534,7 @@ install_terraform_support() {
     if [[ "$DISTRO" == "arch" ]]; then
         # Arch: terraform is in official repos, terraform-ls is in AUR
         log "Installing Terraform for Arch..."
-        install_packages "terraform"
+        install_packages "terraform" "ansible" "jq"
         install_aur_packages "terraform-ls"
 
         # Cloud provider CLIs via Brewfile (Linuxbrew)
@@ -562,7 +562,7 @@ install_terraform_support() {
         fi
 
         sudo apt update -qq
-        install_packages "terraform" "terraform-ls"
+        install_packages "terraform" "terraform-ls" "ansible" "jq"
 
         # Cloud provider CLIs via Brewfile (Linuxbrew)
         if is_installed "brew"; then
@@ -576,7 +576,7 @@ install_terraform_support() {
         log "Adding HashiCorp tap to Homebrew..."
         brew tap hashicorp/tap || log "Error adding hashicorp/tap." "WARNING"
 
-        install_packages "terraform" "terraform-ls"
+        install_packages "terraform" "terraform-ls" "ansible" "jq"
 
         # Cloud provider CLIs via Brewfile
         if [[ -f "$GNU_DIR/brewfiles/Brewfile.terraform" ]]; then
