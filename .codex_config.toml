@@ -2,3 +2,5 @@
 model_instructions_file = "~/.codex/instructions.md"
 personality = "pragmatic"
 sandbox_mode = "workspace-write"
+model = "gpt-5.3-codex"
+model_reasoning_effort = "high"
