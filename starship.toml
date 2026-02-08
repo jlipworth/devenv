@@ -1,0 +1,248 @@
+# Starship Prompt Configuration
+# Theme: Ayu Mirage | Font: MesloLGS Nerd Font (Nerd Font icons)
+# Managed by GNU_files devenv repository
+#
+# Two-line prompt layout:
+#   Line 1: [user@host] [dir] on [branch@hash] [status] [state] [+added -removed]  ...  [k8s] [aws] [langs] [pkg] [duration]
+#   Line 2: [sudo] [jobs] [exit code] ❯ (green=ok, red=error, purple=vi-normal)
+
+# Allow extra time for modules in large repos (default 500ms)
+command_timeout = 1000
+
+format = """
+$username\
+$hostname\
+$directory\
+$git_branch\
+$git_commit\
+$git_status\
+$git_state\
+$git_metrics\
+$fill\
+$kubernetes\
+$aws\
+$c\
+$python\
+${custom.rlang}\
+$rust\
+$nodejs\
+$bun\
+$golang\
+$ocaml\
+$terraform\
+$docker_context\
+$package\
+$cmd_duration\
+$line_break\
+$sudo\
+$jobs\
+$status\
+$character"""
+
+add_newline = true
+
+palette = "ayu_mirage"
+
+[palettes.ayu_mirage]
+blue = "#73D0FF"
+green = "#BAE67E"
+orange = "#FFA759"
+red = "#FF3333"
+purple = "#D4BFFF"
+cyan = "#95E6CB"
+yellow = "#FFD580"
+dimmed = "#5C6773"
+
+# ── Prompt character (vi mode aware) ─────────────────────────────────
+[character]
+success_symbol = "[❯](green)"
+error_symbol = "[❯](red)"
+vimcmd_symbol = "[❮](purple)"
+vimcmd_replace_one_symbol = "[❮](orange)"
+vimcmd_replace_symbol = "[❮](orange)"
+vimcmd_visual_symbol = "[❮](yellow)"
+
+# ── User & Host (shown only over SSH or as root) ─────────────────────
+[username]
+style_user = "dimmed"
+style_root = "red bold"
+format = "[$user]($style)"
+show_always = false
+
+[hostname]
+ssh_only = true
+style = "dimmed"
+format = "[@$hostname]($style) "
+
+# ── Directory ────────────────────────────────────────────────────────
+# Repo root is highlighted in cyan, path within in blue
+# Truncates to 3 levels to keep things compact
+[directory]
+style = "blue bold"
+repo_root_style = "cyan bold"
+truncation_length = 3
+truncation_symbol = "…/"
+truncate_to_repo = false  # Show full path to repo root (e.g. ~/GNU_files not …/GNU_files)
+read_only = " 󰌾"
+repo_root_format = "[$before_root_path]($before_repo_root_style)[$repo_root]($repo_root_style)[$path]($style)[$read_only]($read_only_style) "
+
+# ── Git ──────────────────────────────────────────────────────────────
+[git_branch]
+style = "purple"
+symbol = " "
+format = "on [$symbol$branch(:$remote_branch)]($style) "
+
+[git_commit]
+style = "dimmed"
+commit_hash_length = 7
+only_detached = false  # Set to true to only show hash in detached HEAD (less noisy)
+format = "[\\($hash$tag\\)]($style) "
+
+[git_status]
+style = "orange"
+format = '([$all_status$ahead_behind]($style) )'
+ahead = "⇡${count}"
+behind = "⇣${count}"
+diverged = "⇡${ahead_count}⇣${behind_count}"
+conflicted = "=${count}"
+untracked = "?${count}"
+stashed = "*${count}"
+modified = "!${count}"
+staged = "+${count}"
+renamed = "»${count}"
+deleted = "✘${count}"
+
+[git_state]
+style = "red bold"
+format = '[$state( $progress_current/$progress_total)]($style) '
+rebase = "REBASING"
+merge = "MERGING"
+revert = "REVERTING"
+cherry_pick = "CHERRY-PICKING"
+bisect = "BISECTING"
+am = "AM"
+am_or_rebase = "AM/REBASE"
+
+[git_metrics]
+disabled = false
+added_style = "green"
+deleted_style = "red"
+format = '([+$added]($added_style) )([-$deleted]($deleted_style) )'
+
+# ── Fill (separates left and right sections on line 1) ───────────────
+[fill]
+symbol = " "
+
+# ── Infrastructure context (safety-critical) ─────────────────────────
+# These help prevent deploying to the wrong cluster or account
+
+[kubernetes]
+disabled = false
+style = "blue"
+symbol = "⎈ "
+format = '[$symbol$context( \($namespace\))]($style) '
+# Uncomment to only show for specific contexts:
+# [kubernetes.context_aliases]
+# "prod-.*" = "PROD"
+
+[aws]
+disabled = false
+style = "orange"
+symbol = " "
+format = '[$symbol($profile)( \($region\))]($style) '
+
+# ── Language versions (auto-detected, right-aligned on line 1) ───────
+# These only appear when relevant files are detected in the directory
+
+[c]
+style = "blue"
+symbol = " "
+format = "[$symbol$version]($style) "
+
+[python]
+style = "yellow"
+symbol = " "
+format = "[$symbol$version( \\($virtualenv\\))]($style) "
+
+[custom.rlang]
+description = "R language version"
+command = "Rscript --version 2>&1 | cut -d' ' -f5"
+detect_extensions = ["R", "Rmd", "Rproj", "r"]
+detect_files = [".Rprofile", "renv.lock"]
+detect_folders = ["renv"]
+symbol = "R "
+style = "blue"
+format = "[$symbol v$output]($style) "
+
+[rust]
+style = "orange"
+symbol = " "
+format = "[$symbol$version]($style) "
+
+[nodejs]
+style = "green"
+symbol = " "
+format = "[$symbol$version]($style) "
+
+[bun]
+style = "yellow"
+symbol = "bun "
+format = "[$symbol$version]($style) "
+
+[golang]
+style = "cyan"
+symbol = " "
+format = "[$symbol$version]($style) "
+
+[ocaml]
+style = "orange"
+symbol = "λ "
+format = "[$symbol$version]($style) "
+
+[terraform]
+style = "purple"
+symbol = "󱁢 "
+format = "[$symbol$version( $workspace)]($style) "
+
+[docker_context]
+style = "blue"
+symbol = " "
+format = "[$symbol$context]($style) "
+only_with_files = true
+
+# ── Package version (from Cargo.toml, package.json, etc.) ────────────
+[package]
+style = "dimmed"
+symbol = "󰏗 "
+format = "[$symbol$version]($style) "
+
+# ── Command duration (only for commands > 2 seconds) ─────────────────
+[cmd_duration]
+style = "yellow"
+min_time = 2_000
+format = "took [$duration]($style) "
+
+# ── Line 2: shell state + prompt character ───────────────────────────
+
+[sudo]
+disabled = false
+style = "red bold"
+symbol = "󰌆 "
+format = "[$symbol]($style)"
+
+[jobs]
+style = "cyan"
+symbol = "✦ "
+number_threshold = 1
+format = "[$symbol$number]($style) "
+
+[status]
+disabled = false
+style = "red"
+symbol = "✘ "
+not_executable_symbol = "⊘ "
+not_found_symbol = "? "
+sigint_symbol = "■ "
+signal_symbol = "↯ "
+format = '[$symbol$status( \($common_meaning\))]($style) '
+map_symbol = true

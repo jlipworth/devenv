@@ -3,7 +3,7 @@
 .PHONY: spacemacs prereq-layers-all linking-prereq system-prereq node-manual \
         shell-layer git-layer yaml markdown completion vimscript \
         latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools \
-        cli_tools update-deps full-setup help
+        cli_tools starship update-deps full-setup help
 
 # Default target to install all prerequisite layers
 prereq-layers-all: shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools
@@ -11,6 +11,10 @@ prereq-layers-all: shell-layer git-layer yaml markdown completion vimscript late
 cli_tools:
 	@echo "Installing CLI tools only..."
 	@./prereq_packages.sh install_cli_tools
+
+starship:
+	@echo "Installing Starship prompt..."
+	@./prereq_packages.sh install_starship
 
 spacemacs:
 	@echo "Triggering spacemacs build script..."
@@ -155,4 +159,5 @@ help:
 	@echo ""
 	@echo "Other targets:"
 	@echo "  cli_tools       - Install general CLI tools only"
+	@echo "  starship        - Install Starship prompt with Ayu Mirage config"
 	@echo "  update-deps     - Update dependencies after Renovate PRs"
