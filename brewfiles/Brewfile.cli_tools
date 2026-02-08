@@ -13,6 +13,7 @@ brew "lazygit"
 brew "zoxide"
 brew "ranger"
 brew "tmux"
+brew "starship"
 brew "libpq"
 
 # Terminal emulator

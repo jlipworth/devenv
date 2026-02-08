@@ -658,6 +658,57 @@ install_rust_support() {
     log "Rust development environment setup complete!" "SUCCESS"
 }
 
+install_starship() {
+    log "Setting up Starship prompt..."
+
+    local shell_rc
+    local shell_name
+    shell_rc="$(get_shell_rc)"
+    shell_name="$(get_shell_name)"
+
+    # Install starship binary
+    if ! is_installed "starship"; then
+        if is_installed "brew"; then
+            brew install starship || log "Error installing starship via brew." "WARNING"
+        elif [[ "$DISTRO" == "arch" ]]; then
+            install_packages "starship"
+        else
+            log "Installing starship via official installer..."
+            curl -sS https://starship.rs/install.sh | sh -s -- -y || {
+                log "Failed to install starship." "ERROR"
+                return 1
+            }
+        fi
+    else
+        log "starship is already installed."
+    fi
+
+    # Symlink starship config from repo
+    log "Setting up Starship config..."
+    mkdir -p "$HOME/.config"
+    if [ -f "$HOME/.config/starship.toml" ] && [ ! -L "$HOME/.config/starship.toml" ]; then
+        log "Existing starship.toml found. Backing up..."
+        mv "$HOME/.config/starship.toml" "$HOME/.config/starship.toml.bak.$(date +%Y%m%d%H%M%S)"
+    fi
+    ln -sf "$GNU_DIR/starship.toml" "$HOME/.config/starship.toml"
+    log "Symlinked Starship config."
+
+    # Add starship init to shell RC (should be near end of file)
+    if is_installed "starship"; then
+        if ! grep -q 'eval "$(starship init' "$shell_rc" 2> /dev/null; then
+            log "Adding Starship initialization to $shell_rc..."
+            echo "" >> "$shell_rc"
+            echo "# Starship prompt" >> "$shell_rc"
+            echo "eval \"\$(starship init $shell_name)\"" >> "$shell_rc"
+            log "Starship initialization added to $shell_rc." "SUCCESS"
+        else
+            log "Starship initialization already present in $shell_rc."
+        fi
+    fi
+
+    log "Starship prompt setup complete!" "SUCCESS"
+}
+
 install_cli_tools() {
     log "Installing general CLI tools..."
 
@@ -687,7 +738,7 @@ install_cli_tools() {
         # Arch: most CLI tools are in official repos
         install_packages "htop" "gnupg" "cloc" "cups" "xclip" "libtool" "cmake"
         # Modern CLI tools available in Arch repos
-        install_packages "eza" "bat" "ripgrep" "fd" "fzf" "zoxide" "lazygit" "tmux"
+        install_packages "eza" "bat" "ripgrep" "fd" "fzf" "zoxide" "lazygit" "tmux" "starship"
 
         # Use Brewfile for any remaining tools
         if is_installed "brew"; then
@@ -824,6 +875,9 @@ EOF
         log "Vi mode configuration already present in $shell_rc."
     fi
 
+    # Set up Starship prompt
+    install_starship
+
 }
 
 install_python_env() {
@@ -949,6 +1003,7 @@ main() {
         "install_terraform_support"
         "install_rust_support"
         "install_ai_tools"
+        "install_starship"
         "install_cli_tools"
         "install_all"
     )
