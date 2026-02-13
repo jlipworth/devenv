@@ -76,6 +76,8 @@ This function should only modify configuration layer settings."
 
      claude-code
 
+     whisper
+
      dap
 
      (org :variables

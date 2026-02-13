@@ -3,7 +3,7 @@
 .PHONY: spacemacs prereq-layers-all linking-prereq system-prereq node-manual \
         shell-layer git-layer yaml markdown completion vimscript \
         latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools \
-        cli_tools starship update-deps full-setup help
+        whisper cli_tools starship update-deps full-setup help
 
 # Default target to install all prerequisite layers
 prereq-layers-all: shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools
@@ -50,6 +50,10 @@ shell-layer:
 git-layer:
 	@echo "Installing git-layer prerequisites..."
 	@./prereq_packages.sh install_git_prereqs
+
+whisper:
+	@echo "Installing Whisper (speech-to-text) prerequisites..."
+	@./prereq_packages.sh install_whisper_prereqs
 
 yaml:
 	@echo "Installing YAML language server..."
@@ -158,6 +162,7 @@ help:
 	@echo "  r           - R/ESS support"
 	@echo ""
 	@echo "Other targets:"
+	@echo "  whisper         - Install Whisper (speech-to-text) prerequisites"
 	@echo "  cli_tools       - Install general CLI tools only"
 	@echo "  starship        - Install Starship prompt with Ayu Mirage config"
 	@echo "  update-deps     - Update dependencies after Renovate PRs"

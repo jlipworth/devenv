@@ -27,6 +27,9 @@ declare -A ARCH_PKG_MAP=(
     ["lldb"]="lldb"
     # xclip
     ["xclip"]="xclip"
+
+    # Audio (Whisper)
+    ["libasound2-plugins"]="alsa-plugins"
 )
 
 # Translate package name for current distro
@@ -211,6 +214,29 @@ install_git_prereqs() {
         log "Installing git tools via Homebrew..."
         brew bundle --file="$GNU_DIR/brewfiles/Brewfile.git" || log "Error with Brewfile.git" "WARNING"
     fi
+}
+
+install_whisper_prereqs() {
+    log "Installing Whisper (Spacemacs whisper layer) prerequisites..."
+
+    if [[ "$OS" == "Darwin" ]]; then
+        # ffmpeg for recording (avfoundation) + whisper.cpp build deps
+        install_packages "ffmpeg" "cmake" "pkg-config" "git"
+        # Optional convenience tools
+        install_packages "sox"
+    elif [[ "$DISTRO" == "arch" ]]; then
+        # Prefer PipeWire Pulse compatibility on modern Arch installs
+        install_packages_translated \
+            "ffmpeg" "cmake" "make" "gcc" "git" \
+            "sox" "alsa-utils" "libasound2-plugins" "pipewire-pulse"
+    else
+        # Debian/Ubuntu: ensure whisper.el selects PulseAudio input backend by default
+        install_packages_translated \
+            "ffmpeg" "cmake" "make" "g++" "git" \
+            "sox" "alsa-utils" "libasound2-plugins" "pulseaudio" "pulseaudio-utils"
+    fi
+
+    log "Whisper prerequisites installed successfully." "SUCCESS"
 }
 
 install_yaml_support() {
@@ -1001,6 +1027,7 @@ main() {
         "install_askpass"
         "install_shell_prereqs"
         "install_git_prereqs"
+        "install_whisper_prereqs"
         "install_markdown_support"
         "install_yaml_support"
         "create_snippet_symlink"
