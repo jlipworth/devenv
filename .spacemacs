@@ -729,6 +729,10 @@ configuration.
 Put your configuration code here, except for variables that should be set
 before packages are loaded."
 
+  ;; Prefer loading newer .el over stale .elc (useful while iterating on
+  ;; jal-functions.el without re-byte-compiling).
+  (setq load-prefer-newer t)
+
   ;; Load custom functions
   (require 'jal-functions)
 
