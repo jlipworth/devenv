@@ -89,14 +89,23 @@ This uses Spacemacs' `SPC z f` (zoom-frm) feature, not buffer-local
   "Non-nil means startup frame zoom has already been applied this session.")
 
 (defun jal/apply-startup-frame-zoom (&optional steps)
-  "Zoom the whole frame in by STEPS, but only once per Emacs session."
+  "Zoom the whole frame in by STEPS, but only once per Emacs session.
+
+This is implemented via `spacemacs/zoom-frm-in` (Spacemacs' `SPC z f`), which in
+turn uses the `zoom-frm' package."
   (let ((steps (or steps jal-startup-frame-zoom-steps)))
-    (with-eval-after-load 'zoom-frm
-      (unless jal--startup-frame-zoom-applied
-        (setq jal--startup-frame-zoom-applied t)
-        (when (fboundp 'spacemacs/zoom-frm-in)
-          (dotimes (_ steps)
-            (spacemacs/zoom-frm-in)))))))
+    (unless jal--startup-frame-zoom-applied
+      (setq jal--startup-frame-zoom-applied t)
+      ;; Ensure `zoom-frm' is available (Spacemacs ships it in spacemacs-visual).
+      (require 'zoom-frm nil t)
+      ;; Apply after Emacs has finished drawing the initial frame so it visibly
+      ;; takes effect.
+      (run-with-idle-timer
+       0 nil
+       (lambda ()
+         (when (and (integerp steps) (> steps 0) (fboundp 'spacemacs/zoom-frm-in))
+           (dotimes (_ steps)
+             (spacemacs/zoom-frm-in))))))))
 
 ;;;; Configuration
 
