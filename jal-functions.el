@@ -85,24 +85,37 @@ This uses Spacemacs' `SPC z f` (zoom-frm) feature, not buffer-local
   :type 'integer
   :group 'jal)
 
-(defvar jal--startup-frame-zoom-applied nil
-  "Non-nil means startup frame zoom has already been applied this session.")
+(defconst jal--startup-frame-zoom-frame-parameter 'jal-startup-frame-zoom-applied
+  "Frame parameter used to mark that startup zoom has been applied.")
+
+(defun jal//apply-startup-frame-zoom-to-frame (frame steps)
+  "Apply STEPS of whole-frame zoom to FRAME (idempotent per FRAME)."
+  (with-selected-frame frame
+    (when (and (display-graphic-p frame)
+               (integerp steps)
+               (> steps 0)
+               (not (frame-parameter frame jal--startup-frame-zoom-frame-parameter))
+               (fboundp 'spacemacs/zoom-frm-in))
+      (dotimes (_ steps)
+        (spacemacs/zoom-frm-in))
+      (set-frame-parameter frame jal--startup-frame-zoom-frame-parameter t))))
+
+(defun jal//startup-frame-zoom-after-make-frame (frame)
+  "Apply startup frame zoom to FRAME (for daemon / emacsclient workflows)."
+  (jal//apply-startup-frame-zoom-to-frame frame jal-startup-frame-zoom-steps))
 
 (defun jal/apply-startup-frame-zoom (&optional steps)
-  "Zoom the whole frame in by STEPS, but only once per Emacs session."
-  (let ((steps (or steps jal-startup-frame-zoom-steps)))
-    (when (and (not jal--startup-frame-zoom-applied)
-               (integerp steps)
-               (> steps 0))
-      ;; Prevent repeated scheduling (e.g. when reloading config).
-      (setq jal--startup-frame-zoom-applied t)
-      ;; Run once Emacs is idle so the initial frame is already drawn.
-      (run-with-idle-timer
-       0 nil
-       (lambda ()
-         (when (fboundp 'spacemacs/zoom-frm-in)
-           (dotimes (_ steps)
-             (spacemacs/zoom-frm-in))))))))
+  "Zoom the whole frame in by STEPS (defaults to `jal-startup-frame-zoom-steps').
+
+This is applied once per frame and remembered via a frame parameter, so reloading
+your config won't keep zooming the current frame."
+  (when (integerp steps)
+    (setq jal-startup-frame-zoom-steps steps))
+  ;; Apply to any already-existing frames.
+  (dolist (frame (frame-list))
+    (jal//apply-startup-frame-zoom-to-frame frame jal-startup-frame-zoom-steps))
+  ;; Also apply to frames created later (daemon / emacsclient).
+  (add-hook 'after-make-frame-functions #'jal//startup-frame-zoom-after-make-frame))
 
 ;;;; Configuration
 
