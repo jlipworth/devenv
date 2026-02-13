@@ -76,7 +76,9 @@ This function should only modify configuration layer settings."
 
      claude-code
 
-     whisper
+     (whisper :variables
+              ;; default is 300 seconds (5 minutes)
+              whisper-recording-timeout 600)
 
      dap
 
