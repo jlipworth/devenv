@@ -768,11 +768,8 @@ before packages are loaded."
   (with-eval-after-load 'org
     (setq org-startup-indented t))
 
-  ;; Start with whole-frame zoomed in by 2 steps (equivalent to running `SPC z f`
-  ;; then pressing `+` twice).
-  (with-eval-after-load 'zoom-frm
-    (dotimes (_ 2)
-      (spacemacs/zoom-frm-in)))
+  ;; Start with whole-frame zoomed in by 2 steps (see jal-functions.el).
+  (jal/apply-startup-frame-zoom)
 
 
   ;; WSL2 SSH agent fix (defined in jal-functions.el)

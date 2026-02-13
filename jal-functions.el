@@ -9,6 +9,12 @@
 
 ;;; Code:
 
+;;;; Customization
+
+(defgroup jal nil
+  "Personal customizations and helper functions."
+  :group 'convenience)
+
 ;;;; Date insertion
 
 (defun jal/insert-current-date ()
@@ -68,6 +74,29 @@ Only activates in non-graphical frames (e.g., Emacs -nw in tmux)."
     (when (require 'clipetty nil t)
       (global-clipetty-mode 1)
       (message "Clipetty enabled for terminal clipboard integration"))))
+
+;;;; Startup UI tweaks
+
+(defcustom jal-startup-frame-zoom-steps 2
+  "Number of whole-frame zoom-in steps to apply on startup.
+
+This uses Spacemacs' `SPC z f` (zoom-frm) feature, not buffer-local
+`text-scale-mode`."
+  :type 'integer
+  :group 'jal)
+
+(defvar jal--startup-frame-zoom-applied nil
+  "Non-nil means startup frame zoom has already been applied this session.")
+
+(defun jal/apply-startup-frame-zoom (&optional steps)
+  "Zoom the whole frame in by STEPS, but only once per Emacs session."
+  (let ((steps (or steps jal-startup-frame-zoom-steps)))
+    (with-eval-after-load 'zoom-frm
+      (unless jal--startup-frame-zoom-applied
+        (setq jal--startup-frame-zoom-applied t)
+        (when (fboundp 'spacemacs/zoom-frm-in)
+          (dotimes (_ steps)
+            (spacemacs/zoom-frm-in)))))))
 
 ;;;; Configuration
 
