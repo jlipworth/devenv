@@ -43,7 +43,7 @@ make python-env
 ```
 
 This installs:
-- `uv` (via brew on macOS, curl on Linux)
+- `uv` (via brew when available on macOS/Linuxbrew, otherwise via curl installer)
 - Global tools: `ipython`, `jupyterlab`
 
 ### 4. Verify

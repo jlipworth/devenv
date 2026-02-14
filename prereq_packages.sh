@@ -221,18 +221,18 @@ install_whisper_prereqs() {
 
     if [[ "$OS" == "Darwin" ]]; then
         # ffmpeg for recording (avfoundation) + whisper.cpp build deps
-        install_packages "ffmpeg" "cmake" "pkg-config" "git"
+        install_packages "ffmpeg" "cmake" "pkg-config"
         # Optional convenience tools
         install_packages "sox"
     elif [[ "$DISTRO" == "arch" ]]; then
         # Prefer PipeWire Pulse compatibility on modern Arch installs
         install_packages_translated \
-            "ffmpeg" "cmake" "make" "gcc" "git" \
+            "ffmpeg" "cmake" "make" "gcc" \
             "sox" "alsa-utils" "libasound2-plugins" "pipewire-pulse"
     else
         # Debian/Ubuntu: ensure whisper.el selects PulseAudio input backend by default
         install_packages_translated \
-            "ffmpeg" "cmake" "make" "g++" "git" \
+            "ffmpeg" "cmake" "make" "g++" \
             "sox" "alsa-utils" "libasound2-plugins" "pulseaudio" "pulseaudio-utils"
     fi
 
@@ -737,6 +737,13 @@ install_starship() {
 
 install_cli_tools() {
     log "Installing general CLI tools..."
+
+    # git is assumed to exist (used throughout, e.g. cloning oh-my-tmux).
+    # If it's missing, fail early with a clear message instead of dying mid-run.
+    if ! command -v git &> /dev/null; then
+        log "git is required but not found in PATH. Install git first (company-approved method), then re-run." "ERROR"
+        return 1
+    fi
 
     # Get shell RC file and shell name for use throughout function
     local shell_rc

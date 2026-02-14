@@ -112,15 +112,41 @@ if [[ "$CI" == "true" ]]; then
     export PATH="$HOME/.local/bin:$NPM_GLOBAL_DIR/bin:$HOME/go/bin:$PATH"
 fi
 
-# Check if a package is installed
+# Check if a dependency is installed.
+# Historically this checked only PATH, but many callers pass package names that
+# don't correspond 1:1 with a binary (e.g. "pulseaudio-utils", "gnupg").
 is_installed() {
-    if command -v "$1" &> /dev/null; then
-        log "$1 binary is detected in PATH."
-        return 0 # Return success if found
-    else
-        log "$1 binary is not found in PATH."
-        return 1 # Return failure if not found
+    local name="$1"
+
+    # 1) Fast path: command exists in PATH.
+    if command -v "$name" &> /dev/null; then
+        log "$name is detected in PATH."
+        return 0
     fi
+
+    # 2) Package-manager-backed checks for package-name dependencies.
+    # Use brew when present (macOS Homebrew and Linuxbrew).
+    if command -v brew &> /dev/null; then
+        if brew list --versions "$name" &> /dev/null; then
+            log "$name is installed via Homebrew."
+            return 0
+        fi
+    fi
+
+    if [[ "$DISTRO" == "debian" ]] && command -v dpkg &> /dev/null; then
+        if dpkg -s "$name" &> /dev/null; then
+            log "$name package is installed (dpkg)."
+            return 0
+        fi
+    elif [[ "$DISTRO" == "arch" ]] && command -v pacman &> /dev/null; then
+        if pacman -Qi "$name" &> /dev/null; then
+            log "$name package is installed (pacman)."
+            return 0
+        fi
+    fi
+
+    log "$name is not installed (not in PATH and no matching package found)."
+    return 1
 }
 
 # =============================================================================
