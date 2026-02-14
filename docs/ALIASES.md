@@ -78,7 +78,7 @@ ltreeg src            # Full tree of src (ignores files in .gitignore)
 | `fdall` | `fd --no-ignore -H`  | Show everything, ignore .gitignore               |
 | `fde`   | `fd -e`              | Search by extension                              |
 
-**Note:** On macOS, install via `brew install fd`. On Debian/Ubuntu, the package is `fd-find` and the binary is `fdfind` - the alias automatically maps `fd` → `fdfind` on Linux.
+**Note:** `make cli_tools` installs `fd` via Homebrew (macOS and Linuxbrew) when available. If you install via `apt` on Debian/Ubuntu instead, the package is `fd-find` and the binary is `fdfind` - `.shell_aliases` automatically maps `fd` → `fdfind` when `fd` is not present.
 
 **Examples:**
 ```bash

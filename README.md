@@ -47,6 +47,7 @@ make terraform  # terraform-ls
 make latex      # texlab
 make docker     # dockerfile-language-server, hadolint
 make ocaml      # opam, merlin, utop
+make whisper    # speech-to-text (Spacemacs whisper layer)
 make cli_tools  # eza, bat, ripgrep, fd, fzf, zoxide, lazygit
 ```
 

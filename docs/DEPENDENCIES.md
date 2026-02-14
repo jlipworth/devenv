@@ -15,7 +15,7 @@ These files contain version-pinnable dependencies that can be automatically upda
 | File | Purpose | Manager |
 |------|---------|---------|
 | `requirements.txt` | Python packages (pyright, debugpy, etc.) | Renovate |
-| `brewfiles/Brewfile.*` | Homebrew packages for macOS (per-layer) | Renovate |
+| `brewfiles/Brewfile.*` | Homebrew packages (macOS and Linuxbrew, per-layer) | Renovate |
 | `renovate.json` | Renovate bot configuration | - |
 
 ### Shell Script Dependencies (Manual Management)
@@ -98,7 +98,7 @@ pipx upgrade pyright           # Update specific package
 pip list --outdated            # Check for updates
 ```
 
-### Homebrew (macOS)
+### Homebrew (macOS and Linuxbrew)
 
 ```bash
 brew bundle install            # Install from Brewfile
