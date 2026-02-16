@@ -960,33 +960,22 @@ install_cli_tools() {
         fi
     fi
 
-    # Configure vi mode for shell (matches vim/spacemacs jk escape binding)
-    if ! grep -q '# Vi mode' "$shell_rc" 2> /dev/null; then
-        log "Adding vi mode configuration to $shell_rc..."
-        echo "" >> "$shell_rc"
-        echo "# Vi mode for command line editing" >> "$shell_rc"
-
-        if [[ "$shell_name" == "zsh" ]]; then
-            cat >> "$shell_rc" << 'EOF'
-bindkey -v
-export KEYTIMEOUT=20  # 200ms timeout for key sequences (matches vim/spacemacs)
-bindkey -M viins 'jk' vi-cmd-mode
-bindkey -M viins '^?' backward-delete-char  # Fix backspace in insert mode
-bindkey -M viins '^H' backward-delete-char  # Fix Ctrl+H backspace
-bindkey -M viins '^W' backward-kill-word    # Ctrl+W delete word
-bindkey -M viins '^U' backward-kill-line    # Ctrl+U delete to start of line
-EOF
-        else
-            # Bash configuration
+    # Configure vi mode for bash only (zsh vi mode is handled by
+    # zsh-vi-mode plugin + zvm_after_init hook in .shell_aliases)
+    if [[ "$shell_name" == "bash" ]]; then
+        if ! grep -q '# Vi mode' "$shell_rc" 2> /dev/null; then
+            log "Adding vi mode configuration to $shell_rc..."
+            echo "" >> "$shell_rc"
+            echo "# Vi mode for command line editing" >> "$shell_rc"
             cat >> "$shell_rc" << 'EOF'
 set -o vi
 bind '"jk":vi-movement-mode'
 bind 'set keyseq-timeout 200'  # 200ms timeout for key sequences (matches vim/spacemacs)
 EOF
+            log "Vi mode configuration added to $shell_rc." "SUCCESS"
+        else
+            log "Vi mode configuration already present in $shell_rc."
         fi
-        log "Vi mode configuration added to $shell_rc." "SUCCESS"
-    else
-        log "Vi mode configuration already present in $shell_rc."
     fi
 
     # Set up Starship prompt
