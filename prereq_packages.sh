@@ -735,6 +735,70 @@ install_starship() {
     log "Starship prompt setup complete!" "SUCCESS"
 }
 
+install_syntax_highlighting() {
+    log "Installing shell syntax highlighting..."
+
+    local shell_name
+    shell_name="$(get_shell_name)"
+
+    if [[ "$shell_name" == "zsh" ]]; then
+        log "Detected zsh - installing zsh-syntax-highlighting..."
+        if is_installed "brew"; then
+            brew install zsh-syntax-highlighting || log "Error installing zsh-syntax-highlighting via brew." "WARNING"
+        elif [[ "$DISTRO" == "arch" ]]; then
+            install_packages "zsh-syntax-highlighting"
+        else
+            install_packages "zsh-syntax-highlighting"
+        fi
+    else
+        log "Detected bash - installing blesh (Bash Line Editor)..."
+        if [[ "$DISTRO" == "arch" ]]; then
+            if ! install_aur_packages "blesh-git"; then
+                log "AUR install failed, falling back to git clone..." "WARNING"
+                _install_blesh_from_source
+            fi
+        else
+            _install_blesh_from_source
+        fi
+    fi
+
+    log "Shell syntax highlighting setup complete!" "SUCCESS"
+}
+
+# Helper: build blesh from source into ~/.local
+_install_blesh_from_source() {
+    local blesh_dir="${HOME}/.local/share/blesh"
+
+    if [[ -f "$blesh_dir/ble.sh" ]]; then
+        log "blesh is already installed at $blesh_dir/ble.sh"
+        return 0
+    fi
+
+    # gawk is required for the build
+    if ! is_installed "gawk"; then
+        log "Installing gawk (required for blesh build)..."
+        install_packages "gawk"
+    fi
+
+    log "Cloning and building blesh..."
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    git clone --recursive --depth 1 https://github.com/akinomyoga/ble.sh.git "$tmp_dir/ble.sh" || {
+        log "Failed to clone blesh." "ERROR"
+        rm -rf "$tmp_dir"
+        return 1
+    }
+
+    make -C "$tmp_dir/ble.sh" install PREFIX="$HOME/.local" || {
+        log "Failed to build/install blesh." "ERROR"
+        rm -rf "$tmp_dir"
+        return 1
+    }
+
+    rm -rf "$tmp_dir"
+    log "blesh installed to $blesh_dir" "SUCCESS"
+}
+
 install_cli_tools() {
     log "Installing general CLI tools..."
 
@@ -911,6 +975,9 @@ EOF
     # Set up Starship prompt
     install_starship
 
+    # Set up shell syntax highlighting
+    install_syntax_highlighting
+
 }
 
 install_python_env() {
@@ -1054,6 +1121,7 @@ main() {
         "install_rust_support"
         "install_ai_tools"
         "install_starship"
+        "install_syntax_highlighting"
         "install_cli_tools"
         "install_all"
     )

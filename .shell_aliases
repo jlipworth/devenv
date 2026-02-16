@@ -7,6 +7,18 @@
 # Install via: make cli_tools
 
 # ======================================================================
+# BLESH - Bash syntax highlighting (must be near top, before other config)
+# ======================================================================
+if [[ -n "$BASH_VERSION" ]]; then
+    _blesh_path="${HOME}/.local/share/blesh/ble.sh"
+    [[ -f /usr/share/blesh/ble.sh ]] && _blesh_path="/usr/share/blesh/ble.sh"
+    if [[ -f "$_blesh_path" ]]; then
+        source "$_blesh_path" --attach=none
+    fi
+    unset _blesh_path
+fi
+
+# ======================================================================
 # NVM - Node Version Manager (load early so node/npm resolve correctly)
 # ======================================================================
 if [ -z "$NVM_DIR" ]; then
@@ -267,3 +279,25 @@ fi
 
 # Examples:
 # alias proj='cd ~/projects'
+
+# ======================================================================
+# BLESH - Attach (must be at very end of shell config)
+# ======================================================================
+if [[ -n "$BASH_VERSION" ]]; then
+    [[ ! ${BLE_VERSION-} ]] || ble-attach
+fi
+
+# ======================================================================
+# ZSH-SYNTAX-HIGHLIGHTING (must be at very end for zsh)
+# ======================================================================
+if [[ -n "$ZSH_VERSION" ]]; then
+    for _zsh_hl_path in \
+        "$(brew --prefix 2>/dev/null)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" \
+        "/usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"; do
+        if [[ -f "$_zsh_hl_path" ]]; then
+            source "$_zsh_hl_path"
+            break
+        fi
+    done
+    unset _zsh_hl_path
+fi
