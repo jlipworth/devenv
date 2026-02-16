@@ -1007,12 +1007,12 @@ EOF
         log "Shell aliases sourcing added to $shell_rc." "SUCCESS"
     elif ! tail -n 5 "$shell_rc" | grep -q 'source.*\.shell_aliases'; then
         log ".shell_aliases sourcing found but not at end of $shell_rc, relocating..."
-        # Remove existing sourcing block (comment + if/source/fi)
-        sed -i '/# Load custom shell aliases/d' "$shell_rc"
-        sed -i '/# Source shell aliases/d' "$shell_rc"
-        sed -i '/if \[ -f ~\/.shell_aliases \]/,/^fi$/d' "$shell_rc"
-        # Remove trailing blank lines
-        sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$shell_rc"
+        # Remove existing sourcing block and trailing blank lines (portable, no sed -i)
+        grep -v '# Load custom shell aliases\|# Source shell aliases' "$shell_rc" |
+            awk '/if \[ -f ~\/.shell_aliases \]/{skip=1} skip && /^fi$/{skip=0; next} !skip' |
+            awk 'NF{found=1} found' |
+            tac | awk 'NF{found=1} found' | tac \
+            > "${shell_rc}.tmp" && mv "${shell_rc}.tmp" "$shell_rc"
         # Re-add at end
         echo "" >> "$shell_rc"
         echo "# Load custom shell aliases (MUST be last — ble.sh attaches here)" >> "$shell_rc"
