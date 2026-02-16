@@ -389,6 +389,7 @@ set -g history-limit 50000
 # true color support — override the base config's "screen-256color"
 set -g default-terminal "tmux-256color"
 set -ag terminal-overrides ",*-256color:Tc,xterm-ghostty:Tc"
+set -as terminal-features ",xterm-256color:RGB,xterm-ghostty:RGB"
 
 # Enable extended keys for proper Ctrl+key passthrough to applications
 # Required for tools like Claude Code that use Ctrl+G
