@@ -907,26 +907,13 @@ install_cli_tools() {
         log "SSH config created with Ghostty compatibility."
     fi
 
-    # Configure shell aliases
+    # Configure shell aliases symlink (sourcing added at very end of function)
     log "Setting up shell aliases..."
     if [ ! -L "$HOME/.shell_aliases" ]; then
         ln -sf "$GNU_DIR/.shell_aliases" "$HOME/.shell_aliases"
         log "Created symlink for .shell_aliases"
     else
         log ".shell_aliases symlink already exists."
-    fi
-
-    # Add sourcing of aliases to shell RC if not already present
-    if ! grep -q 'source.*\.shell_aliases' "$shell_rc" 2> /dev/null; then
-        log "Adding .shell_aliases sourcing to $shell_rc..."
-        echo "" >> "$shell_rc"
-        echo "# Load custom shell aliases" >> "$shell_rc"
-        echo "if [ -f ~/.shell_aliases ]; then" >> "$shell_rc"
-        echo "    source ~/.shell_aliases" >> "$shell_rc"
-        echo "fi" >> "$shell_rc"
-        log "Shell aliases sourcing added to $shell_rc." "SUCCESS"
-    else
-        log "Shell aliases sourcing already present in $shell_rc."
     fi
 
     # Configure zoxide in shell RC (must be at the end)
@@ -977,6 +964,20 @@ EOF
 
     # Set up shell syntax highlighting
     install_syntax_highlighting
+
+    # Source shell aliases LAST — blesh attaches at end of .shell_aliases,
+    # so this must come after starship, zoxide, vi mode, etc.
+    if ! grep -q 'source.*\.shell_aliases' "$shell_rc" 2> /dev/null; then
+        log "Adding .shell_aliases sourcing to $shell_rc..."
+        echo "" >> "$shell_rc"
+        echo "# Load custom shell aliases (MUST be last — ble.sh attaches here)" >> "$shell_rc"
+        echo "if [ -f ~/.shell_aliases ]; then" >> "$shell_rc"
+        echo "    source ~/.shell_aliases" >> "$shell_rc"
+        echo "fi" >> "$shell_rc"
+        log "Shell aliases sourcing added to $shell_rc." "SUCCESS"
+    else
+        log "Shell aliases sourcing already present in $shell_rc."
+    fi
 
 }
 
