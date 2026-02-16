@@ -772,6 +772,12 @@ install_syntax_highlighting() {
         else
             _install_blesh_from_source
         fi
+
+        # Symlink blesh config (.blerc) for keybinding and cursor overrides
+        if [[ -f "$GNU_DIR/.blerc" ]]; then
+            ln -sf "$GNU_DIR/.blerc" "$HOME/.blerc"
+            log "Symlinked blesh config (.blerc)."
+        fi
     fi
 
     log "Shell syntax highlighting setup complete!" "SUCCESS"

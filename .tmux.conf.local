@@ -399,6 +399,10 @@ set -s extended-keys on
 set -g allow-passthrough on
 set -g set-clipboard on
 
+# Pass cursor shape escape sequences through to the outer terminal
+# Required for vi mode cursor switching (block/beam) in blesh and zsh-vi-mode
+set -ga terminal-overrides '*:Ss=\E[%p1%d q:Se=\E[ q'
+
 # start with mouse mode enabled
 set -g mouse on
 
