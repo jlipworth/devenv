@@ -288,6 +288,21 @@ if [[ -n "$BASH_VERSION" ]]; then
 fi
 
 # ======================================================================
+# ZSH-AUTOSUGGESTIONS (fish-style history suggestions for zsh)
+# ======================================================================
+if [[ -n "$ZSH_VERSION" ]]; then
+    for _zsh_as_path in \
+        "$(brew --prefix 2>/dev/null)/share/zsh-autosuggestions/zsh-autosuggestions.zsh" \
+        "/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh"; do
+        if [[ -f "$_zsh_as_path" ]]; then
+            source "$_zsh_as_path"
+            break
+        fi
+    done
+    unset _zsh_as_path
+fi
+
+# ======================================================================
 # ZSH-SYNTAX-HIGHLIGHTING (must be at very end for zsh)
 # ======================================================================
 if [[ -n "$ZSH_VERSION" ]]; then

@@ -742,13 +742,14 @@ install_syntax_highlighting() {
     shell_name="$(get_shell_name)"
 
     if [[ "$shell_name" == "zsh" ]]; then
-        log "Detected zsh - installing zsh-syntax-highlighting..."
+        log "Detected zsh - installing zsh-autosuggestions and zsh-syntax-highlighting..."
         if is_installed "brew"; then
+            brew install zsh-autosuggestions || log "Error installing zsh-autosuggestions via brew." "WARNING"
             brew install zsh-syntax-highlighting || log "Error installing zsh-syntax-highlighting via brew." "WARNING"
         elif [[ "$DISTRO" == "arch" ]]; then
-            install_packages "zsh-syntax-highlighting"
+            install_packages "zsh-autosuggestions" "zsh-syntax-highlighting"
         else
-            install_packages "zsh-syntax-highlighting"
+            install_packages "zsh-autosuggestions" "zsh-syntax-highlighting"
         fi
     else
         log "Detected bash - installing blesh (Bash Line Editor)..."
