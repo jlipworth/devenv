@@ -291,13 +291,18 @@ fi
 # ZSH-VI-MODE (enhanced vi mode for zsh - cursor shapes, text objects)
 # ======================================================================
 if [[ -n "$ZSH_VERSION" ]]; then
-    # Custom keybindings that must survive zsh-vi-mode's init reset
-    zvm_after_init() {
-        bindkey -M viins 'jk' vi-cmd-mode
-        bindkey -M viins '^?' backward-delete-char
-        bindkey -M viins '^H' backward-delete-char
-        bindkey -M viins '^W' backward-kill-word
-        bindkey -M viins '^U' backward-kill-line
+    # Config function called automatically before plugin initializes
+    function zvm_config() {
+        ZVM_VI_INSERT_ESCAPE_BINDKEY=jk
+        ZVM_LINE_INIT_MODE=$ZVM_MODE_INSERT
+        ZVM_INIT_MODE=sourcing
+    }
+    # Custom keybindings applied after plugin initializes
+    function zvm_after_init() {
+        zvm_bindkey viins '^?' backward-delete-char
+        zvm_bindkey viins '^H' backward-delete-char
+        zvm_bindkey viins '^W' backward-kill-word
+        zvm_bindkey viins '^U' backward-kill-line
     }
     for _zsh_vm_path in \
         "$(brew --prefix 2>/dev/null)/opt/zsh-vi-mode/share/zsh-vi-mode/zsh-vi-mode.plugin.zsh" \
