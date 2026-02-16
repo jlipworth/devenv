@@ -288,6 +288,22 @@ if [[ -n "$BASH_VERSION" ]]; then
 fi
 
 # ======================================================================
+# ZSH-VI-MODE (enhanced vi mode for zsh - cursor shapes, text objects)
+# ======================================================================
+if [[ -n "$ZSH_VERSION" ]]; then
+    for _zsh_vm_path in \
+        "$(brew --prefix 2>/dev/null)/opt/zsh-vi-mode/share/zsh-vi-mode/zsh-vi-mode.plugin.zsh" \
+        "/usr/share/zsh/plugins/zsh-vi-mode/zsh-vi-mode.plugin.zsh" \
+        "${HOME}/.local/share/zsh-vi-mode/zsh-vi-mode.plugin.zsh"; do
+        if [[ -f "$_zsh_vm_path" ]]; then
+            source "$_zsh_vm_path"
+            break
+        fi
+    done
+    unset _zsh_vm_path
+fi
+
+# ======================================================================
 # ZSH-AUTOSUGGESTIONS (fish-style history suggestions for zsh)
 # ======================================================================
 if [[ -n "$ZSH_VERSION" ]]; then

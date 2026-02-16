@@ -742,7 +742,18 @@ install_syntax_highlighting() {
     shell_name="$(get_shell_name)"
 
     if [[ "$shell_name" == "zsh" ]]; then
-        log "Detected zsh - installing zsh-autosuggestions and zsh-syntax-highlighting..."
+        log "Detected zsh - installing zsh plugins..."
+
+        # zsh-vi-mode: enhanced vi mode (cursor shapes, text objects, surround)
+        if is_installed "brew"; then
+            brew install zsh-vi-mode || log "Error installing zsh-vi-mode via brew." "WARNING"
+        elif [[ "$DISTRO" == "arch" ]]; then
+            install_aur_packages "zsh-vi-mode" || _install_zsh_vi_mode_from_source
+        else
+            _install_zsh_vi_mode_from_source
+        fi
+
+        # zsh-autosuggestions + zsh-syntax-highlighting
         if is_installed "brew"; then
             brew install zsh-autosuggestions || log "Error installing zsh-autosuggestions via brew." "WARNING"
             brew install zsh-syntax-highlighting || log "Error installing zsh-syntax-highlighting via brew." "WARNING"
@@ -798,6 +809,24 @@ _install_blesh_from_source() {
 
     rm -rf "$tmp_dir"
     log "blesh installed to $blesh_dir" "SUCCESS"
+}
+
+# Helper: clone zsh-vi-mode into ~/.local/share for Debian/Ubuntu
+_install_zsh_vi_mode_from_source() {
+    local zvm_dir="${HOME}/.local/share/zsh-vi-mode"
+
+    if [[ -f "$zvm_dir/zsh-vi-mode.plugin.zsh" ]]; then
+        log "zsh-vi-mode is already installed at $zvm_dir"
+        return 0
+    fi
+
+    log "Cloning zsh-vi-mode..."
+    git clone --depth 1 https://github.com/jeffreytse/zsh-vi-mode.git "$zvm_dir" || {
+        log "Failed to clone zsh-vi-mode." "ERROR"
+        return 1
+    }
+
+    log "zsh-vi-mode installed to $zvm_dir" "SUCCESS"
 }
 
 install_cli_tools() {
