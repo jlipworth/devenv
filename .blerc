@@ -1,0 +1,16 @@
+# blesh configuration — symlinked to ~/.blerc
+# See: https://github.com/akinomyoga/ble.sh/blob/master/blerc.template
+
+# -- Ctrl+C: discard line (restore standard bash behavior) --
+ble-bind -m vi_imap -f 'C-c' discard-line
+ble-bind -m vi_nmap -f 'C-c' discard-line
+
+# -- Ctrl+R: history search in normal mode (bash default, not vim redo) --
+ble-bind -m vi_nmap -f 'C-r' history-isearch-backward
+
+# -- Cursor shapes for vi mode --
+ble-bind -m vi_nmap --cursor 2   # block steady  (normal)
+ble-bind -m vi_imap --cursor 5   # beam blink    (insert)
+ble-bind -m vi_omap --cursor 4   # underline steady (operator-pending)
+ble-bind -m vi_xmap --cursor 2   # block steady  (visual)
+ble-bind -m vi_cmap --cursor 5   # beam blink    (command-line)
