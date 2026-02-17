@@ -179,10 +179,10 @@ This function should only modify configuration layer settings."
                 ;; terraform-auto-format-on-save t
                 )
 
-     ;; (rust :variables
-     ;;       lsp-rust-analyzer-cargo-auto-reload t
-     ;;       rustic-format-on-save t
-     ;;       )
+     (rust :variables
+           lsp-rust-analyzer-cargo-auto-reload t
+           rustic-format-on-save t
+           )
 
      (docker :variables
              docker-dockerfile-backend 'lsp
