@@ -60,7 +60,9 @@ elif grep -qi 'arch\|endeavour\|manjaro' /etc/os-release 2> /dev/null; then
     CASK_CMD="$INSTALL_CMD" # Placeholder, since Linux doesn't use cask
     PIP_CMD="pipx install --include-deps"
     NODE_CMD="npm"
-    UPDATE_CMD="sudo pacman -Sy"
+    # Intentionally avoid metadata-only sync in helper flows.
+    # Full system upgrades should be explicit (safe-update or pacman -Syu).
+    UPDATE_CMD="true"
     CHECK_UPGRADE_CMD="pacman -Qu"
     UPGRADE_CMD="sudo pacman -S --noconfirm"
     # AUR helper detection
@@ -219,8 +221,12 @@ install_packages() {
 
     # Run update once, only if needed
     if [[ "$updated" == "false" ]]; then
-        log "Checking for new repositories..."
-        $UPDATE_CMD
+        if [[ "$DISTRO" == "arch" ]]; then
+            log "Skipping metadata-only refresh on Arch (avoid partial-upgrade state)"
+        else
+            log "Checking for new repositories..."
+            $UPDATE_CMD
+        fi
         updated=true
     fi
     for package in "$@"; do
@@ -240,10 +246,11 @@ install_packages() {
                     log "$package is up-to-date."
                 fi
             elif [[ "$DISTRO" == "arch" ]]; then
-                # Check if package needs update via pacman
+                # Avoid per-package upgrades on Arch to prevent partial-upgrade conflicts.
+                # Run a full upgrade separately (safe-update or pacman -Syu).
                 if pacman -Qu "$package" 2> /dev/null | grep -q "^${package}"; then
-                    log "$package has an update available. Updating..."
-                    sudo pacman -S --noconfirm "$package" || echo "Error updating $package."
+                    log "$package has an update available."
+                    log "Skipping per-package upgrade on Arch; run full system upgrade (safe-update or sudo pacman -Syu)." "WARNING"
                 else
                     log "$package is up-to-date."
                 fi
