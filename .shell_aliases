@@ -24,12 +24,20 @@ fi
 if [ -z "$NVM_DIR" ]; then
     export NVM_DIR="$HOME/.nvm"
 fi
+_nvm_loaded=0
 if command -v brew &> /dev/null; then
-    [ -s "$(brew --prefix nvm)/nvm.sh" ] && . "$(brew --prefix nvm)/nvm.sh"
-    [ -s "$(brew --prefix nvm)/etc/bash_completion.d/nvm" ] && . "$(brew --prefix nvm)/etc/bash_completion.d/nvm"
-elif [ -s "$NVM_DIR/nvm.sh" ]; then
+    _brew_nvm="$(brew --prefix nvm 2>/dev/null)"
+    if [ -s "$_brew_nvm/nvm.sh" ]; then
+        . "$_brew_nvm/nvm.sh"
+        [ -s "$_brew_nvm/etc/bash_completion.d/nvm" ] && . "$_brew_nvm/etc/bash_completion.d/nvm"
+        _nvm_loaded=1
+    fi
+    unset _brew_nvm
+fi
+if [ "$_nvm_loaded" -eq 0 ] && [ -s "$NVM_DIR/nvm.sh" ]; then
     . "$NVM_DIR/nvm.sh"
 fi
+unset _nvm_loaded
 
 # ======================================================================
 # WSL - Browser and file opener support
