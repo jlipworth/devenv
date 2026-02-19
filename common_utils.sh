@@ -225,7 +225,7 @@ add_to_shell_rc_block() {
     local begin_marker="# BEGIN $name (added by devenv)"
     local end_marker="# END $name"
 
-    if ! grep -q "$begin_marker" "$shell_rc" 2> /dev/null; then
+    if ! grep -qF "$begin_marker" "$shell_rc" 2> /dev/null; then
         log "Adding section $name to $shell_rc..."
         {
             echo ""
@@ -234,19 +234,27 @@ add_to_shell_rc_block() {
             echo "$end_marker"
         } >> "$shell_rc"
         log "Section $name added to $shell_rc." "SUCCESS"
+    elif ! grep -qF "$end_marker" "$shell_rc" 2> /dev/null; then
+        log "Found BEGIN marker for $name but missing END marker in $shell_rc. Refusing to rewrite to avoid truncating your RC file." "ERROR"
+        return 1
     else
         log "Section $name already present in $shell_rc. Updating..."
         # Replace the existing block
         local temp_rc
         temp_rc=$(mktemp)
         # awk logic to replace between markers
-        awk -v b="$begin_marker" -v e="$end_marker" -v r="$block" '
+        if awk -v b="$begin_marker" -v e="$end_marker" -v r="$block" '
             $0 == b {print; print r; skip=1; next}
             $0 == e {skip=0; print; next}
             !skip {print}
-        ' "$shell_rc" > "$temp_rc"
-        mv "$temp_rc" "$shell_rc"
-        log "Section $name updated in $shell_rc." "SUCCESS"
+        ' "$shell_rc" > "$temp_rc"; then
+            mv "$temp_rc" "$shell_rc"
+            log "Section $name updated in $shell_rc." "SUCCESS"
+        else
+            rm -f "$temp_rc"
+            log "Failed to update section $name in $shell_rc." "ERROR"
+            return 1
+        fi
     fi
 }
 
