@@ -367,7 +367,7 @@ install_python_prereqs() {
     else
         log "requirements.txt not found. Using fallback installation..." "WARNING"
         # Fallback to hardcoded installation
-        python_packages=("pyright" "debugpy" "autoflake" "flake8" "jupytext")
+        python_packages=("pyright" "debugpy" "autoflake" "flake8" "isort" "jupytext")
         for pkg in "${python_packages[@]}"; do
             log "Installing $pkg via pip..."
             $PIP_CMD "$pkg" || log "Error installing Python package $pkg." "WARNING"
