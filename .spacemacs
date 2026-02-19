@@ -67,7 +67,6 @@ This function should only modify configuration layer settings."
      syntax-checking
 
      (lsp :variables
-          ;; lsp-modeline-diagnostics-scope :file ;; Error here for some reason
           ;; lsp-headerline-breadcrumb-segments '(symbols)
           lsp-enable-snippet t
           lsp-log-io nil
@@ -130,8 +129,8 @@ This function should only modify configuration layer settings."
              python-lsp-server 'pyright
              python-formatter 'ruff
              python-enable-tools '(pip)
-             ;; python-format-on-save t
-             ;; python-sort-imports-on-save t
+             python-format-on-save t
+             python-sort-imports-on-save t
              )
 
      (c-c++ :variables
@@ -158,12 +157,14 @@ This function should only modify configuration layer settings."
           )
 
      (javascript :variables
-                 ;; javascript-fmt-on-save t
-
+                 javascript-backend 'lsp
+                 javascript-fmt-tool 'prettier
                  javascript-import-tool 'import-js
-                 ;; import-js might be out-of-date; need to check
-                 ;; need to figure out debugger
                  )
+
+     (react :variables
+            react-backend 'lsp
+            )
 
      (html :variables
            css-enable-lsp t
@@ -329,7 +330,7 @@ It should only modify the values of Spacemacs settings."
    ;; If non-nil, show file icons for entries and headings on Spacemacs home buffer.
    ;; This has no effect in terminal or if "nerd-icons" package or the font
    ;; is not installed. (default nil)
-   dotspacemacs-startup-buffer-show-icons nil
+   dotspacemacs-startup-buffer-show-icons t
 
    ;; Default major mode for a new empty buffer. Possible values are mode
    ;; names such as `text-mode'; and `nil' to use Fundamental mode.
@@ -775,6 +776,13 @@ before packages are loaded."
   ;; Start with whole-frame zoomed in by 2 steps (see jal-functions.el).
   (jal/apply-startup-frame-zoom)
 
+  ;; Fix for lsp-modeline-diagnostics-scope error
+  (with-eval-after-load 'lsp-mode
+    (setq lsp-modeline-diagnostics-scope :file))
+
+  ;; Ensure icons are ready
+  (when (and window-system (not (fboundp 'nerd-icons-install-fonts)))
+    (message "Nerd Icons package not yet loaded or fonts need installation."))
 
   ;; WSL2 SSH agent fix (defined in jal-functions.el)
   (jal/setup-ssh-agent)

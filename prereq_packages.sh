@@ -455,7 +455,6 @@ install_sql_tools() {
     log "SQL tools setup complete!" "SUCCESS"
 }
 
-# TODO: Figure out DAP mechanism
 install_js_tools() {
     log "Installing JavaScript tools..."
 
@@ -472,15 +471,25 @@ install_js_tools() {
         "import-js"
         "typescript"
         "typescript-language-server"
+        "@vtsls/language-server"
         "prettier"
+        "eslint"
         "js-beautify"
         "flow-bin"
+        "vscode-langservers-extracted"
     )
 
     for pkg in "${js_packages[@]}"; do
         log "Installing $pkg via npm..."
         $NODE_CMD install -g "$pkg" || log "Error installing $pkg." "WARNING"
     done
+
+    # JS DAP setup (vscode-js-debug)
+    log "Setting up JavaScript DAP (vscode-js-debug)..."
+    if ! [ -d "$HOME/.emacs.d/.extension/vscode-js-debug" ]; then
+        log "JavaScript DAP will be automatically installed via dap-node-setup in Spacemacs."
+        log "You can also manually run 'M-x dap-node-setup' within Emacs."
+    fi
 
     log "JavaScript tools installed successfully." "SUCCESS"
 }
