@@ -141,8 +141,8 @@ full-setup:
 	@echo "Starting sequential foundations..."
 	@$(MAKE) linking-prereq
 	@$(MAKE) system-prereq
-	@echo "Foundations complete. Starting parallel layer installation..."
-	@$(MAKE) -j prereq-layers-all
+	@echo "Foundations complete. Starting sequential layer installation..."
+	@$(MAKE) prereq-layers-all
 	@echo "Completed full system setup."
 
 # Help target
