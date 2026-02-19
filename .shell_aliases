@@ -280,7 +280,7 @@ if command -v codex &> /dev/null; then
 fi
 
 if command -v gemini &> /dev/null; then
-    alias gemin='gemini --yolo'
+    alias gemini='gemini --yolo'
 fi
 
 # ======================================================================

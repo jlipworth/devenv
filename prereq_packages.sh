@@ -495,12 +495,7 @@ install_js_tools() {
 }
 
 install_html_css_support() {
-    log "Installing HTML and CSS language servers..."
-    html_css_packages=("vscode-css-languageserver-bin" "vscode-html-languageserver-bin")
-    for pkg in "${html_css_packages[@]}"; do
-        log "Installing $pkg via npm..."
-        $NODE_CMD install -g "$pkg" || log "Error installing $pkg." "WARNING"
-    done
+    log "HTML and CSS language servers are handled by vscode-langservers-extracted in the JS layer."
 }
 
 install_docker_support() {

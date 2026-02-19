@@ -239,7 +239,7 @@ add_to_shell_rc_block() {
         # Replace the existing block
         local temp_rc
         temp_rc=$(mktemp)
-        # sed logic to replace between markers
+        # awk logic to replace between markers
         awk -v b="$begin_marker" -v e="$end_marker" -v r="$block" '
             $0 == b {print; print r; skip=1; next}
             $0 == e {skip=0; print; next}
