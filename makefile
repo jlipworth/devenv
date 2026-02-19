@@ -136,8 +136,13 @@ update-deps:
 	@echo "Updating all dependencies from git..."
 	@./update_dependencies.sh
 
-# Group targets for convenience
-full-setup: linking-prereq system-prereq prereq-layers-all
+# Sequential setup of foundations, followed by parallel layers
+full-setup:
+	@echo "Starting sequential foundations..."
+	@$(MAKE) linking-prereq
+	@$(MAKE) system-prereq
+	@echo "Foundations complete. Starting parallel layer installation..."
+	@$(MAKE) -j prereq-layers-all
 	@echo "Completed full system setup."
 
 # Help target

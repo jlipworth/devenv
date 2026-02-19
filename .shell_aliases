@@ -279,6 +279,10 @@ if command -v codex &> /dev/null; then
     alias codey='codex --yolo'
 fi
 
+if command -v gemini &> /dev/null; then
+    alias gemin='gemini --yolo'
+fi
+
 # ======================================================================
 # User Customization Area
 # ======================================================================

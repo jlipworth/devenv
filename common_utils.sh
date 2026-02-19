@@ -215,6 +215,41 @@ add_to_shell_rc() {
     fi
 }
 
+# Add a block of text to shell RC file with markers (idempotent)
+# Usage: add_to_shell_rc_block "section-name" "block of text"
+add_to_shell_rc_block() {
+    local name="$1"
+    local block="$2"
+    local shell_rc
+    shell_rc="$(get_shell_rc)"
+    local begin_marker="# BEGIN $name (added by devenv)"
+    local end_marker="# END $name"
+
+    if ! grep -q "$begin_marker" "$shell_rc" 2> /dev/null; then
+        log "Adding section $name to $shell_rc..."
+        {
+            echo ""
+            echo "$begin_marker"
+            echo "$block"
+            echo "$end_marker"
+        } >> "$shell_rc"
+        log "Section $name added to $shell_rc." "SUCCESS"
+    else
+        log "Section $name already present in $shell_rc. Updating..."
+        # Replace the existing block
+        local temp_rc
+        temp_rc=$(mktemp)
+        # sed logic to replace between markers
+        awk -v b="$begin_marker" -v e="$end_marker" -v r="$block" '
+            $0 == b {print; print r; skip=1; next}
+            $0 == e {skip=0; print; next}
+            !skip {print}
+        ' "$shell_rc" > "$temp_rc"
+        mv "$temp_rc" "$shell_rc"
+        log "Section $name updated in $shell_rc." "SUCCESS"
+    fi
+}
+
 # General function to install multiple packages
 install_packages() {
     local updated=false

@@ -25,6 +25,12 @@ EMACS_DIR="emacs-${EMACS_VERSION}"
 CI="${CI:-false}"
 CI_INSTALL="${CI_INSTALL:-false}"
 
+DRY_RUN="false"
+if [[ "$1" == "--verify" || "$1" == "--check" || "$1" == "--dry-run" ]]; then
+    DRY_RUN="true"
+    log "Running in verification/dry-run mode. Will check dependencies and configure only." "INFO"
+fi
+
 if [[ "$CI" == "true" ]]; then
     log "Running in CI mode" "INFO"
 fi
@@ -251,6 +257,11 @@ log "Configure completed." "SUCCESS"
 # -----------------------------------------------------------------------------
 # 4) Build & Install
 # -----------------------------------------------------------------------------
+if [[ "$DRY_RUN" == "true" ]]; then
+    log "Verification mode completed successfully. Configure passed. Skipping compilation and installation." "SUCCESS"
+    exit 0
+fi
+
 log "Compiling Emacs (this may take 20-40 minutes)..."
 log "Started compilation at: $(date)"
 if [[ "$OS" == "Darwin" ]]; then
