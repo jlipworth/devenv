@@ -181,7 +181,7 @@ add_to_path() {
     local shell_rc
     shell_rc="$(get_shell_rc)"
 
-    if ! grep -q "$dir" "$shell_rc" 2> /dev/null; then
+    if ! grep -qF "$dir" "$shell_rc" 2> /dev/null; then
         log "Adding $dir to PATH in $shell_rc..."
         {
             echo ""

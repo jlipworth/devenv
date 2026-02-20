@@ -471,11 +471,8 @@ install_js_tools() {
         "import-js"
         "typescript"
         "typescript-language-server"
-        "@vtsls/language-server"
         "prettier"
         "eslint"
-        "js-beautify"
-        "flow-bin"
         "vscode-langservers-extracted"
     )
 
@@ -1007,11 +1004,17 @@ EOF
     elif ! tail -n 5 "$shell_rc" | grep -q 'source.*\.shell_aliases'; then
         log ".shell_aliases sourcing found but not at end of $shell_rc, relocating..."
         # Remove existing sourcing block and trailing blank lines (portable, no sed -i)
-        grep -v '# Load custom shell aliases\|# Source shell aliases' "$shell_rc" |
+        if grep -v '# Load custom shell aliases\|# Source shell aliases' "$shell_rc" |
             awk '/if \[ -f ~\/.shell_aliases \]/{skip=1} skip && /^fi$/{skip=0; next} !skip' |
             awk 'NF{found=1} found' |
             tac | awk 'NF{found=1} found' | tac \
-            > "${shell_rc}.tmp" && mv "${shell_rc}.tmp" "$shell_rc"
+            > "${shell_rc}.tmp"; then
+            mv "${shell_rc}.tmp" "$shell_rc"
+        else
+            rm -f "${shell_rc}.tmp"
+            log "Failed to relocate .shell_aliases sourcing in $shell_rc." "ERROR"
+            return 1
+        fi
         # Re-add at end
         echo "" >> "$shell_rc"
         echo "# Load custom shell aliases (MUST be last — ble.sh attaches here)" >> "$shell_rc"

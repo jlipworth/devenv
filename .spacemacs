@@ -71,6 +71,7 @@ This function should only modify configuration layer settings."
           lsp-enable-snippet t
           lsp-log-io nil
           lsp-auto-guess-root t
+          lsp-modeline-diagnostics-scope :file
           )
 
      claude-code
@@ -159,7 +160,15 @@ This function should only modify configuration layer settings."
      (javascript :variables
                  javascript-backend 'lsp
                  javascript-fmt-tool 'prettier
+                 javascript-fmt-on-save t
                  javascript-import-tool 'import-js
+                 )
+
+     (typescript :variables
+                 typescript-backend 'lsp
+                 typescript-fmt-tool 'prettier
+                 typescript-fmt-on-save t
+                 typescript-linter 'eslint
                  )
 
      (react :variables
@@ -773,16 +782,12 @@ before packages are loaded."
   (with-eval-after-load 'org
     (setq org-startup-indented t))
 
+  ;; Disable js2-mode's own warnings/errors — LSP already provides diagnostics
+  (setq js2-mode-show-strict-warnings nil)
+  (setq js2-mode-show-parse-errors nil)
+
   ;; Start with whole-frame zoomed in by 2 steps (see jal-functions.el).
   (jal/apply-startup-frame-zoom)
-
-  ;; Fix for lsp-modeline-diagnostics-scope error
-  (with-eval-after-load 'lsp-mode
-    (setq lsp-modeline-diagnostics-scope :file))
-
-  ;; Ensure icons are ready
-  (when (and window-system (not (fboundp 'nerd-icons-install-fonts)))
-    (message "Nerd Icons package not yet loaded or fonts need installation."))
 
   ;; WSL2 SSH agent fix (defined in jal-functions.el)
   (jal/setup-ssh-agent)
