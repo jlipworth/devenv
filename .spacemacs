@@ -71,7 +71,7 @@ This function should only modify configuration layer settings."
           lsp-enable-snippet t
           lsp-log-io nil
           lsp-auto-guess-root t
-          lsp-modeline-diagnostics-scope :file
+          lsp-modeline-diagnostics-scope ':file
           )
 
      claude-code
