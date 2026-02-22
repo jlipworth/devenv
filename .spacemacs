@@ -389,7 +389,7 @@ It should only modify the values of Spacemacs settings."
    ;; a non-negative integer (pixel size), or a floating-point (point size).
    ;; Point size is recommended, because it's device independent. (default 10.0)
    dotspacemacs-default-font '("MesloLGMDZ Nerd Font Mono"
-                               :size 10.0
+                               :size 14.0
                                :weight normal
                                :width normal
                                :powerline-scale 1.1)
