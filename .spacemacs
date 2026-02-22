@@ -137,6 +137,7 @@ This function should only modify configuration layer settings."
      (c-c++ :variables
             ;; c-c++-default-mode-for-headers 'c++-mode ;; not needed anymore after >26.1
             c-c++-backend 'lsp-clangd
+            c-c++-dap-adapters '(dap-lldb)
             ;; c-c++-enable-organize-includes-on-save t
             ;; c-c++-enable-clang-format-on-save t
             )
@@ -763,6 +764,11 @@ before packages are loaded."
   ;; C++20 module file extensions
   (add-to-list 'auto-mode-alist '("\\.cppm\\'" . c++-mode))
   (add-to-list 'auto-mode-alist '("\\.ixx\\'" . c++-mode))
+
+  ;; Enable clangd's experimental C++20 modules support.
+  ;; Keep existing default args and append this one.
+  (with-eval-after-load 'lsp-clangd
+    (add-to-list 'lsp-clients-clangd-args "--experimental-modules-support"))
 
   ;; keybindings global
 
