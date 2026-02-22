@@ -77,7 +77,7 @@ Only activates in non-graphical frames (e.g., Emacs -nw in tmux)."
 
 ;;;; Startup UI tweaks
 
-(defcustom jal-startup-frame-zoom-steps 2
+(defcustom jal-startup-frame-zoom-steps 3
   "Number of whole-frame zoom-in steps to apply on startup.
 
 This uses Spacemacs' `SPC z f` (zoom-frm) feature, not buffer-local
