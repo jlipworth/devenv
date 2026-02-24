@@ -7,3 +7,6 @@ model_reasoning_effort = "high"
 [features]
 multi_agent = true
 apps = true
+
+[projects."/Users/jlipworth"]
+trust_level = "trusted"

@@ -19,43 +19,56 @@ make prereq-layers-all # Install all language servers
 ```
 GNU_files/
 ├── makefile                 # Main entry point
+├── bootstrap.sh             # Initial system bootstrap
 ├── build_emacs30.sh         # Emacs compilation
 ├── prereq_packages.sh       # Language server installation
 ├── linking_script.sh        # Symlinks and fonts
 ├── common_utils.sh          # Shared utilities
+├── update_dependencies.sh   # Dependency update helper
 ├── versions.conf            # Pinned versions (Emacs, GCC)
 ├── requirements.txt         # Python packages (Renovate-tracked)
 ├── renovate.json            # Dependency update config
 ├── .spacemacs               # Spacemacs configuration
+├── jal-functions.el         # Custom Emacs Lisp helpers
 ├── .vimrc                   # Vim configuration
 ├── .shell_aliases           # CLI tool aliases
+├── .blerc                   # Bash Line Editor config
+├── .tmux.conf.local         # tmux local overrides (oh-my-tmux)
+├── alacritty.toml           # Alacritty terminal config
+├── starship.toml            # Starship prompt config
+├── tabby-config.yaml        # Tabby terminal config
+├── .pre-commit-config.yaml  # Pre-commit hooks
+├── .shellcheckrc            # ShellCheck settings
 ├── brewfiles/               # Per-layer Homebrew packages
+│   ├── Brewfile.c_cpp
 │   ├── Brewfile.cli_tools
+│   ├── Brewfile.docker
 │   ├── Brewfile.emacs-30
-│   └── ...
+│   ├── Brewfile.git
+│   ├── Brewfile.javascript
+│   ├── Brewfile.kubernetes
+│   ├── Brewfile.latex
+│   ├── Brewfile.ocaml
+│   ├── Brewfile.sql
+│   └── Brewfile.terraform
+├── ghostty/                 # Ghostty terminal config
 ├── good_fonts/              # Nerd Fonts (Meslo, DejaVu, SourceCodePro)
 ├── snippets/                # Yasnippets templates
 ├── ci/                      # CI Docker image
+├── .woodpecker/             # Woodpecker CI pipelines
 ├── docs/                    # Documentation
-│   ├── ALIASES.md           # Shell aliases reference
-│   ├── BACKLOG.md           # Personal TODO tracking
-│   ├── DEPENDENCIES.md      # Dependency management guide
-│   ├── FUTURE_DEPLOYMENT_WORK.md  # Nix/Docker/Ansible plans
-│   ├── MACOS_CI_TODO.md     # macOS CI setup (future work)
-│   └── SSH_SETUP.md         # SSH key setup quick reference
+│   ├── ALIASES.md
+│   ├── BACKLOG.md
+│   ├── BASH_TO_ZSH_MIGRATION_RUNBOOK.md
+│   ├── DEPENDENCIES.md
+│   ├── FORGE_SETUP.md
+│   ├── FUTURE_DEPLOYMENT_WORK.md
+│   ├── MACOS_CI_TODO.md
+│   ├── SPACEMACS_PRODUCTIVITY.md
+│   ├── SSH_SETUP.md
+│   └── UV_MIGRATION_RUNBOOK.md
 └── .claude/commands/        # Claude Code custom commands
 ```
-
-## Documentation
-
-| File | Purpose |
-|------|---------|
-| [docs/ALIASES.md](docs/ALIASES.md) | Shell aliases for modern CLI tools |
-| [docs/BACKLOG.md](docs/BACKLOG.md) | Personal TODO tracking |
-| [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md) | Dependency management and Renovate |
-| [docs/FUTURE_DEPLOYMENT_WORK.md](docs/FUTURE_DEPLOYMENT_WORK.md) | Future Nix/Docker/Ansible migration |
-| [docs/MACOS_CI_TODO.md](docs/MACOS_CI_TODO.md) | macOS CI setup guide |
-| [docs/SSH_SETUP.md](docs/SSH_SETUP.md) | SSH key setup quick reference |
 
 ## Key Patterns
 
@@ -63,9 +76,3 @@ GNU_files/
 - **Package managers**: `$INSTALL_CMD`, `$PIP_CMD`, `$NODE_CMD`
 - **Function naming**: `install_*_prereqs()` for each layer
 - **Version pinning**: `versions.conf` sourced by scripts
-
-## Testing
-
-```bash
-emacs --version              # Should show 30.1
-```
