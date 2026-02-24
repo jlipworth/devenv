@@ -40,6 +40,7 @@ This function should only modify configuration layer settings."
      ibuffer
 
      (ranger :variables
+             ranger-override-dired 'dirvish
              ranger-show-preview t
              ranger-show-hidden t
              )
