@@ -7,6 +7,4 @@ model_reasoning_effort = "high"
 [features]
 multi_agent = true
 apps = true
-
-[projects."/Users/jlipworth"]
-trust_level = "trusted"
+responses_websockets_v2 = true
