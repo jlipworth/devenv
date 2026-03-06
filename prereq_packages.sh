@@ -1059,7 +1059,7 @@ install_ai_tools() {
 
     # Claude Code - native installer (recommended over npm)
     log "Installing Claude Code via native installer..."
-    curl -fsSL https://claude.ai/install.sh | sh || log "Error installing Claude Code." "WARNING"
+    curl -fsSL https://claude.ai/install.sh | bash || log "Error installing Claude Code." "WARNING"
 
     # Other AI tools via npm
     ai_packages=("@openai/codex" "@google/gemini-cli" "opencode-ai")

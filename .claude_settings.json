@@ -16,6 +16,6 @@
   "effortLevel": "high",
   "statusLine": {
     "type": "command",
-    "command": "bash /Users/jlipworth/.claude/statusline-command.sh"
+    "command": "bash $HOME/.claude/statusline-command.sh"
   }
 }
