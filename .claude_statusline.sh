@@ -27,7 +27,8 @@ dimmed='\033[38;5;242m' # ~#5C6773
 
 # ── Directory: shorten home prefix ───────────────────────────────────────────
 home="$HOME"
-display_dir="${cwd/#$home/\~}"
+tilde='~'
+display_dir="${cwd/#$home/$tilde}"
 
 # ── Git info (skip lock to avoid blocking) ───────────────────────────────────
 git_part=""
