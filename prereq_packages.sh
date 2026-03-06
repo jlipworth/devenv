@@ -1083,6 +1083,12 @@ install_ai_tools() {
     else
         log "Claude settings not found at $GNU_DIR/.claude_settings.json" "WARNING"
     fi
+    if [[ -f "$GNU_DIR/.claude_statusline.sh" ]]; then
+        ln -sf "$GNU_DIR/.claude_statusline.sh" "$HOME/.claude/statusline-command.sh"
+        log "Symlinked Claude Code statusline script."
+    else
+        log "Claude statusline script not found at $GNU_DIR/.claude_statusline.sh" "WARNING"
+    fi
 
     # Create symlink for Codex config
     log "Setting up Codex config..."

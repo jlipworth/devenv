@@ -1,10 +1,19 @@
 # Codex global defaults (symlinked to ~/.codex/config.toml)
 model_instructions_file = "~/.codex/instructions.md"
 personality = "pragmatic"
-model = "gpt-5.3-codex"
+model = "gpt-5.4"
 model_reasoning_effort = "high"
 
 [features]
 multi_agent = true
 apps = true
 responses_websockets_v2 = true
+
+[projects."/Users/jlipworth/proxmox-project"]
+trust_level = "trusted"
+
+[projects."/Users/jlipworth"]
+trust_level = "trusted"
+
+[tui]
+status_line = ["model-with-reasoning", "context-remaining", "current-dir", "git-branch", "context-used"]
