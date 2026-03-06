@@ -101,5 +101,7 @@ if [ -n "$effort" ]; then
     effort_part=" ${dimmed}/${reset} ${purple}${effort}${reset}"
 fi
 
-# ── Assemble ──────────────────────────────────────────────────────────────────
-printf '%b\n' "${blue}${display_dir}${reset}${git_part} ${dimmed}[${reset}${cyan}${model}${reset}${effort_part}${ctx_part}${tokens_part}${cost_part}${agent_part}${worktree_part}${dimmed}]${reset}"
+# ── Assemble (two lines: path+git, then model+stats) ─────────────────────────
+line1="${blue}${display_dir}${reset}${git_part}"
+line2="${dimmed}[${reset}${cyan}${model}${reset}${effort_part}${ctx_part}${tokens_part}${cost_part}${agent_part}${worktree_part}${dimmed}]${reset}"
+printf '%b\n%b\n' "$line1" "$line2"
