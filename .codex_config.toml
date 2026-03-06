@@ -16,4 +16,4 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [tui]
-status_line = ["model-with-reasoning", "context-remaining", "current-dir", "git-branch", "context-used"]
+status_line = ["current-dir", "git-branch", "model-with-reasoning", "context-used", "total-input-tokens", "total-output-tokens"]
