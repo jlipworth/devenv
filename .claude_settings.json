@@ -12,5 +12,10 @@
   "skipDangerousModePermissionPrompt": true,
   "preferences": {
     "inputMode": "vim"
+  },
+  "effortLevel": "high",
+  "statusLine": {
+    "type": "command",
+    "command": "bash /Users/jlipworth/.claude/statusline-command.sh"
   }
 }
