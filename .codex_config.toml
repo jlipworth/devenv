@@ -9,11 +9,5 @@ multi_agent = true
 apps = true
 responses_websockets_v2 = true
 
-[projects."/Users/jlipworth/proxmox-project"]
-trust_level = "trusted"
-
-[projects."/Users/jlipworth"]
-trust_level = "trusted"
-
 [tui]
 status_line = ["current-dir", "git-branch", "model-with-reasoning", "context-used", "total-input-tokens", "total-output-tokens"]
