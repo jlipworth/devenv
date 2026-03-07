@@ -286,19 +286,81 @@ install_vimscript_lsp() {
 install_latex_tools() {
     log "Installing LaTeX tools..."
     if [[ "$OS" == "Darwin" ]]; then
-        # Use Brewfile for LaTeX tools
+        # Use Brewfile for texlab, poppler, aspell
         if is_installed "brew"; then
             log "Installing LaTeX tools via Homebrew..."
             brew bundle --file="$GNU_DIR/brewfiles/Brewfile.latex" || log "Error with Brewfile.latex" "WARNING"
         fi
 
-        # Add common LaTeX packages similar to texlive-latex-extra
-        log "Installing common LaTeX packages via tlmgr..."
-        eval "$(/usr/libexec/path_helper)" # Ensure tlmgr is in PATH
-        sudo tlmgr update --self
-        # Install essential packages: latexextra for functionality, basic font packages only
-        # Use amsfonts and ec (European Computer Modern) instead of full collection-fontsrecommended
-        sudo tlmgr install collection-latexextra amsfonts ec cm-super
+        # User-local TeX Live installation (no sudo required)
+        local TEXLIVE_HOME="$HOME/texlive"
+        local CURRENT_YEAR
+        CURRENT_YEAR="$(date +%Y)"
+        local TEXDIR="$TEXLIVE_HOME/$CURRENT_YEAR"
+        local TEXLIVE_BIN="$TEXDIR/bin/universal-darwin"
+        local TLMGR="$TEXLIVE_BIN/tlmgr"
+
+        # Remove old TeX Live years if present
+        if [[ -d "$TEXLIVE_HOME" ]]; then
+            for old_dir in "$TEXLIVE_HOME"/*/; do
+                local dir_name
+                dir_name="$(basename "$old_dir")"
+                if [[ "$dir_name" =~ ^[0-9]+$ && "$dir_name" != "$CURRENT_YEAR" ]]; then
+                    log "Removing old TeX Live $dir_name..."
+                    rm -rf "$old_dir"
+                fi
+            done
+        fi
+
+        # Install TeX Live if not present for current year
+        if [[ ! -x "$TLMGR" ]]; then
+            log "Installing TeX Live $CURRENT_YEAR to $TEXDIR..."
+            local INSTALL_TMP
+            INSTALL_TMP="$(mktemp -d)"
+
+            curl -L "https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz" \
+                -o "$INSTALL_TMP/install-tl.tar.gz" || {
+                log "Failed to download TeX Live installer." "ERROR"
+                rm -rf "$INSTALL_TMP"
+                return 1
+            }
+            tar -xzf "$INSTALL_TMP/install-tl.tar.gz" -C "$INSTALL_TMP" --strip-components=1
+
+            # Create install profile for non-interactive install
+            cat > "$INSTALL_TMP/texlive.profile" << TEXPROFILE
+selected_scheme scheme-basic
+TEXDIR $TEXDIR
+TEXMFLOCAL $TEXDIR/texmf-local
+TEXMFSYSCONFIG $TEXDIR/texmf-config
+TEXMFSYSVAR $TEXDIR/texmf-var
+TEXMFHOME ~/texmf
+TEXMFCONFIG ~/.texlive${CURRENT_YEAR}/texmf-config
+TEXMFVAR ~/.texlive${CURRENT_YEAR}/texmf-var
+binary_universal-darwin 1
+instopt_adjustpath 0
+instopt_adjustrepo 1
+instopt_letter 0
+tlpdbopt_autobackup 1
+tlpdbopt_install_docfiles 0
+tlpdbopt_install_srcfiles 0
+TEXPROFILE
+
+            "$INSTALL_TMP"/install-tl -profile "$INSTALL_TMP/texlive.profile" || {
+                log "TeX Live installation failed." "ERROR"
+                rm -rf "$INSTALL_TMP"
+                return 1
+            }
+            rm -rf "$INSTALL_TMP"
+            log "TeX Live $CURRENT_YEAR installed successfully." "SUCCESS"
+        fi
+
+        export PATH="$TEXLIVE_BIN:$PATH"
+        add_to_path "$TEXLIVE_BIN" "TeX Live $CURRENT_YEAR"
+
+        # Update tlmgr and install packages to match texlive-latex-extra on Linux
+        "$TLMGR" update --self || log "tlmgr update --self failed." "WARNING"
+        log "Installing LaTeX packages via tlmgr..."
+        "$TLMGR" install collection-latexextra amsfonts ec cm-super
     elif [[ "$DISTRO" == "arch" ]]; then
         # Arch: texlab is in official repos
         log "Installing LaTeX tools for Arch..."
