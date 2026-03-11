@@ -1,0 +1,211 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SOURCE_PATH="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE_PATH" ]]; do
+  SOURCE_DIR="$(cd -- "$(dirname -- "$SOURCE_PATH")" && pwd)"
+  SOURCE_PATH="$(readlink "$SOURCE_PATH")"
+  [[ "$SOURCE_PATH" != /* ]] && SOURCE_PATH="$SOURCE_DIR/$SOURCE_PATH"
+done
+SCRIPT_DIR="$(cd -- "$(dirname -- "$SOURCE_PATH")" && pwd)"
+BACKEND_DIR="$SCRIPT_DIR/backends"
+
+debug_log() {
+  if [[ "${AI_NOTIFY_DEBUG:-0}" == "1" ]]; then
+    printf '[ai-notify] %s\n' "$*" >&2
+  fi
+}
+
+lower() {
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+is_macos() {
+  [[ "$(uname -s)" == "Darwin" ]]
+}
+
+is_wsl() {
+  [[ -n "${WSL_DISTRO_NAME:-}" || -n "${WSL_INTEROP:-}" ]] && return 0
+  [[ -r /proc/version ]] && grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null
+}
+
+frontmost_app() {
+  if ! is_macos || ! command -v osascript >/dev/null 2>&1; then
+    return 1
+  fi
+
+  osascript 2>/dev/null <<'APPLESCRIPT' || true
+tell application "System Events"
+  name of first application process whose frontmost is true
+end tell
+APPLESCRIPT
+}
+
+detect_terminal_from_process_tree() {
+  local pid ppid comm lowered
+  pid=$$
+
+  while [[ -n "$pid" && "$pid" -gt 1 ]]; do
+    comm="$(ps -o comm= -p "$pid" 2>/dev/null | awk '{print $1}')"
+    lowered="$(lower "${comm##*/}")"
+    case "$lowered" in
+      ghostty|alacritty|alacritty.exe)
+        printf '%s\n' "${lowered%%.exe}"
+        return 0
+        ;;
+    esac
+    ppid="$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d '[:space:]')"
+    [[ -z "$ppid" || "$ppid" == "$pid" ]] && break
+    pid="$ppid"
+  done
+
+  return 1
+}
+
+detect_terminal() {
+  if [[ -n "${AI_NOTIFY_TERMINAL:-}" ]]; then
+    lower "$AI_NOTIFY_TERMINAL"
+    return 0
+  fi
+
+  if [[ -n "${GHOSTTY_RESOURCES_DIR:-}" || -n "${GHOSTTY_BIN_DIR:-}" ]]; then
+    printf 'ghostty\n'
+    return 0
+  fi
+
+  if [[ -n "${ALACRITTY_SOCKET:-}" ]]; then
+    printf 'alacritty\n'
+    return 0
+  fi
+
+  case "$(lower "${TERM_PROGRAM:-}")" in
+    ghostty|alacritty)
+      lower "${TERM_PROGRAM:-}"
+      return 0
+      ;;
+  esac
+
+  detect_terminal_from_process_tree || true
+}
+
+choose_backend() {
+  local terminal="$1"
+  local override="${AI_NOTIFY_BACKEND:-}"
+
+  if [[ -n "$override" ]]; then
+    printf '%s\n' "$override"
+    return 0
+  fi
+
+  if is_wsl; then
+    printf 'wsl2-toast\n'
+    return 0
+  fi
+
+  # Ghostty OSC 9 can work over SSH/tmux passthrough as long as the terminal
+  # hint is forwarded from the local machine.
+  if [[ "$terminal" == "ghostty" ]]; then
+    printf 'ghostty-osc9\n'
+    return 0
+  fi
+
+  if is_macos; then
+    case "$terminal" in
+      alacritty) printf 'macos-osascript\n' ;;
+      *) printf 'macos-osascript\n' ;;
+    esac
+    return 0
+  fi
+
+  printf 'noop\n'
+}
+
+terminal_name="$(detect_terminal || true)"
+backend_name="$(choose_backend "$terminal_name")"
+current_frontmost="$(lower "$(frontmost_app || true)")"
+
+debug_log "terminal=${terminal_name:-unknown}"
+debug_log "frontmost_app=${current_frontmost:-unknown}"
+debug_log "backend=$backend_name"
+
+case "$terminal_name" in
+  ghostty|alacritty)
+    if [[ "$current_frontmost" == "$terminal_name" ]]; then
+      debug_log "suppressing notification because terminal is frontmost"
+      exit 0
+    fi
+    ;;
+esac
+
+payload="${1-}"
+if [[ -z "$payload" ]] && [ ! -t 0 ]; then
+  payload="$(cat)"
+fi
+
+export NOTIFY_PAYLOAD="$payload"
+export AI_NOTIFY_DEBUG="${AI_NOTIFY_DEBUG:-0}"
+export AI_NOTIFY_TERMINAL_NAME="$terminal_name"
+
+parsed="$(
+python3 - <<'PY'
+import json
+import os
+
+payload = os.environ.get("NOTIFY_PAYLOAD", "").strip()
+
+title = "Task finished"
+body = "A background task completed."
+
+def compact(text: str, limit: int = 160) -> str:
+    text = " ".join(text.split())
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+if payload:
+    if payload.startswith("{"):
+        try:
+            data = json.loads(payload)
+        except Exception:
+            title = "Task finished"
+            body = compact(payload)
+        else:
+            kind = data.get("type") or data.get("event") or "notification"
+            if kind == "agent-turn-complete":
+                title = "Codex"
+                body = "finished"
+            else:
+                title = f"Codex: {kind}"
+                last = data.get("last-assistant-message") or data.get("last_assistant_message")
+                inputs = data.get("input-messages") or data.get("input_messages") or []
+                if isinstance(last, str) and last.strip():
+                    body = compact(last)
+                elif isinstance(inputs, list) and inputs:
+                    body = compact(str(inputs[-1]))
+                else:
+                    body = "finished"
+    else:
+        title = "Claude Code"
+        body = "finished"
+
+print(title)
+print(body)
+PY
+)"
+
+notify_title="${parsed%%$'\n'*}"
+if [[ "$parsed" == *$'\n'* ]]; then
+  notify_body="${parsed#*$'\n'}"
+else
+  notify_body=""
+fi
+
+export AI_NOTIFY_TITLE="$notify_title"
+export AI_NOTIFY_BODY="$notify_body"
+
+backend_path="$BACKEND_DIR/$backend_name.sh"
+if [[ ! -x "$backend_path" ]]; then
+  debug_log "backend missing or not executable: $backend_path"
+  exit 0
+fi
+
+"$backend_path"

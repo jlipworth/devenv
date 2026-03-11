@@ -17,5 +17,18 @@
   "statusLine": {
     "type": "command",
     "command": "bash $HOME/.claude/statusline-command.sh"
+  },
+  "preferredNotifChannel": "notifications_disabled",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ai-notify-if-unfocused \"Claude Code task finished\""
+          }
+        ]
+      }
+    ]
   }
 }
