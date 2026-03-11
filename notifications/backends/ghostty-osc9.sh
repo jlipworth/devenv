@@ -41,16 +41,12 @@ if [[ -n "${TMUX:-}" ]]; then
     debug_log "ghostty-osc9 using tmux passthrough"
     printf '\033Ptmux;\033\033]9;%s\a\033\\' "$message" > /dev/tty 2> /dev/null || true
 elif [[ -n "${SSH_CONNECTION:-}" ]]; then
-    remote_term="$(lower "${TERM:-}")"
-    case "$remote_term" in
-        screen* | tmux*)
-            debug_log "ghostty-osc9 using ssh tmux passthrough"
-            printf '\033Ptmux;\033\033]9;%s\a\033\\' "$message" > /dev/tty 2> /dev/null || true
-            ;;
-        *)
-            printf '\033]9;%s\033\\' "$message" > /dev/tty 2> /dev/null || true
-            ;;
-    esac
+    # Over SSH we may be nested under a local tmux session even if the remote
+    # host cannot see a TMUX env var or a screen/tmux TERM. Prefer tmux
+    # passthrough for the remote path so the outer local tmux does not swallow
+    # the OSC 9 sequence before it reaches Ghostty.
+    debug_log "ghostty-osc9 using ssh tmux passthrough"
+    printf '\033Ptmux;\033\033]9;%s\a\033\\' "$message" > /dev/tty 2> /dev/null || true
 else
     printf '\033]9;%s\033\\' "$message" > /dev/tty 2> /dev/null || true
 fi
