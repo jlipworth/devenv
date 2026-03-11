@@ -989,6 +989,7 @@ install_cli_tools() {
             temp_ssh=$(mktemp)
             echo "Host *" > "$temp_ssh"
             echo "    SetEnv TERM=xterm-256color" >> "$temp_ssh"
+            echo "    SendEnv AI_NOTIFY_TERMINAL" >> "$temp_ssh"
             echo "" >> "$temp_ssh"
             cat "$HOME/.ssh/config" >> "$temp_ssh"
             mv "$temp_ssh" "$HOME/.ssh/config"
@@ -996,12 +997,43 @@ install_cli_tools() {
             log "SSH config updated for Ghostty compatibility."
         else
             log "SSH config already has TERM override."
+            if ! grep -q 'SendEnv AI_NOTIFY_TERMINAL' "$HOME/.ssh/config"; then
+                log "Adding AI_NOTIFY_TERMINAL SendEnv to SSH config..."
+                temp_ssh=$(mktemp)
+                awk '
+                    BEGIN { inserted = 0; in_host_star = 0 }
+                    /^Host \\*$/ {
+                        in_host_star = 1
+                        print
+                        next
+                    }
+                    in_host_star && /^Host / {
+                        if (!inserted) {
+                            print "    SendEnv AI_NOTIFY_TERMINAL"
+                            inserted = 1
+                        }
+                        in_host_star = 0
+                    }
+                    {
+                        print
+                    }
+                    END {
+                        if (in_host_star && !inserted) {
+                            print "    SendEnv AI_NOTIFY_TERMINAL"
+                        }
+                    }
+                ' "$HOME/.ssh/config" > "$temp_ssh"
+                mv "$temp_ssh" "$HOME/.ssh/config"
+                chmod 600 "$HOME/.ssh/config"
+                log "SSH config updated with AI_NOTIFY_TERMINAL SendEnv."
+            fi
         fi
     else
         log "Creating SSH config with Ghostty TERM override..."
         mkdir -p "$HOME/.ssh"
         echo "Host *" > "$HOME/.ssh/config"
         echo "    SetEnv TERM=xterm-256color" >> "$HOME/.ssh/config"
+        echo "    SendEnv AI_NOTIFY_TERMINAL" >> "$HOME/.ssh/config"
         chmod 600 "$HOME/.ssh/config"
         log "SSH config created with Ghostty compatibility."
     fi
@@ -1166,6 +1198,20 @@ install_ai_tools() {
         log "Symlinked Codex instructions (tool preferences)."
     else
         log "Codex instructions not found at $GNU_DIR/.codex_instructions.md" "WARNING"
+    fi
+
+    # Install AI notification helper into a stable PATH location
+    log "Setting up AI notification helper..."
+    mkdir -p "$HOME/.local/bin"
+    add_to_path "$HOME/.local/bin" "Local user binaries"
+    if [[ -f "$GNU_DIR/notifications/ai-notify-if-unfocused" ]]; then
+        ln -sf "$GNU_DIR/notifications/ai-notify-if-unfocused" "$HOME/.local/bin/ai-notify-if-unfocused"
+        for helper in "$GNU_DIR"/notifications/ai-notify-if-unfocused "$GNU_DIR"/notifications/backends/*.sh; do
+            [[ -f "$helper" ]] && chmod +x "$helper"
+        done
+        log "Symlinked AI notification helper to ~/.local/bin."
+    else
+        log "AI notification helper not found at $GNU_DIR/notifications/ai-notify-if-unfocused" "WARNING"
     fi
 
     # Create symlink for OpenCode config

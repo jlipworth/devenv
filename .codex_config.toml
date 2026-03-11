@@ -3,6 +3,8 @@ model_instructions_file = "~/.codex/instructions.md"
 personality = "pragmatic"
 model = "gpt-5.4"
 model_reasoning_effort = "high"
+# Stable repo-managed notification shim installed by `make ai-tools`.
+notify = ["ai-notify-if-unfocused"]
 
 [features]
 multi_agent = true
@@ -11,3 +13,6 @@ responses_websockets_v2 = true
 
 [tui]
 status_line = ["current-dir", "git-branch", "model-with-reasoning", "context-used", "total-input-tokens", "total-output-tokens"]
+# Native Codex TUI notifications are disabled because terminal-specific routing
+# is handled by the repo-managed `ai-notify-if-unfocused` dispatcher above.
+notifications = false

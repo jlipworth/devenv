@@ -50,6 +50,48 @@ if grep -q WSL /proc/version 2>/dev/null; then
 fi
 
 # ======================================================================
+# AI notification terminal hint
+# ======================================================================
+# Best-effort local terminal detection used by remote SSH sessions when
+# forwarding AI_NOTIFY_TERMINAL via SSH SendEnv.
+detect_ai_notify_terminal() {
+    if [[ -n "${GHOSTTY_RESOURCES_DIR:-}" || -n "${GHOSTTY_BIN_DIR:-}" ]]; then
+        printf 'ghostty\n'
+        return 0
+    fi
+
+    if [[ -n "${ALACRITTY_SOCKET:-}" ]]; then
+        printf 'alacritty\n'
+        return 0
+    fi
+
+    local pid comm lowered ppid
+    pid="${PPID:-}"
+
+    while [[ -n "$pid" && "$pid" -gt 1 ]]; do
+        comm="$(ps -o comm= -p "$pid" 2> /dev/null | awk '{print $1}')"
+        lowered="$(printf '%s' "${comm##*/}" | tr '[:upper:]' '[:lower:]')"
+
+        case "$lowered" in
+            ghostty|alacritty|alacritty.exe)
+                printf '%s\n' "${lowered%%.exe}"
+                return 0
+                ;;
+        esac
+
+        ppid="$(ps -o ppid= -p "$pid" 2> /dev/null | tr -d '[:space:]')"
+        [[ -z "$ppid" || "$ppid" == "$pid" ]] && break
+        pid="$ppid"
+    done
+
+    return 1
+}
+
+if [[ -z "${AI_NOTIFY_TERMINAL:-}" ]]; then
+    export AI_NOTIFY_TERMINAL="$(detect_ai_notify_terminal 2> /dev/null || true)"
+fi
+
+# ======================================================================
 # EZA - Modern ls replacement
 # ======================================================================
 if command -v eza &> /dev/null; then
