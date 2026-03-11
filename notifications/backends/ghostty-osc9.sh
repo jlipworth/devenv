@@ -8,7 +8,10 @@ debug_log() {
     fi
 }
 
-if [[ -z "${GHOSTTY_RESOURCES_DIR:-}" && -z "${GHOSTTY_BIN_DIR:-}" ]]; then
+ghostty_hint="${AI_NOTIFY_TERMINAL:-}"
+ghostty_hint="$(printf '%s' "$ghostty_hint" | tr '[:upper:]' '[:lower:]')"
+
+if [[ -z "${GHOSTTY_RESOURCES_DIR:-}" && -z "${GHOSTTY_BIN_DIR:-}" && "$ghostty_hint" != "ghostty" ]]; then
     debug_log "ghostty backend skipped: ghostty environment not detected"
     exit 0
 fi
