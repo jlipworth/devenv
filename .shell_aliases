@@ -91,6 +91,12 @@ if [[ -z "${AI_NOTIFY_TERMINAL:-}" ]]; then
     export AI_NOTIFY_TERMINAL="$(detect_ai_notify_terminal 2> /dev/null || true)"
 fi
 
+if [[ -n "${TMUX:-}" ]]; then
+    export AI_NOTIFY_LOCAL_TMUX=1
+else
+    unset AI_NOTIFY_LOCAL_TMUX
+fi
+
 # ======================================================================
 # EZA - Modern ls replacement
 # ======================================================================

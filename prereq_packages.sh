@@ -989,7 +989,7 @@ install_cli_tools() {
             temp_ssh=$(mktemp)
             echo "Host *" > "$temp_ssh"
             echo "    SetEnv TERM=xterm-256color" >> "$temp_ssh"
-            echo "    SendEnv AI_NOTIFY_TERMINAL" >> "$temp_ssh"
+            echo "    SendEnv AI_NOTIFY_TERMINAL AI_NOTIFY_LOCAL_TMUX" >> "$temp_ssh"
             echo "" >> "$temp_ssh"
             cat "$HOME/.ssh/config" >> "$temp_ssh"
             mv "$temp_ssh" "$HOME/.ssh/config"
@@ -997,7 +997,7 @@ install_cli_tools() {
             log "SSH config updated for Ghostty compatibility."
         else
             log "SSH config already has TERM override."
-            if ! grep -q 'SendEnv AI_NOTIFY_TERMINAL' "$HOME/.ssh/config"; then
+            if ! grep -q 'SendEnv AI_NOTIFY_TERMINAL AI_NOTIFY_LOCAL_TMUX' "$HOME/.ssh/config"; then
                 log "Adding AI_NOTIFY_TERMINAL SendEnv to SSH config..."
                 temp_ssh=$(mktemp)
                 awk '
@@ -1009,7 +1009,7 @@ install_cli_tools() {
                     }
                     in_host_star && /^Host / {
                         if (!inserted) {
-                            print "    SendEnv AI_NOTIFY_TERMINAL"
+                            print "    SendEnv AI_NOTIFY_TERMINAL AI_NOTIFY_LOCAL_TMUX"
                             inserted = 1
                         }
                         in_host_star = 0
@@ -1019,7 +1019,7 @@ install_cli_tools() {
                     }
                     END {
                         if (in_host_star && !inserted) {
-                            print "    SendEnv AI_NOTIFY_TERMINAL"
+                            print "    SendEnv AI_NOTIFY_TERMINAL AI_NOTIFY_LOCAL_TMUX"
                         }
                     }
                 ' "$HOME/.ssh/config" > "$temp_ssh"
@@ -1033,7 +1033,7 @@ install_cli_tools() {
         mkdir -p "$HOME/.ssh"
         echo "Host *" > "$HOME/.ssh/config"
         echo "    SetEnv TERM=xterm-256color" >> "$HOME/.ssh/config"
-        echo "    SendEnv AI_NOTIFY_TERMINAL" >> "$HOME/.ssh/config"
+        echo "    SendEnv AI_NOTIFY_TERMINAL AI_NOTIFY_LOCAL_TMUX" >> "$HOME/.ssh/config"
         chmod 600 "$HOME/.ssh/config"
         log "SSH config created with Ghostty compatibility."
     fi
