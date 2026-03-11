@@ -8,6 +8,10 @@ debug_log() {
     fi
 }
 
+lower() {
+    printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
 ghostty_hint="${AI_NOTIFY_TERMINAL:-}"
 ghostty_hint="$(printf '%s' "$ghostty_hint" | tr '[:upper:]' '[:lower:]')"
 
@@ -36,6 +40,17 @@ if [[ -n "${TMUX:-}" ]]; then
     # Use BEL for the inner OSC terminator to keep the wrapped form simple.
     debug_log "ghostty-osc9 using tmux passthrough"
     printf '\033Ptmux;\033\033]9;%s\a\033\\' "$message" > /dev/tty 2> /dev/null || true
+elif [[ -n "${SSH_CONNECTION:-}" ]]; then
+    remote_term="$(lower "${TERM:-}")"
+    case "$remote_term" in
+        screen* | tmux*)
+            debug_log "ghostty-osc9 using ssh tmux passthrough"
+            printf '\033Ptmux;\033\033]9;%s\a\033\\' "$message" > /dev/tty 2> /dev/null || true
+            ;;
+        *)
+            printf '\033]9;%s\033\\' "$message" > /dev/tty 2> /dev/null || true
+            ;;
+    esac
 else
     printf '\033]9;%s\033\\' "$message" > /dev/tty 2> /dev/null || true
 fi
