@@ -397,7 +397,6 @@ set -s extended-keys on
 
 # Enable OSC52 clipboard passthrough for terminal apps (e.g., clipetty in Emacs)
 set -g allow-passthrough on
-set -ga update-environment " AI_NOTIFY_TERMINAL AI_NOTIFY_LOCAL_TMUX"
 set -g set-clipboard on
 
 # Pass cursor shape escape sequences through to the outer terminal

@@ -8,14 +8,7 @@ debug_log() {
     fi
 }
 
-lower() {
-    printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
-}
-
-ghostty_hint="${AI_NOTIFY_TERMINAL:-}"
-ghostty_hint="$(printf '%s' "$ghostty_hint" | tr '[:upper:]' '[:lower:]')"
-
-if [[ -z "${GHOSTTY_RESOURCES_DIR:-}" && -z "${GHOSTTY_BIN_DIR:-}" && "$ghostty_hint" != "ghostty" ]]; then
+if [[ -z "${GHOSTTY_RESOURCES_DIR:-}" && -z "${GHOSTTY_BIN_DIR:-}" ]]; then
     debug_log "ghostty backend skipped: ghostty environment not detected"
     exit 0
 fi
@@ -40,16 +33,6 @@ if [[ -n "${TMUX:-}" ]]; then
     # Use BEL for the inner OSC terminator to keep the wrapped form simple.
     debug_log "ghostty-osc9 using tmux passthrough"
     printf '\033Ptmux;\033\033]9;%s\a\033\\' "$message" > /dev/tty 2> /dev/null || true
-elif [[ -n "${SSH_CONNECTION:-}" ]]; then
-    if [[ "${AI_NOTIFY_LOCAL_TMUX:-0}" == "1" ]]; then
-        # When the local SSH client is running inside tmux, wrap the OSC 9
-        # sequence so the outer local tmux passes it through to Ghostty.
-        debug_log "ghostty-osc9 using ssh tmux passthrough"
-        printf '\033Ptmux;\033\033]9;%s\a\033\\' "$message" > /dev/tty 2> /dev/null || true
-    else
-        debug_log "ghostty-osc9 using plain ssh osc9"
-        printf '\033]9;%s\033\\' "$message" > /dev/tty 2> /dev/null || true
-    fi
 else
     printf '\033]9;%s\033\\' "$message" > /dev/tty 2> /dev/null || true
 fi

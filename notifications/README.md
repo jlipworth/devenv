@@ -30,7 +30,6 @@ Current backend mapping:
 
 - macOS + Ghostty → `backends/ghostty-osc9.sh`
 - macOS + Alacritty → `backends/macos-osascript.sh`
-- remote/Linux + forwarded `AI_NOTIFY_TERMINAL=ghostty` → `backends/ghostty-osc9.sh`
 - WSL2 → `backends/wsl2-toast.sh`
 - anything else → `backends/noop.sh`
 
@@ -56,18 +55,9 @@ AI_NOTIFY_BACKEND=ghostty-osc9 ai-notify-if-unfocused "test"
 AI_NOTIFY_BACKEND=wsl2-toast ai-notify-if-unfocused "test"
 ```
 
-Force terminal detection for testing:
-
-```bash
-AI_NOTIFY_TERMINAL=ghostty ai-notify-if-unfocused "test"
-AI_NOTIFY_TERMINAL=alacritty ai-notify-if-unfocused "test"
-```
-
 ## Notes
 
 - Ghostty notifications use OSC 9 and stay terminal-native.
-- Ghostty can also work over SSH when `AI_NOTIFY_TERMINAL=ghostty` is
-  forwarded to the remote host and tmux passthrough is enabled on both sides.
 - The macOS fallback currently uses AppleScript notifications for reliability.
 - The WSL2 backend is best-effort and should be validated on the Windows
   machine. It depends on `powershell.exe` being available from WSL.

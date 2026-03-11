@@ -64,11 +64,6 @@ detect_terminal_from_process_tree() {
 }
 
 detect_terminal() {
-  if [[ -n "${AI_NOTIFY_TERMINAL:-}" ]]; then
-    lower "$AI_NOTIFY_TERMINAL"
-    return 0
-  fi
-
   if [[ -n "${GHOSTTY_RESOURCES_DIR:-}" || -n "${GHOSTTY_BIN_DIR:-}" ]]; then
     printf 'ghostty\n'
     return 0
@@ -103,8 +98,6 @@ choose_backend() {
     return 0
   fi
 
-  # Ghostty OSC 9 can work over SSH/tmux passthrough as long as the terminal
-  # hint is forwarded from the local machine.
   if [[ "$terminal" == "ghostty" ]]; then
     printf 'ghostty-osc9\n'
     return 0
