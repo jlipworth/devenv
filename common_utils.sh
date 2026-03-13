@@ -102,15 +102,17 @@ else
 fi
 
 # =============================================================================
-# CI-specific configuration (avoid sudo, ensure PATH includes user dirs)
+# User-local tool configuration (avoid sudo for npm globals, etc.)
+# On Linux, always use a user-local npm prefix to avoid needing sudo.
 # =============================================================================
-if [[ "$CI" == "true" ]]; then
-    # npm: use user-local prefix instead of /usr/lib/node_modules
+if [[ "$OS" == "Linux" ]]; then
     NPM_GLOBAL_DIR="$HOME/.npm-global"
     mkdir -p "$NPM_GLOBAL_DIR"
-    npm config set prefix "$NPM_GLOBAL_DIR"
+    if command -v npm &> /dev/null; then
+        npm config set prefix "$NPM_GLOBAL_DIR"
+    fi
 
-    # Add user bin directories to PATH (npm, pipx, go, etc.)
+    # Ensure user bin directories are on PATH (npm, pipx, go, Emacs, etc.)
     export PATH="$HOME/.local/bin:$NPM_GLOBAL_DIR/bin:$HOME/go/bin:$PATH"
 fi
 

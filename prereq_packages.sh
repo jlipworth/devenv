@@ -75,7 +75,17 @@ setup_wsl_config() {
             log "WSL configuration already set. No changes made."
         else
             log "Configuring WSL to disable Windows PATH inheritance..."
-            echo -e "[interop]\nappendwindowspath = false" | sudo tee -a /etc/wsl.conf
+            if [[ -w /etc/wsl.conf ]] || [[ $(id -u) -eq 0 ]]; then
+                echo -e "[interop]\nappendwindowspath = false" | tee -a /etc/wsl.conf
+            elif command -v sudo &> /dev/null; then
+                echo -e "[interop]\nappendwindowspath = false" | sudo tee -a /etc/wsl.conf
+            else
+                log "Cannot write to /etc/wsl.conf (no sudo available)." "WARNING"
+                log "To disable Windows PATH inheritance, manually add to /etc/wsl.conf:" "WARNING"
+                log "  [interop]" "WARNING"
+                log "  appendwindowspath = false" "WARNING"
+                return 0
+            fi
             log "WSL configuration updated successfully."
         fi
     fi
@@ -86,7 +96,15 @@ install_wsl_utils() {
     if grep -q WSL /proc/version 2> /dev/null; then
         if ! is_installed "wslview"; then
             log "Installing wslu for WSL browser integration..."
-            sudo apt-get update && sudo apt-get install -y wslu
+            if is_installed "brew"; then
+                # Prefer Homebrew (no sudo required)
+                brew install wslutilities/wslu/wslu || log "Error installing wslu via brew." "WARNING"
+            elif command -v sudo &> /dev/null; then
+                sudo apt-get update && sudo apt-get install -y wslu
+            else
+                log "Cannot install wslu: no brew or sudo available." "WARNING"
+                log "Install Homebrew first, or ask IT to run: apt install wslu" "WARNING"
+            fi
         else
             log "wslu is already installed."
         fi
@@ -162,6 +180,7 @@ install_nodejs() {
 install_git_credential() {
     if [[ "$OS" == "Linux" ]]; then
         log "Installing Git credential helper for Linux..."
+        mkdir -p "$HOME/.local/bin"
         if [[ "$DISTRO" == "arch" ]]; then
             install_packages "libsecret" "gnome-keyring"
             # Arch has git-credential-libsecret in a different location
@@ -170,16 +189,16 @@ install_git_credential() {
             else
                 # Build from source if not available
                 if [[ -d /usr/share/git/credential/libsecret ]]; then
-                    sudo make -C /usr/share/git/credential/libsecret
-                    sudo cp /usr/share/git/credential/libsecret/git-credential-libsecret /usr/local/bin
-                    git config --global credential.helper libsecret
+                    make -C /usr/share/git/credential/libsecret
+                    cp /usr/share/git/credential/libsecret/git-credential-libsecret "$HOME/.local/bin"
+                    git config --global credential.helper "$HOME/.local/bin/git-credential-libsecret"
                 fi
             fi
         else
             install_packages "libsecret-1-0" "libsecret-1-dev" "gnome-keyring"
-            sudo make -C /usr/share/doc/git/contrib/credential/libsecret
-            sudo cp /usr/share/doc/git/contrib/credential/libsecret/git-credential-libsecret /usr/local/bin
-            git config --global credential.helper libsecret
+            make -C /usr/share/doc/git/contrib/credential/libsecret
+            cp /usr/share/doc/git/contrib/credential/libsecret/git-credential-libsecret "$HOME/.local/bin"
+            git config --global credential.helper "$HOME/.local/bin/git-credential-libsecret"
         fi
     else
         log "Skipping Git credential helper setup. macOS uses the built-in keychain."
@@ -383,13 +402,14 @@ TEXPROFILE
                 log "Failed to extract texlab." "ERROR"
                 return 1
             }
-            sudo mv /tmp/texlab /usr/local/bin/ || {
-                log "Failed to move texlab to /usr/local/bin." "ERROR"
+            mkdir -p "$HOME/.local/bin"
+            mv /tmp/texlab "$HOME/.local/bin/" || {
+                log "Failed to move texlab to ~/.local/bin." "ERROR"
                 return 1
             }
-            sudo chmod +x /usr/local/bin/texlab
+            chmod +x "$HOME/.local/bin/texlab"
             rm /tmp/texlab.tar.gz
-            log "texlab installed successfully." "SUCCESS"
+            log "texlab installed to ~/.local/bin successfully." "SUCCESS"
         else
             log "texlab is already installed."
         fi
@@ -635,30 +655,37 @@ install_terraform_support() {
         fi
 
     elif [[ $OS == "Linux" ]]; then
-        # Debian/Ubuntu: Add HashiCorp repo
-        # Add GPG key
-        if [[ ! -f /usr/share/keyrings/hashicorp-archive-keyring.gpg ]]; then
-            log "Adding HashiCorp GPG key..."
-            wget -qO- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
-        fi
-        # Add repository - detect distro codename from /etc/os-release
-        # Works for both Debian (bookworm, bullseye) and Ubuntu (focal, jammy, noble)
-        DISTRO_CODENAME=$(grep -oP '(?<=VERSION_CODENAME=).+' /etc/os-release || echo "bookworm")
-        if ! grep -q "https://apt.releases.hashicorp.com" /etc/apt/sources.list.d/hashicorp.list 2> /dev/null; then
-            log "Adding HashiCorp apt repository for $DISTRO_CODENAME..."
-            echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $DISTRO_CODENAME main" |
-                sudo tee /etc/apt/sources.list.d/hashicorp.list > /dev/null
-        fi
-
-        sudo apt update -qq
-        install_packages "terraform" "terraform-ls" "ansible" "jq"
-
-        # Cloud provider CLIs via Brewfile (Linuxbrew)
+        # Debian/Ubuntu: prefer Homebrew (no sudo needed) over HashiCorp apt repo
         if is_installed "brew"; then
+            log "Installing Terraform tools via Linuxbrew (no sudo required)..."
+            brew tap hashicorp/tap || log "Error adding hashicorp/tap." "WARNING"
+            brew install hashicorp/tap/terraform || log "Error installing terraform." "WARNING"
+            brew install hashicorp/tap/terraform-ls || log "Error installing terraform-ls." "WARNING"
+
+            # ansible and jq via brew
+            brew install ansible jq || log "Error installing ansible/jq." "WARNING"
+
+            # Cloud provider CLIs via Brewfile
             if [[ -f "$GNU_DIR/brewfiles/Brewfile.terraform" ]]; then
                 log "Installing cloud provider CLIs via Linuxbrew..."
                 brew bundle --file="$GNU_DIR/brewfiles/Brewfile.terraform" || log "Error with Brewfile.terraform" "WARNING"
             fi
+        else
+            # Fallback: HashiCorp apt repo (requires sudo)
+            log "Homebrew not found, falling back to HashiCorp apt repo (requires sudo)..." "WARNING"
+            if [[ ! -f /usr/share/keyrings/hashicorp-archive-keyring.gpg ]]; then
+                log "Adding HashiCorp GPG key..."
+                wget -qO- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
+            fi
+            DISTRO_CODENAME=$(grep -oP '(?<=VERSION_CODENAME=).+' /etc/os-release || echo "bookworm")
+            if ! grep -q "https://apt.releases.hashicorp.com" /etc/apt/sources.list.d/hashicorp.list 2> /dev/null; then
+                log "Adding HashiCorp apt repository for $DISTRO_CODENAME..."
+                echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $DISTRO_CODENAME main" |
+                    sudo tee /etc/apt/sources.list.d/hashicorp.list > /dev/null
+            fi
+
+            sudo apt update -qq
+            install_packages "terraform" "terraform-ls" "ansible" "jq"
         fi
 
     elif [[ $OS == "Darwin" ]]; then
