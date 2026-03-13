@@ -77,6 +77,12 @@ setup_wsl_config() {
             log "Configuring WSL to disable Windows PATH inheritance..."
             if [[ -w /etc/wsl.conf ]] || [[ $(id -u) -eq 0 ]]; then
                 echo -e "[interop]\nappendwindowspath = false" | tee -a /etc/wsl.conf
+            elif [[ "$NO_ADMIN" == "true" ]]; then
+                log "NO_ADMIN=true: not modifying /etc/wsl.conf automatically." "WARNING"
+                log "To disable Windows PATH inheritance, manually add to /etc/wsl.conf:" "WARNING"
+                log "  [interop]" "WARNING"
+                log "  appendwindowspath = false" "WARNING"
+                return 0
             elif command -v sudo &> /dev/null; then
                 echo -e "[interop]\nappendwindowspath = false" | sudo tee -a /etc/wsl.conf
             else
@@ -99,6 +105,8 @@ install_wsl_utils() {
             if is_installed "brew"; then
                 # Prefer Homebrew (no sudo required)
                 brew install wslutilities/wslu/wslu || log "Error installing wslu via brew." "WARNING"
+            elif [[ "$NO_ADMIN" == "true" ]]; then
+                log "NO_ADMIN=true: skipping wslu installation because it would require a system package manager." "WARNING"
             elif command -v sudo &> /dev/null; then
                 sudo apt-get update && sudo apt-get install -y wslu
             else
@@ -116,15 +124,60 @@ install_wsl_utils() {
 # Install Homebrew on Linux
 install_homebrew() {
     if [[ "$OS" == "Linux" ]]; then
+        local brew_bin=""
+
+        brew_bin="$(find_brew_bin || true)"
+
+        if [[ -n "$brew_bin" ]]; then
+            log "Homebrew is already installed at $brew_bin"
+            eval "$("$brew_bin" shellenv)"
+            add_to_shell_rc "eval \"\$($brew_bin shellenv)\"" "Homebrew (Linux)"
+            return 0
+        fi
+
+        if [[ "$NO_ADMIN" == "true" ]]; then
+            log "NO_ADMIN=true: not attempting Homebrew bootstrap automatically." "WARNING"
+            log "Install or expose an existing Linuxbrew manually, then rerun this target." "WARNING"
+            log "Expected common locations: /home/linuxbrew/.linuxbrew or ~/.linuxbrew" "WARNING"
+            return 0
+        fi
+
         if ! is_installed "brew"; then
             log "Installing Homebrew for Linux..."
-            # TODO: Need to see if CI=1 works in a desktop environment. Using to bypass passwordless sudo.
             CI=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-            add_to_path "/home/linuxbrew/.linuxbrew/bin" "Homebrew (Linux)"
+            brew_bin="$(find_brew_bin || true)"
+            if [[ -n "$brew_bin" ]]; then
+                eval "$("$brew_bin" shellenv)"
+                add_to_shell_rc "eval \"\$($brew_bin shellenv)\"" "Homebrew (Linux)"
+            else
+                log "Homebrew installer finished, but brew was not found in the expected locations." "WARNING"
+            fi
         else
             log "Homebrew is already installed."
         fi
     fi
+}
+
+ensure_uv_installed() {
+    if is_installed "uv"; then
+        return 0
+    fi
+
+    log "Installing uv..."
+    if is_installed "brew"; then
+        brew install uv || log "Brew install for uv failed, falling back to official installer." "WARNING"
+    fi
+
+    if ! is_installed "uv"; then
+        curl -LsSf https://astral.sh/uv/install.sh | env UV_NO_MODIFY_PATH=1 sh || {
+            log "Failed to install uv." "ERROR"
+            return 1
+        }
+        export PATH="$HOME/.local/bin:$PATH"
+        add_to_path "$HOME/.local/bin" "uv"
+    fi
+
+    return 0
 }
 
 # Install NodeJS and NPM via nvm for version management
@@ -178,9 +231,46 @@ install_nodejs() {
 }
 
 install_git_credential() {
+    build_git_credential_helper() {
+        local source_dir="$1"
+        local build_dir
+
+        if [[ ! -d "$source_dir" ]]; then
+            log "Git credential helper source directory not found: $source_dir" "WARNING"
+            return 1
+        fi
+
+        build_dir="$(mktemp -d)" || {
+            log "Failed to create temporary build directory for git credential helper." "ERROR"
+            return 1
+        }
+
+        cp -R "$source_dir"/. "$build_dir"/ || {
+            log "Failed to copy git credential helper source from $source_dir" "ERROR"
+            rm -rf "$build_dir"
+            return 1
+        }
+
+        make -C "$build_dir" || {
+            log "Failed to build git credential helper from copied source." "ERROR"
+            rm -rf "$build_dir"
+            return 1
+        }
+
+        cp "$build_dir/git-credential-libsecret" "$HOME/.local/bin" || {
+            log "Failed to copy git credential helper to ~/.local/bin" "ERROR"
+            rm -rf "$build_dir"
+            return 1
+        }
+        chmod +x "$HOME/.local/bin/git-credential-libsecret"
+        rm -rf "$build_dir"
+        return 0
+    }
+
     if [[ "$OS" == "Linux" ]]; then
         log "Installing Git credential helper for Linux..."
         mkdir -p "$HOME/.local/bin"
+        add_to_path "$HOME/.local/bin" "Local user binaries"
         if [[ "$DISTRO" == "arch" ]]; then
             install_packages "libsecret" "gnome-keyring"
             # Arch has git-credential-libsecret in a different location
@@ -189,16 +279,14 @@ install_git_credential() {
             else
                 # Build from source if not available
                 if [[ -d /usr/share/git/credential/libsecret ]]; then
-                    make -C /usr/share/git/credential/libsecret
-                    cp /usr/share/git/credential/libsecret/git-credential-libsecret "$HOME/.local/bin"
-                    git config --global credential.helper "$HOME/.local/bin/git-credential-libsecret"
+                    build_git_credential_helper /usr/share/git/credential/libsecret &&
+                        git config --global credential.helper "$HOME/.local/bin/git-credential-libsecret"
                 fi
             fi
         else
             install_packages "libsecret-1-0" "libsecret-1-dev" "gnome-keyring"
-            make -C /usr/share/doc/git/contrib/credential/libsecret
-            cp /usr/share/doc/git/contrib/credential/libsecret/git-credential-libsecret "$HOME/.local/bin"
-            git config --global credential.helper "$HOME/.local/bin/git-credential-libsecret"
+            build_git_credential_helper /usr/share/doc/git/contrib/credential/libsecret &&
+                git config --global credential.helper "$HOME/.local/bin/git-credential-libsecret"
         fi
     else
         log "Skipping Git credential helper setup. macOS uses the built-in keychain."
@@ -207,6 +295,10 @@ install_git_credential() {
 
 install_askpass() {
     if [[ "$OS" == "Linux" ]]; then
+        if no_admin_mode; then
+            log "NO_ADMIN=true: skipping ksshaskpass. This is optional and mostly useful for graphical password prompts." "WARNING"
+            return 0
+        fi
         log "Installing ksshaskpass..."
         if [[ "$DISTRO" == "arch" ]]; then
             install_packages "ksshaskpass"
@@ -221,7 +313,11 @@ install_askpass() {
 # Install prerequisites grouped by category
 install_shell_prereqs() {
     log "Installing shell prerequisites..."
-    install_packages "shellcheck" "shfmt"
+    if is_installed "brew"; then
+        brew install shellcheck shfmt || log "Error installing shellcheck/shfmt via Homebrew." "WARNING"
+    else
+        install_packages "shellcheck" "shfmt"
+    fi
     if ! is_installed "bash-language-server"; then
         $NODE_CMD install -g bash-language-server || log "Error installing bash-language-server." "WARNING"
     fi
@@ -243,6 +339,11 @@ install_whisper_prereqs() {
         install_packages "ffmpeg" "cmake" "pkg-config"
         # Optional convenience tools
         install_packages "sox"
+    elif is_installed "brew"; then
+        log "Installing Whisper prerequisites via Homebrew/Linuxbrew..."
+        brew install ffmpeg cmake pkg-config sox make gcc || log "Error installing Whisper tools via Homebrew." "WARNING"
+        log "User-space mode installs build tools and audio utilities where possible, but does not configure distro-level audio backends." "WARNING"
+        log "WSL/desktop audio integration (PulseAudio/PipeWire/ALSA bridging) must already be available." "WARNING"
     elif [[ "$DISTRO" == "arch" ]]; then
         # Prefer PipeWire Pulse compatibility on modern Arch installs
         install_packages_translated \
@@ -380,6 +481,11 @@ TEXPROFILE
         "$TLMGR" update --self || log "tlmgr update --self failed." "WARNING"
         log "Installing LaTeX packages via tlmgr..."
         "$TLMGR" install collection-latexextra amsfonts ec cm-super
+    elif is_installed "brew"; then
+        log "Installing LaTeX tools via Homebrew/Linuxbrew..."
+        brew bundle --file="$GNU_DIR/brewfiles/Brewfile.latex" || log "Error with Brewfile.latex" "WARNING"
+        log "Note: on Linux this installs editor/tooling support (texlab, poppler, aspell), not a full TeX distribution." "WARNING"
+        log "Install TeX Live separately if you need full document compilation support." "WARNING"
     elif [[ "$DISTRO" == "arch" ]]; then
         # Arch: texlab is in official repos
         log "Installing LaTeX tools for Arch..."
@@ -418,6 +524,34 @@ TEXPROFILE
 
 install_python_prereqs() {
     log "Installing Python tools..."
+    if [[ "$OS" == "Linux" ]] && no_admin_mode; then
+        ensure_uv_installed || return 1
+        uv python install 3.12 || log "uv could not preinstall Python 3.12; continuing with automatic Python downloads." "WARNING"
+
+        local requirements_file="$GNU_DIR/requirements.txt"
+        if [[ -f "$requirements_file" ]]; then
+            log "Installing Python tools from requirements.txt via uv..."
+            while IFS= read -r package || [ -n "$package" ]; do
+                [[ -z "$package" || "$package" =~ ^# ]] && continue
+                local pkg_name
+                pkg_name=$(echo "$package" | sed 's/\[.*\]//g' | sed 's/[><=!].*//g' | xargs)
+                log "Installing $pkg_name via uv..."
+                uv tool install --force "$package" || log "Error installing $pkg_name via uv." "WARNING"
+            done < "$requirements_file"
+        else
+            log "requirements.txt not found. Using fallback Python tool list with uv..." "WARNING"
+            local python_packages=("pyright" "debugpy" "autoflake" "flake8" "isort" "jupytext")
+            local pkg
+            for pkg in "${python_packages[@]}"; do
+                log "Installing $pkg via uv..."
+                uv tool install --force "$pkg" || log "Error installing $pkg via uv." "WARNING"
+            done
+        fi
+        add_to_path "$HOME/.local/bin" "Python/uv tools"
+        log "Python tools installed in user space via uv." "SUCCESS"
+        return 0
+    fi
+
     if [[ "$OS" == "Darwin" ]]; then
         # macOS: pip comes with python3, ipython is handled by install_python_env
         install_packages "python3" "pipx"
@@ -464,7 +598,13 @@ install_python_prereqs() {
 install_r_support() {
     log "Installing R tools for ESS..."
 
-    if [[ "$OS" == "Darwin" ]]; then
+    if [[ "$OS" == "Linux" ]] && is_installed "brew"; then
+        log "Installing R via Homebrew/Linuxbrew..."
+        brew install r || log "Error installing R via Homebrew." "WARNING"
+    elif [[ "$OS" == "Linux" ]] && no_admin_mode; then
+        log "NO_ADMIN=true and Homebrew is not available: skipping system R installation." "WARNING"
+        log "Install Linuxbrew R first, then rerun this target to configure languageserver in your user library." "WARNING"
+    elif [[ "$OS" == "Darwin" ]]; then
         install_packages "r"
     elif [[ "$DISTRO" == "arch" ]]; then
         # Arch: r package includes development files
@@ -672,6 +812,10 @@ install_terraform_support() {
             fi
         else
             # Fallback: HashiCorp apt repo (requires sudo)
+            if [[ "$NO_ADMIN" == "true" ]]; then
+                log "NO_ADMIN=true: skipping Terraform apt-repo fallback because it requires system changes." "WARNING"
+                return 0
+            fi
             log "Homebrew not found, falling back to HashiCorp apt repo (requires sudo)..." "WARNING"
             if [[ ! -f /usr/share/keyrings/hashicorp-archive-keyring.gpg ]]; then
                 log "Adding HashiCorp GPG key..."
@@ -958,6 +1102,11 @@ install_cli_tools() {
             log "Xcode Command Line Tools are already installed."
         fi
     elif [[ "$DISTRO" == "arch" ]]; then
+        if is_installed "brew"; then
+            log "Installing CLI tools via Homebrew/Linuxbrew..."
+            brew install htop gnupg cloc cmake || log "Error installing base CLI tools via Homebrew." "WARNING"
+            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
+        fi
         # Arch: most CLI tools are in official repos
         install_packages "htop" "gnupg" "cloc" "cups" "xclip" "libtool" "cmake"
         # Modern CLI tools available in Arch repos
@@ -969,13 +1118,18 @@ install_cli_tools() {
             brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
         fi
     else
+        if is_installed "brew"; then
+            log "Installing CLI tools via Homebrew/Linuxbrew..."
+            brew install htop gnupg cloc cmake || log "Error installing base CLI tools via Homebrew." "WARNING"
+            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
+        fi
+
         # Debian/Ubuntu: Install system packages via apt
         install_packages "htop" "gpg" "cloc" "cups" "cups-client" "lpr" "xclip" "libtool-bin" "cmake"
 
         # Use Brewfile for CLI tools on Linux
-        if is_installed "brew"; then
-            log "Installing CLI tools via Homebrew..."
-            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
+        if no_admin_mode; then
+            log "NO_ADMIN=true: skipping Linux-only extras that still rely on system packages (cups/xclip/libtool)." "WARNING"
         fi
     fi
 
