@@ -191,6 +191,13 @@ install_nodejs() {
     # Set up NVM_DIR
     export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 
+    # nvm is sensitive to npm prefix overrides; clear them for the entire nvm
+    # bootstrap/install flow, then restore them afterward.
+    local saved_npm_config_prefix="${npm_config_prefix-}"
+    local saved_NPM_CONFIG_PREFIX="${NPM_CONFIG_PREFIX-}"
+    unset npm_config_prefix
+    unset NPM_CONFIG_PREFIX
+
     # Install nvm if not present
     if [[ ! -d "$NVM_DIR" ]]; then
         log "Installing nvm..."
@@ -207,16 +214,11 @@ install_nodejs() {
     [[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
 
     if ! command -v nvm &> /dev/null; then
+        [[ -n "${saved_npm_config_prefix}" ]] && export npm_config_prefix="$saved_npm_config_prefix"
+        [[ -n "${saved_NPM_CONFIG_PREFIX}" ]] && export NPM_CONFIG_PREFIX="$saved_NPM_CONFIG_PREFIX"
         log "nvm command not available after installation." "ERROR"
         return 1
     fi
-
-    # nvm rejects npm global prefix overrides while installing/selecting Node.
-    # Temporarily clear them, then restore our user-local npm prefix afterward.
-    local saved_npm_config_prefix="${npm_config_prefix-}"
-    local saved_NPM_CONFIG_PREFIX="${NPM_CONFIG_PREFIX-}"
-    unset npm_config_prefix
-    unset NPM_CONFIG_PREFIX
 
     # Install specified Node version
     log "Installing Node.js v${node_version}..."
@@ -237,6 +239,10 @@ install_nodejs() {
     # Verify installation
     log "Node.js $(node --version) installed successfully." "SUCCESS"
     log "npm $(npm --version) available."
+
+    # Persist the user-local npm global bin dir so npm-installed language
+    # servers and tools are available in future shells, not just this process.
+    add_to_path "${HOME}/.npm-global/bin" "npm global binaries"
 
     # Update npm to latest
     npm install -g npm@latest || log "Failed to update npm." "WARNING"
@@ -447,6 +453,8 @@ create_snippet_symlink() {
     log "Creating symbolic link for Yasnippet directory..."
     EMACS_SNIPPETS_DIR="$HOME/.emacs.d/private/snippets"
     TARGET_DIR="$GNU_DIR/snippets/"
+
+    mkdir -p "$(dirname "$EMACS_SNIPPETS_DIR")"
 
     if [ -L "$EMACS_SNIPPETS_DIR" ]; then
         log "A symbolic link already exists at $EMACS_SNIPPETS_DIR. Replacing it."

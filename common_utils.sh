@@ -118,6 +118,34 @@ if [[ "$OS" == "Linux" ]]; then
     export PATH="$HOME/.local/bin:$NPM_GLOBAL_DIR/bin:$HOME/go/bin:$PATH"
 fi
 
+activate_default_node() {
+    if command -v npm &> /dev/null && command -v node &> /dev/null; then
+        return 0
+    fi
+
+    local nvm_dir="${NVM_DIR:-$HOME/.nvm}"
+    local saved_npm_config_prefix="${npm_config_prefix-}"
+    local saved_NPM_CONFIG_PREFIX="${NPM_CONFIG_PREFIX-}"
+    unset npm_config_prefix
+    unset NPM_CONFIG_PREFIX
+
+    if [[ -s "$nvm_dir/nvm.sh" ]]; then
+        # shellcheck source=/dev/null
+        source "$nvm_dir/nvm.sh"
+
+        if command -v nvm &> /dev/null; then
+            nvm use --silent default > /dev/null 2>&1 || nvm use --silent node > /dev/null 2>&1 || true
+        fi
+    fi
+
+    [[ -n "$saved_npm_config_prefix" ]] && export npm_config_prefix="$saved_npm_config_prefix"
+    [[ -n "$saved_NPM_CONFIG_PREFIX" ]] && export NPM_CONFIG_PREFIX="$saved_NPM_CONFIG_PREFIX"
+
+    command -v npm &> /dev/null && command -v node &> /dev/null
+}
+
+activate_default_node || true
+
 no_admin_mode() {
     [[ "$NO_ADMIN" == "true" ]]
 }
