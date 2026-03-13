@@ -258,6 +258,11 @@ install_git_credential() {
             return 1
         fi
 
+        if [[ ! -f "$source_dir/Makefile" ]]; then
+            log "Git credential helper source directory exists but has no Makefile: $source_dir" "WARNING"
+            return 1
+        fi
+
         build_dir="$(mktemp -d)" || {
             log "Failed to create temporary build directory for git credential helper." "ERROR"
             return 1
@@ -326,12 +331,27 @@ install_git_credential() {
                 libsecret_ready=true
             fi
 
-            if [[ -d /usr/share/doc/git/contrib/credential/libsecret ]]; then
-                build_git_credential_helper /usr/share/doc/git/contrib/credential/libsecret &&
+            local helper_source_dir=""
+            local candidate
+            local git_prefix=""
+
+            if is_installed "brew" && brew list --versions git &> /dev/null; then
+                git_prefix="$(brew --prefix git 2> /dev/null || true)"
+            fi
+
+            for candidate in /usr/share/doc/git/contrib/credential/libsecret /usr/share/git/credential/libsecret "$git_prefix/share/git-core/contrib/credential/libsecret" "$git_prefix/share/doc/git/contrib/credential/libsecret"; do
+                if [[ -n "$candidate" && -f "$candidate/Makefile" ]]; then
+                    helper_source_dir="$candidate"
+                    break
+                fi
+            done
+
+            if [[ -n "$helper_source_dir" ]]; then
+                build_git_credential_helper "$helper_source_dir" &&
                     git config --global credential.helper "$HOME/.local/bin/git-credential-libsecret"
             else
-                log "Git credential helper source not found at /usr/share/doc/git/contrib/credential/libsecret." "WARNING"
-                log "Ensure the 'git' package is fully installed, then rerun." "WARNING"
+                log "Git credential helper source with Makefile was not found in the expected locations." "WARNING"
+                log "Skipping git-credential-libsecret setup; configure git credentials manually or install a fuller git package if needed." "WARNING"
             fi
         fi
     else
