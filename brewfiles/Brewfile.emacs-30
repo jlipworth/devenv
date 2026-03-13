@@ -24,3 +24,14 @@ brew "libvterm"
 brew "glib"
 brew "librsvg"
 brew "harfbuzz"
+
+# Linux-only: libraries that apt normally provides as -dev packages.
+# On macOS these come via Xcode/system frameworks or are pulled in by
+# the formulas above. On Linuxbrew they have bottles and allow building
+# Emacs without sudo.
+brew "libgccjit" if OS.linux?
+brew "gtk+3"     if OS.linux?
+brew "ncurses"   if OS.linux?
+brew "libx11"    if OS.linux?
+brew "libxft"    if OS.linux?
+brew "libxpm"    if OS.linux?
