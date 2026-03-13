@@ -291,6 +291,9 @@ if [[ -d "$EMACS_DIR" ]]; then
         # In CI, always start fresh
         log "CI mode: Removing existing source directory for clean build" "INFO"
         rm -rf "$EMACS_DIR" "$EMACS_TAR"
+    elif [[ ! -t 0 ]]; then
+        log "Non-interactive shell detected. Reusing '$EMACS_DIR' and cleaning previous build outputs…" "INFO"
+        make -C "$EMACS_DIR" distclean > /dev/null 2>&1 || make -C "$EMACS_DIR" clean > /dev/null 2>&1 || true
     else
         read -p "Directory '$EMACS_DIR' exists. Redownload & replace? [y/N] " resp
         if [[ "$resp" =~ ^[Yy]$ ]]; then
@@ -387,6 +390,7 @@ if [[ "$CI" == "true" && "$CI_INSTALL" != "true" ]]; then
     log "CI mode: Skipping 'make install' (set CI_INSTALL=true to install)" "INFO"
 else
     log "Installing Emacs to $EMACS_PREFIX..."
+    mkdir -p "$EMACS_PREFIX" 2> /dev/null || true
     # Determine if sudo is needed based on prefix writability
     if [[ -w "$EMACS_PREFIX" ]] || [[ "$CI" == "true" ]] || [[ $(id -u) -eq 0 ]]; then
         make install
