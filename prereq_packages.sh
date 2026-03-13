@@ -455,6 +455,14 @@ install_yaml_support() {
 
 install_markdown_support() {
     log "Installing markdown support..."
+
+    if ! command -v npm &> /dev/null; then
+        log "npm not found; bootstrapping Node.js via nvm for markdown tooling..." "WARNING"
+        install_nodejs || log "Failed to bootstrap Node.js automatically for markdown tooling." "WARNING"
+    else
+        activate_default_node || true
+    fi
+
     # Pandoc for live preview in Spacemacs markdown layer (optional but useful)
     if is_installed "brew"; then
         brew install pandoc || log "Error installing pandoc." "WARNING"
