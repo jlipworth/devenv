@@ -109,7 +109,9 @@ elif [[ "$OS" == "Linux" ]]; then
     # Strategy: prefer Homebrew/Linuxbrew (no sudo needed) when available,
     # fall back to apt (which requires sudo) otherwise.
 
-    if command -v brew &> /dev/null; then
+    BREW_BIN="$(find_brew_bin || true)"
+    if [[ -n "$BREW_BIN" ]]; then
+        eval "$("$BREW_BIN" shellenv)"
         log "Installing dependencies on Linux via Linuxbrew (no sudo required)…"
         brew bundle --file="$GNU_DIR/brewfiles/Brewfile.emacs-30"
 
@@ -121,7 +123,7 @@ elif [[ "$OS" == "Linux" ]]; then
         export PKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig:${BREW_PREFIX}/share/pkgconfig:${PKG_CONFIG_PATH:-}"
 
         # ncurses is keg-only; explicitly expose its headers and libs
-        NCURSES_PREFIX="$(brew --prefix ncurses 2>/dev/null || true)"
+        NCURSES_PREFIX="$(brew --prefix ncurses 2> /dev/null || true)"
         if [[ -n "$NCURSES_PREFIX" && -d "$NCURSES_PREFIX" ]]; then
             export CPPFLAGS="-I${NCURSES_PREFIX}/include ${CPPFLAGS:-}"
             export LDFLAGS="-L${NCURSES_PREFIX}/lib ${LDFLAGS:-}"
@@ -129,7 +131,7 @@ elif [[ "$OS" == "Linux" ]]; then
         fi
 
         # libgccjit: expose its library path for native compilation
-        LIBGCCJIT_PREFIX="$(brew --prefix libgccjit 2>/dev/null || true)"
+        LIBGCCJIT_PREFIX="$(brew --prefix libgccjit 2> /dev/null || true)"
         if [[ -n "$LIBGCCJIT_PREFIX" && -d "$LIBGCCJIT_PREFIX" ]]; then
             export LIBRARY_PATH="${LIBGCCJIT_PREFIX}/lib/gcc/current:${LIBRARY_PATH:-}"
             export LD_LIBRARY_PATH="${LIBGCCJIT_PREFIX}/lib/gcc/current:${LD_LIBRARY_PATH:-}"
@@ -139,7 +141,7 @@ elif [[ "$OS" == "Linux" ]]; then
 
         # Use brew's gcc
         BREW_GCC="$(brew --prefix gcc)"
-        LATEST_GCC_EXECUTABLE=$(ls -1 "${BREW_PREFIX}"/bin/gcc-[0-9]* 2>/dev/null | sort -V | tail -n 1)
+        LATEST_GCC_EXECUTABLE=$(ls -1 "${BREW_PREFIX}"/bin/gcc-[0-9]* 2> /dev/null | sort -V | tail -n 1)
         if [[ -n "$LATEST_GCC_EXECUTABLE" ]]; then
             GCC_MAJOR=$("$LATEST_GCC_EXECUTABLE" -dumpversion | cut -d. -f1)
             export CC="gcc-${GCC_MAJOR}"
@@ -158,57 +160,99 @@ elif [[ "$OS" == "Linux" ]]; then
 
     else
         # Fallback: apt-based installation (requires sudo)
-        log "Homebrew not found, falling back to apt (requires sudo)…" "WARNING"
+        if no_admin_mode; then
+            log "Homebrew not found and NO_ADMIN=true, so apt fallback is disabled." "WARNING"
+            log "Attempting to continue with preinstalled system dependencies already available on this machine." "WARNING"
+            log "If configure fails, install or expose Linuxbrew first, or preinstall the Emacs build dependencies through your admin-approved path." "WARNING"
 
-        if [[ "$CI" == "true" ]] || [[ $(id -u) -eq 0 ]]; then
-            APT_CMD="apt"
+            if [[ "$GCC_VERSION" == "auto" || -z "$GCC_VERSION" ]]; then
+                GCC_VERSION=$(detect_linux_gcc_version)
+            fi
+
+            if command -v "gcc-${GCC_VERSION}" &> /dev/null; then
+                export CC="gcc-${GCC_VERSION}"
+            elif command -v gcc &> /dev/null; then
+                export CC="gcc"
+            fi
+
+            if command -v "g++-${GCC_VERSION}" &> /dev/null; then
+                export CXX="g++-${GCC_VERSION}"
+            elif command -v g++ &> /dev/null; then
+                export CXX="g++"
+            fi
+
+            if [[ -n "${CC:-}" || -n "${CXX:-}" ]]; then
+                log "Using preinstalled compiler toolchain: CC=${CC:-unset}, CXX=${CXX:-unset}"
+            fi
+
+            ARCH=$(dpkg --print-architecture 2> /dev/null || uname -m)
+            case "$ARCH" in
+                amd64 | x86_64) GCC_ARCH="x86_64-linux-gnu" ;;
+                arm64 | aarch64) GCC_ARCH="aarch64-linux-gnu" ;;
+                *) GCC_ARCH="$ARCH" ;;
+            esac
+
+            GCC_LIB_PATH="/usr/lib/gcc/${GCC_ARCH}/${GCC_VERSION}"
+            if [[ -d "$GCC_LIB_PATH" ]]; then
+                export LD_LIBRARY_PATH="${GCC_LIB_PATH}:${LD_LIBRARY_PATH:-}"
+                export LIBRARY_PATH="${GCC_LIB_PATH}:${LIBRARY_PATH:-}"
+                export CPATH="${GCC_LIB_PATH}/include:${CPATH:-}"
+                export PKG_CONFIG_PATH="${GCC_LIB_PATH}/pkgconfig:${PKG_CONFIG_PATH:-}"
+                log "Using preinstalled GCC library path: $GCC_LIB_PATH"
+            fi
         else
-            APT_CMD="sudo apt"
-        fi
+            log "Homebrew not found, falling back to apt (requires sudo)…" "WARNING"
 
-        $APT_CMD update
+            if [[ "$CI" == "true" ]] || [[ $(id -u) -eq 0 ]]; then
+                APT_CMD="apt"
+            else
+                APT_CMD="sudo apt"
+            fi
 
-        # First install build-essential to get default gcc
-        $APT_CMD install -y build-essential
+            $APT_CMD update
 
-        # Detect GCC version to install matching libgccjit
-        if [[ "$GCC_VERSION" == "auto" || -z "$GCC_VERSION" ]]; then
-            GCC_VERSION=$(detect_linux_gcc_version)
-        fi
-        log "Detected GCC version: $GCC_VERSION"
+            # First install build-essential to get default gcc
+            $APT_CMD install -y build-essential
 
-        log "Installing build packages..."
-        $APT_CMD install -y \
-            cmake pkg-config libgtk-3-dev libgnutls28-dev \
-            libxpm-dev libncurses-dev libharfbuzz-dev libtree-sitter-dev \
-            wget tar "libgccjit-${GCC_VERSION}-dev" autoconf automake texinfo libsqlite3-dev libx11-dev \
-            libxft-dev libcairo2-dev libmagickwand-dev libvterm-dev libxml2-dev \
-            libwebp-dev liblcms2-dev "gcc-${GCC_VERSION}" "g++-${GCC_VERSION}" \
-            ca-certificates git
-        log "Dependencies installed successfully" "SUCCESS"
+            # Detect GCC version to install matching libgccjit
+            if [[ "$GCC_VERSION" == "auto" || -z "$GCC_VERSION" ]]; then
+                GCC_VERSION=$(detect_linux_gcc_version)
+            fi
+            log "Detected GCC version: $GCC_VERSION"
 
-        export CC="gcc-${GCC_VERSION}"
-        export CXX="g++-${GCC_VERSION}"
-        log "Using compiler: CC=$CC, CXX=$CXX"
+            log "Installing build packages..."
+            $APT_CMD install -y \
+                cmake pkg-config libgtk-3-dev libgnutls28-dev \
+                libxpm-dev libncurses-dev libharfbuzz-dev libtree-sitter-dev \
+                wget tar "libgccjit-${GCC_VERSION}-dev" autoconf automake texinfo libsqlite3-dev libx11-dev \
+                libxft-dev libcairo2-dev libmagickwand-dev libvterm-dev libxml2-dev \
+                libwebp-dev liblcms2-dev "gcc-${GCC_VERSION}" "g++-${GCC_VERSION}" \
+                ca-certificates git
+            log "Dependencies installed successfully" "SUCCESS"
 
-        # Dynamically find GCC library paths based on architecture
-        ARCH=$(dpkg --print-architecture 2> /dev/null || uname -m)
-        log "Detected architecture: $ARCH"
-        case "$ARCH" in
-            amd64 | x86_64) GCC_ARCH="x86_64-linux-gnu" ;;
-            arm64 | aarch64) GCC_ARCH="aarch64-linux-gnu" ;;
-            *) GCC_ARCH="$ARCH" ;;
-        esac
+            export CC="gcc-${GCC_VERSION}"
+            export CXX="g++-${GCC_VERSION}"
+            log "Using compiler: CC=$CC, CXX=$CXX"
 
-        GCC_LIB_PATH="/usr/lib/gcc/${GCC_ARCH}/${GCC_VERSION}"
-        if [[ -d "$GCC_LIB_PATH" ]]; then
-            export LD_LIBRARY_PATH="${GCC_LIB_PATH}:${LD_LIBRARY_PATH:-}"
-            export LIBRARY_PATH="${GCC_LIB_PATH}:${LIBRARY_PATH:-}"
-            export CPATH="${GCC_LIB_PATH}/include:${CPATH:-}"
-            export PKG_CONFIG_PATH="${GCC_LIB_PATH}/pkgconfig:${PKG_CONFIG_PATH:-}"
-            log "GCC library paths configured: $GCC_LIB_PATH"
-        else
-            log "Warning: GCC library path not found at $GCC_LIB_PATH" "WARNING"
+            # Dynamically find GCC library paths based on architecture
+            ARCH=$(dpkg --print-architecture 2> /dev/null || uname -m)
+            log "Detected architecture: $ARCH"
+            case "$ARCH" in
+                amd64 | x86_64) GCC_ARCH="x86_64-linux-gnu" ;;
+                arm64 | aarch64) GCC_ARCH="aarch64-linux-gnu" ;;
+                *) GCC_ARCH="$ARCH" ;;
+            esac
+
+            GCC_LIB_PATH="/usr/lib/gcc/${GCC_ARCH}/${GCC_VERSION}"
+            if [[ -d "$GCC_LIB_PATH" ]]; then
+                export LD_LIBRARY_PATH="${GCC_LIB_PATH}:${LD_LIBRARY_PATH:-}"
+                export LIBRARY_PATH="${GCC_LIB_PATH}:${LIBRARY_PATH:-}"
+                export CPATH="${GCC_LIB_PATH}/include:${CPATH:-}"
+                export PKG_CONFIG_PATH="${GCC_LIB_PATH}/pkgconfig:${PKG_CONFIG_PATH:-}"
+                log "GCC library paths configured: $GCC_LIB_PATH"
+            else
+                log "Warning: GCC library path not found at $GCC_LIB_PATH" "WARNING"
+            fi
         fi
     fi
 
