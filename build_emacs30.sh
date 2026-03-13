@@ -122,6 +122,25 @@ elif [[ "$OS" == "Linux" ]]; then
         # pkg-config needs to find brew-installed libraries
         export PKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig:${BREW_PREFIX}/share/pkgconfig:${PKG_CONFIG_PATH:-}"
 
+        # Prefer Homebrew binutils when available so Homebrew GCC uses a
+        # matching assembler/linker toolchain on Linux. This avoids newer GCC
+        # emitting directives unsupported by older system binutils.
+        BINUTILS_PREFIX="$(brew --prefix binutils 2> /dev/null || true)"
+        if [[ -n "$BINUTILS_PREFIX" && -d "$BINUTILS_PREFIX" ]]; then
+            if [[ -d "${BINUTILS_PREFIX}/libexec/gnubin" ]]; then
+                export PATH="${BINUTILS_PREFIX}/libexec/gnubin:$PATH"
+            elif [[ -d "${BINUTILS_PREFIX}/bin" ]]; then
+                export PATH="${BINUTILS_PREFIX}/bin:$PATH"
+            fi
+            log "binutils tools configured from: $BINUTILS_PREFIX"
+        fi
+
+        TREE_SITTER_VERSION="$(brew list --versions tree-sitter 2> /dev/null | awk '{print $2}' | head -n 1)"
+        if [[ -n "$TREE_SITTER_VERSION" ]] && [[ "$(printf '%s\n' '0.25.0' "$TREE_SITTER_VERSION" | sort -V | head -n 1)" == '0.25.0' ]]; then
+            export CPPFLAGS="-Dts_language_version=ts_language_abi_version ${CPPFLAGS:-}"
+            log "Using tree-sitter 0.25+ compatibility define for Emacs 30"
+        fi
+
         # ncurses is keg-only; explicitly expose its headers and libs
         NCURSES_PREFIX="$(brew --prefix ncurses 2> /dev/null || true)"
         if [[ -n "$NCURSES_PREFIX" && -d "$NCURSES_PREFIX" ]]; then
