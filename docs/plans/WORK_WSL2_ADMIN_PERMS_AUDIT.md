@@ -740,3 +740,383 @@ Would include explicitly privileged steps:
 - anything writing to `/usr/local`
 
 This would make it much clearer how far a user can get on a locked-down machine before asking for admin help.
+
+---
+
+## User-space refactor plan
+
+Goal: move everything practical into user-owned locations (`$HOME`, `~/.local`, Linuxbrew, user-managed toolchains), while keeping true system integration separate and explicit.
+
+### 1) Easy wins
+
+These should be the next refactors because they are high-value and mostly straightforward.
+
+#### CLI tools: split core tools from system integration
+
+Current issue:
+
+- `install_cli_tools()` mixes normal developer tools with desktop/system integration packages
+
+Refactor into:
+
+- **core user CLI tools**
+  - `ripgrep`
+  - `fd`
+  - `bat`
+  - `eza`
+  - `fzf`
+  - `zoxide`
+  - `lazygit`
+  - `tmux`
+  - `starship`
+  - `cloc`
+  - `htop`
+  - likely `gpg` via brew when available
+
+- **system integration extras**
+  - `cups`
+  - `cups-client`
+  - `lpr`
+  - `xclip`
+  - `libtool` / `libtool-bin`
+
+Desired end state:
+
+- `make cli_tools` should primarily succeed in user space
+- printing/clipboard/system extras should be optional or separate
+
+#### Linux LaTeX: add user-local TeX Live path
+
+Current issue:
+
+- Linux path still assumes distro TeX packages for full LaTeX support
+- only tooling (`texlab`, `poppler`, `aspell`) is user-space friendly
+
+Refactor:
+
+- add a Linux user-local TeX Live installation flow, similar in spirit to the current macOS user-local TeX Live flow
+
+Desired end state:
+
+- full LaTeX editing + compilation support available without system package installation
+
+#### Whisper: split toolchain from audio integration
+
+Current issue:
+
+- core Whisper tooling can be user-space
+- audio backend/recording integration is partly system/environment dependent
+
+Refactor into:
+
+- **user-space Whisper toolchain**
+  - `ffmpeg`
+  - `cmake`
+  - `pkg-config`
+  - `sox`
+  - compiler/build tools where available in user space
+
+- **external/system audio integration**
+  - PulseAudio / PipeWire / ALSA bridging
+  - WSL audio setup
+
+Desired end state:
+
+- repo installs the tooling in user space
+- docs clearly say audio backend integration is external
+
+#### Shell layer cleanup
+
+Current issue:
+
+- `install_shell_prereqs()` still falls back to system package installs
+
+Refactor:
+
+- prefer Linuxbrew for `shellcheck` and `shfmt`
+- keep `bash-language-server` user-local via npm
+- evaluate whether any remaining shell extras can be installed from source into user space
+
+Desired end state:
+
+- shell layer works mostly from Linuxbrew + npm user-local installs
+
+---
+
+### 2) Medium-effort user-space moves
+
+These are worth doing, but are slightly more involved or need more testing.
+
+#### R
+
+Current issue:
+
+- repo still assumes system R unless Homebrew is already available
+
+Refactor direction:
+
+- make Linuxbrew R the preferred documented path
+- consider documenting or supporting a user-local R install strategy beyond brew if needed
+
+Desired end state:
+
+- `make r` works without distro package installs when Linuxbrew is available
+
+#### Python cleanup
+
+Current state:
+
+- much better now under `NO_ADMIN=true`
+
+Next cleanup:
+
+- make the normal `python` target clearly user-space-first on Linux
+- reduce reliance on distro Python bootstrap where practical
+
+#### C/C++, SQL, Kubernetes, Terraform, OCaml
+
+Current state:
+
+- increasingly okay when Linuxbrew exists
+
+Next cleanup:
+
+- review each target for hidden system-package assumptions
+- prefer brew/user-local installs first
+- clearly separate “tooling install” from “external system integration”
+
+---
+
+### 3) Keep explicit as system / admin-managed
+
+These should not be disguised as fully user-space if they fundamentally touch system integration.
+
+#### WSL config
+
+- `/etc/wsl.conf`
+
+Keep as:
+
+- explicit manual/admin step
+- documented, not silently attempted in no-admin mode
+
+#### Docker runtime
+
+- Docker daemon / engine access
+
+Keep as:
+
+- external/admin-managed environment dependency
+
+#### Printing integration
+
+- `cups`
+- `cups-client`
+- `lpr`
+
+Keep as:
+
+- optional system integration
+
+#### Audio backend plumbing
+
+- distro-level PulseAudio / PipeWire / ALSA setup
+
+Keep as:
+
+- external/system integration dependency
+
+#### apt repo/key management
+
+- `/etc/apt/sources.list.d/...`
+- `/usr/share/keyrings/...`
+
+Keep as:
+
+- explicit privileged path only
+
+---
+
+## Concrete checklist
+
+### Easy wins
+
+- [ ] Split `install_cli_tools()` into core user tools vs system integration extras
+- [ ] Make `make cli_tools` primarily user-space on Linux
+- [ ] Add Linux user-local TeX Live path
+- [ ] Split Whisper into toolchain install vs audio backend requirements
+- [ ] Finish shell-layer brew-first cleanup
+
+### Medium effort
+
+- [ ] Make `make r` explicitly Linuxbrew-first and improve fallback guidance
+- [ ] Make `make python` user-space-first even outside `NO_ADMIN=true`
+- [ ] Review `c_cpp`, `sql`, `kubernetes`, `terraform`, and `ocaml` for remaining hidden system-package assumptions
+
+### Leave as external/system-level
+
+- [ ] Keep `/etc/wsl.conf` changes manual/explicit
+- [ ] Keep Docker runtime as external/admin-managed
+- [ ] Keep printing integration separate from core CLI tools
+- [ ] Keep distro audio backend plumbing separate from Whisper tooling
+- [ ] Keep apt repo/key writes in explicit privileged-only paths
+
+---
+
+## Final current-state summary
+
+As of the latest refactor pass, the repo now separates several layers into:
+
+- user-space/core tooling
+- optional system integration
+
+This is now true for:
+
+- `cli_tools`
+- `whisper`
+- `latex`
+
+### What the repo wants in `/etc/wsl.conf`
+
+The repo currently only tries to set:
+
+```ini
+[interop]
+appendwindowspath = false
+```
+
+Purpose:
+
+- disable automatic inheritance of the Windows PATH into WSL
+
+This is treated as optional/manual in no-admin workflows.
+
+---
+
+## Current true admin/system-level requirements by layer
+
+This list focuses on **actual remaining hard system/admin pieces**, not just fallback package-manager behavior.
+
+### `make system-prereq`
+
+Still includes some system-level or external pieces:
+
+- `install_askpass`
+  - optional GUI password prompt tool
+  - still system-package-based
+- WSL config
+  - if used, modifies `/etc/wsl.conf`
+- portions of CLI system integration
+  - now split out separately
+
+### `make cli_tools`
+
+Now split into:
+
+- `cli_tools_core`
+- `cli_tools_system`
+
+Current hard/system portion:
+
+- printing/desktop integration packages:
+  - `cups`
+  - `cups-client`
+  - `lpr`
+  - `xclip`
+  - `libtool` / `libtool-bin`
+
+These are now treated as optional system extras.
+
+### `make whisper`
+
+Now split into:
+
+- `whisper_toolchain`
+- `whisper_audio`
+
+Current hard/system portion:
+
+- distro-level audio backend plumbing:
+  - PulseAudio / PipeWire / ALSA integration
+  - WSL audio bridging
+
+The repo can now install the toolchain in user space, but audio integration remains external/system-level.
+
+### `make latex`
+
+Now split into:
+
+- `latex_tooling`
+- `latex_distribution`
+
+Current state:
+
+- Linux no-admin mode now has a user-local TeX Live path
+- this removes the old hard dependency on distro TeX packages for core LaTeX support
+
+Remaining possible system extras:
+
+- GUI viewers/spell tools such as `okular` / `aspell` may still rely on system packages if Homebrew is not available
+
+So:
+
+- core LaTeX support is no longer inherently admin-bound
+- some convenience/editor extras may still be system-managed depending on environment
+
+### `make docker`
+
+Hard system portion:
+
+- Docker engine / daemon / container runtime access
+
+This should remain external/admin-managed.
+
+### `make terraform`
+
+Hard system portion only when not using Homebrew/Linuxbrew:
+
+- apt repo/key setup under:
+  - `/usr/share/keyrings/...`
+  - `/etc/apt/sources.list.d/...`
+
+With Homebrew available, the tooling path is user-space-friendly.
+
+### `make spacemacs`
+
+Current state:
+
+- Debian/Ubuntu path is now much more user-space-friendly
+- Linuxbrew-first, user-local install prefix, and best-effort preinstalled-deps path exist
+
+Still system-bound in some environments:
+
+- Arch dependency-install path still uses system package management
+
+---
+
+## Practical interpretation
+
+### No longer inherently admin-bound
+
+These layers now have a realistic user-space-first path:
+
+- `spacemacs` (on Debian/Ubuntu, or where deps are already present)
+- `cli_tools` core portion
+- `whisper` toolchain portion
+- `latex` core distribution support
+- `python`
+- `python-env`
+- `js`
+- `yaml`
+- `vimscript`
+- `rust`
+- `r` when Linuxbrew R is available
+
+### Still legitimately system/external
+
+- WSL config edits
+- printing/CUPS integration
+- Linux audio backend plumbing
+- Docker runtime access
+- apt repo/key management paths
+- Arch system package installs in current scripts

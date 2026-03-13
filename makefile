@@ -3,7 +3,8 @@
 .PHONY: spacemacs prereq-layers-all linking-prereq system-prereq node-manual \
         shell-layer git-layer yaml markdown completion vimscript \
         latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools \
-        whisper cli_tools starship syntax-highlighting update-deps full-setup help
+        whisper whisper_toolchain whisper_audio latex_tooling latex_distribution \
+        cli_tools cli_tools_core cli_tools_system starship syntax-highlighting update-deps full-setup help
 
 # Default target to install all prerequisite layers
 prereq-layers-all: shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools
@@ -11,6 +12,14 @@ prereq-layers-all: shell-layer git-layer yaml markdown completion vimscript late
 cli_tools:
 	@echo "Installing CLI tools only..."
 	@./prereq_packages.sh install_cli_tools
+
+cli_tools_core:
+	@echo "Installing core CLI tools..."
+	@./prereq_packages.sh install_cli_tools_core
+
+cli_tools_system:
+	@echo "Installing CLI system-integration extras..."
+	@./prereq_packages.sh install_cli_tools_system
 
 starship:
 	@echo "Installing Starship prompt..."
@@ -59,6 +68,14 @@ whisper:
 	@echo "Installing Whisper (speech-to-text) prerequisites..."
 	@./prereq_packages.sh install_whisper_prereqs
 
+whisper_toolchain:
+	@echo "Installing Whisper toolchain only..."
+	@./prereq_packages.sh install_whisper_toolchain
+
+whisper_audio:
+	@echo "Installing Whisper audio integration prerequisites..."
+	@./prereq_packages.sh install_whisper_audio_integration
+
 yaml:
 	@echo "Installing YAML language server..."
 	@./prereq_packages.sh install_yaml_support
@@ -78,6 +95,14 @@ vimscript:
 latex:
 	@echo "Installing LaTeX tools..."
 	@./prereq_packages.sh install_latex_tools
+
+latex_tooling:
+	@echo "Installing LaTeX editor/tooling support..."
+	@./prereq_packages.sh install_latex_tooling
+
+latex_distribution:
+	@echo "Installing LaTeX distribution support..."
+	@./prereq_packages.sh install_latex_distribution
 
 python:
 	@echo "Installing Python tools..."
@@ -171,8 +196,14 @@ help:
 	@echo "  r           - R/ESS support"
 	@echo ""
 	@echo "Other targets:"
-	@echo "  whisper         - Install Whisper (speech-to-text) prerequisites"
-	@echo "  cli_tools       - Install general CLI tools only"
+	@echo "  whisper         - Install Whisper prerequisites (toolchain + audio integration unless NO_ADMIN=true)"
+	@echo "  whisper_toolchain - Install Whisper toolchain only"
+	@echo "  whisper_audio   - Install Whisper audio integration prerequisites"
+	@echo "  cli_tools       - Install general CLI tools only (core + system extras unless NO_ADMIN=true)"
+	@echo "  cli_tools_core  - Install core user-space CLI tools"
+	@echo "  cli_tools_system - Install optional CLI system-integration extras"
+	@echo "  latex_tooling   - Install LaTeX editor/tooling support"
+	@echo "  latex_distribution - Install LaTeX distribution support"
 	@echo "  starship        - Install Starship prompt with Ayu Mirage config"
 	@echo "  syntax-highlighting - Install shell syntax highlighting (blesh/zsh-syntax-highlighting)"
 	@echo "  update-deps     - Update dependencies after Renovate PRs"

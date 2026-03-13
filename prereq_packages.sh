@@ -331,9 +331,7 @@ install_git_prereqs() {
     fi
 }
 
-install_whisper_prereqs() {
-    log "Installing Whisper (Spacemacs whisper layer) prerequisites..."
-
+install_whisper_toolchain() {
     if [[ "$OS" == "Darwin" ]]; then
         # ffmpeg for recording (avfoundation) + whisper.cpp build deps
         install_packages "ffmpeg" "cmake" "pkg-config"
@@ -342,21 +340,46 @@ install_whisper_prereqs() {
     elif is_installed "brew"; then
         log "Installing Whisper prerequisites via Homebrew/Linuxbrew..."
         brew install ffmpeg cmake pkg-config sox make gcc || log "Error installing Whisper tools via Homebrew." "WARNING"
-        log "User-space mode installs build tools and audio utilities where possible, but does not configure distro-level audio backends." "WARNING"
-        log "WSL/desktop audio integration (PulseAudio/PipeWire/ALSA bridging) must already be available." "WARNING"
+    elif [[ "$DISTRO" == "arch" ]]; then
+        install_packages_translated \
+            "ffmpeg" "cmake" "make" "gcc" "sox"
+    else
+        install_packages_translated \
+            "ffmpeg" "cmake" "make" "g++" "sox"
+    fi
+}
+
+install_whisper_audio_integration() {
+    if [[ "$OS" == "Darwin" ]]; then
+        log "Audio integration for Whisper uses native macOS devices; no extra system packages needed."
     elif [[ "$DISTRO" == "arch" ]]; then
         # Prefer PipeWire Pulse compatibility on modern Arch installs
-        install_packages_translated \
-            "ffmpeg" "cmake" "make" "gcc" \
-            "sox" "alsa-utils" "libasound2-plugins" "pipewire-pulse"
+        install_packages_translated "alsa-utils" "libasound2-plugins" "pipewire-pulse"
     else
         # Debian/Ubuntu: ensure whisper.el selects PulseAudio input backend by default
-        install_packages_translated \
-            "ffmpeg" "cmake" "make" "g++" \
-            "sox" "alsa-utils" "libasound2-plugins" "pulseaudio" "pulseaudio-utils"
+        install_packages_translated "alsa-utils" "libasound2-plugins" "pulseaudio" "pulseaudio-utils"
+    fi
+}
+
+install_whisper_prereqs() {
+    log "Installing Whisper (Spacemacs whisper layer) prerequisites..."
+    local partial_setup=false
+
+    install_whisper_toolchain
+
+    if [[ "$OS" == "Linux" ]] && no_admin_mode; then
+        log "NO_ADMIN=true: skipping distro-level audio backend setup for Whisper." "WARNING"
+        log "WSL/desktop audio integration (PulseAudio/PipeWire/ALSA bridging) must already be available." "WARNING"
+        partial_setup=true
+    else
+        install_whisper_audio_integration
     fi
 
-    log "Whisper prerequisites installed successfully." "SUCCESS"
+    if [[ "$partial_setup" == "true" ]]; then
+        log "Whisper toolchain installed, but audio integration was not configured automatically." "WARNING"
+    else
+        log "Whisper prerequisites installed successfully." "SUCCESS"
+    fi
 }
 
 install_yaml_support() {
@@ -403,51 +426,57 @@ install_vimscript_lsp() {
     $NODE_CMD install -g vim-language-server || log "Error installing vim-language-server." "WARNING"
 }
 
-install_latex_tools() {
-    log "Installing LaTeX tools..."
+texlive_platform() {
     if [[ "$OS" == "Darwin" ]]; then
-        # Use Brewfile for texlab, poppler, aspell
-        if is_installed "brew"; then
-            log "Installing LaTeX tools via Homebrew..."
-            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.latex" || log "Error with Brewfile.latex" "WARNING"
-        fi
+        echo "universal-darwin"
+        return 0
+    fi
 
-        # User-local TeX Live installation (no sudo required)
-        local TEXLIVE_HOME="$HOME/texlive"
-        local CURRENT_YEAR
-        CURRENT_YEAR="$(date +%Y)"
-        local TEXDIR="$TEXLIVE_HOME/$CURRENT_YEAR"
-        local TEXLIVE_BIN="$TEXDIR/bin/universal-darwin"
-        local TLMGR="$TEXLIVE_BIN/tlmgr"
+    local arch
+    arch="$(uname -m)"
+    case "$arch" in
+        x86_64 | amd64) echo "x86_64-linux" ;;
+        aarch64 | arm64) echo "aarch64-linux" ;;
+        *) echo "${arch}-linux" ;;
+    esac
+}
 
-        # Remove old TeX Live years if present
-        if [[ -d "$TEXLIVE_HOME" ]]; then
-            for old_dir in "$TEXLIVE_HOME"/*/; do
-                local dir_name
-                dir_name="$(basename "$old_dir")"
-                if [[ "$dir_name" =~ ^[0-9]+$ && "$dir_name" != "$CURRENT_YEAR" ]]; then
-                    log "Removing old TeX Live $dir_name..."
-                    rm -rf "$old_dir"
-                fi
-            done
-        fi
+install_texlive_user_local() {
+    local TEXLIVE_HOME="$HOME/texlive"
+    local CURRENT_YEAR
+    CURRENT_YEAR="$(date +%Y)"
+    local PLATFORM
+    PLATFORM="$(texlive_platform)"
+    local TEXDIR="$TEXLIVE_HOME/$CURRENT_YEAR"
+    local TEXLIVE_BIN="$TEXDIR/bin/$PLATFORM"
+    local TLMGR="$TEXLIVE_BIN/tlmgr"
 
-        # Install TeX Live if not present for current year
-        if [[ ! -x "$TLMGR" ]]; then
-            log "Installing TeX Live $CURRENT_YEAR to $TEXDIR..."
-            local INSTALL_TMP
-            INSTALL_TMP="$(mktemp -d)"
+    # Remove old TeX Live years if present
+    if [[ -d "$TEXLIVE_HOME" ]]; then
+        for old_dir in "$TEXLIVE_HOME"/*/; do
+            local dir_name
+            dir_name="$(basename "$old_dir")"
+            if [[ "$dir_name" =~ ^[0-9]+$ && "$dir_name" != "$CURRENT_YEAR" ]]; then
+                log "Removing old TeX Live $dir_name..."
+                rm -rf "$old_dir"
+            fi
+        done
+    fi
 
-            curl -L "https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz" \
-                -o "$INSTALL_TMP/install-tl.tar.gz" || {
-                log "Failed to download TeX Live installer." "ERROR"
-                rm -rf "$INSTALL_TMP"
-                return 1
-            }
-            tar -xzf "$INSTALL_TMP/install-tl.tar.gz" -C "$INSTALL_TMP" --strip-components=1
+    if [[ ! -x "$TLMGR" ]]; then
+        log "Installing TeX Live $CURRENT_YEAR to $TEXDIR..."
+        local INSTALL_TMP
+        INSTALL_TMP="$(mktemp -d)"
 
-            # Create install profile for non-interactive install
-            cat > "$INSTALL_TMP/texlive.profile" << TEXPROFILE
+        curl -L "https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz" \
+            -o "$INSTALL_TMP/install-tl.tar.gz" || {
+            log "Failed to download TeX Live installer." "ERROR"
+            rm -rf "$INSTALL_TMP"
+            return 1
+        }
+        tar -xzf "$INSTALL_TMP/install-tl.tar.gz" -C "$INSTALL_TMP" --strip-components=1
+
+        cat > "$INSTALL_TMP/texlive.profile" << TEXPROFILE
 selected_scheme scheme-basic
 TEXDIR $TEXDIR
 TEXMFLOCAL $TEXDIR/texmf-local
@@ -456,7 +485,6 @@ TEXMFSYSVAR $TEXDIR/texmf-var
 TEXMFHOME ~/texmf
 TEXMFCONFIG ~/.texlive${CURRENT_YEAR}/texmf-config
 TEXMFVAR ~/.texlive${CURRENT_YEAR}/texmf-var
-binary_universal-darwin 1
 instopt_adjustpath 0
 instopt_adjustrepo 1
 instopt_letter 0
@@ -464,35 +492,42 @@ tlpdbopt_autobackup 1
 tlpdbopt_install_docfiles 0
 tlpdbopt_install_srcfiles 0
 TEXPROFILE
+        echo "binary_${PLATFORM} 1" >> "$INSTALL_TMP/texlive.profile"
 
-            "$INSTALL_TMP"/install-tl -profile "$INSTALL_TMP/texlive.profile" || {
-                log "TeX Live installation failed." "ERROR"
-                rm -rf "$INSTALL_TMP"
-                return 1
-            }
+        "$INSTALL_TMP"/install-tl -profile "$INSTALL_TMP/texlive.profile" || {
+            log "TeX Live installation failed." "ERROR"
             rm -rf "$INSTALL_TMP"
-            log "TeX Live $CURRENT_YEAR installed successfully." "SUCCESS"
+            return 1
+        }
+        rm -rf "$INSTALL_TMP"
+        log "TeX Live $CURRENT_YEAR installed successfully." "SUCCESS"
+    fi
+
+    export PATH="$TEXLIVE_BIN:$PATH"
+    add_to_path "$TEXLIVE_BIN" "TeX Live $CURRENT_YEAR"
+
+    "$TLMGR" update --self || log "tlmgr update --self failed." "WARNING"
+    log "Installing LaTeX packages via tlmgr..."
+    "$TLMGR" install collection-latexextra amsfonts ec cm-super
+}
+
+install_latex_tooling() {
+    if [[ "$OS" == "Darwin" ]]; then
+        # Use Brewfile for texlab, poppler, aspell
+        if is_installed "brew"; then
+            log "Installing LaTeX tools via Homebrew..."
+            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.latex" || log "Error with Brewfile.latex" "WARNING"
         fi
-
-        export PATH="$TEXLIVE_BIN:$PATH"
-        add_to_path "$TEXLIVE_BIN" "TeX Live $CURRENT_YEAR"
-
-        # Update tlmgr and install packages to match texlive-latex-extra on Linux
-        "$TLMGR" update --self || log "tlmgr update --self failed." "WARNING"
-        log "Installing LaTeX packages via tlmgr..."
-        "$TLMGR" install collection-latexextra amsfonts ec cm-super
     elif is_installed "brew"; then
         log "Installing LaTeX tools via Homebrew/Linuxbrew..."
         brew bundle --file="$GNU_DIR/brewfiles/Brewfile.latex" || log "Error with Brewfile.latex" "WARNING"
-        log "Note: on Linux this installs editor/tooling support (texlab, poppler, aspell), not a full TeX distribution." "WARNING"
-        log "Install TeX Live separately if you need full document compilation support." "WARNING"
     elif [[ "$DISTRO" == "arch" ]]; then
         # Arch: texlab is in official repos
-        log "Installing LaTeX tools for Arch..."
-        install_packages "texlive-latexextra" "okular" "aspell" "texlab"
+        log "Installing LaTeX tooling for Arch..."
+        install_packages "okular" "aspell" "texlab"
     else
-        # Debian/Ubuntu: Install minimal LaTeX with latex-extra for common packages
-        install_packages "texlive-latex-extra" "okular" "aspell"
+        # Debian/Ubuntu: user-space texlab, plus optional system viewers/spell tools
+        install_packages "okular" "aspell"
 
         # Install texlab from pre-built binary (not available in apt)
         if ! is_installed "texlab"; then
@@ -519,6 +554,29 @@ TEXPROFILE
         else
             log "texlab is already installed."
         fi
+    fi
+}
+
+install_latex_distribution() {
+    if [[ "$OS" == "Darwin" ]]; then
+        install_texlive_user_local
+    elif [[ "$OS" == "Linux" ]] && no_admin_mode; then
+        log "NO_ADMIN=true: installing user-local TeX Live instead of distro packages."
+        install_texlive_user_local
+    elif [[ "$DISTRO" == "arch" ]]; then
+        install_packages "texlive-latexextra"
+    else
+        install_packages "texlive-latex-extra"
+    fi
+}
+
+install_latex_tools() {
+    log "Installing LaTeX tools..."
+    install_latex_tooling
+    install_latex_distribution
+
+    if [[ "$OS" == "Linux" ]] && is_installed "brew"; then
+        log "Note: Homebrew/Linuxbrew covers editor/tooling support; TeX distribution support is handled separately." "WARNING"
     fi
 }
 
@@ -597,6 +655,7 @@ install_python_prereqs() {
 
 install_r_support() {
     log "Installing R tools for ESS..."
+    local r_available=false
 
     if [[ "$OS" == "Linux" ]] && is_installed "brew"; then
         log "Installing R via Homebrew/Linuxbrew..."
@@ -615,6 +674,7 @@ install_r_support() {
     fi
 
     if is_installed "Rscript"; then
+        r_available=true
         log "Ensuring the R languageserver package is installed..."
         # Create user library directory if it doesn't exist
         Rscript -e 'dir.create(Sys.getenv("R_LIBS_USER"), showWarnings = FALSE, recursive = TRUE)'
@@ -623,6 +683,12 @@ install_r_support() {
             log "Failed to install languageserver package for R." "WARNING"
     else
         log "Rscript not found on PATH; skipping languageserver install." "WARNING"
+    fi
+
+    if [[ "$r_available" == "true" ]]; then
+        log "R support installed/configured successfully." "SUCCESS"
+    elif [[ "$OS" == "Linux" ]] && no_admin_mode; then
+        log "R support partially configured: user-library setup was skipped because no usable R installation is available in user space yet." "WARNING"
     fi
 }
 
@@ -1069,6 +1135,57 @@ _install_zsh_vi_mode_from_source() {
     log "zsh-vi-mode installed to $zvm_dir" "SUCCESS"
 }
 
+install_cli_tools_core() {
+    log "Installing core CLI tools..."
+
+    if [[ "$OS" == "Darwin" ]]; then
+        install_packages "htop" "gpg" "cloc"
+
+        if is_installed "brew"; then
+            log "Installing CLI core via Homebrew..."
+            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
+        fi
+
+        if ! xcode-select -p &> /dev/null; then
+            log "Xcode Command Line Tools not found. Installing..."
+            xcode-select --install || log "Error installing Xcode Command Line Tools." "WARNING"
+        else
+            log "Xcode Command Line Tools are already installed."
+        fi
+    elif [[ "$DISTRO" == "arch" ]]; then
+        if is_installed "brew"; then
+            log "Installing CLI core via Homebrew/Linuxbrew..."
+            brew install htop gnupg cloc cmake || log "Error installing base CLI tools via Homebrew." "WARNING"
+            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
+        else
+            log "Homebrew not found; falling back to distro packages for CLI core tools..."
+            install_packages "htop" "gnupg" "cloc" "cmake"
+            install_packages "eza" "bat" "ripgrep" "fd" "fzf" "zoxide" "lazygit" "tmux" "starship"
+        fi
+    else
+        if is_installed "brew"; then
+            log "Installing CLI core via Homebrew/Linuxbrew..."
+            brew install htop gnupg cloc cmake || log "Error installing base CLI tools via Homebrew." "WARNING"
+            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
+        else
+            log "Homebrew not found; falling back to distro packages for available CLI core tools..."
+            install_packages "htop" "gpg" "cloc" "cmake" "tmux" "fzf" "ripgrep" "zoxide"
+        fi
+    fi
+}
+
+install_cli_tools_system() {
+    log "Installing CLI system-integration extras..."
+
+    if [[ "$OS" == "Darwin" ]]; then
+        log "No separate CLI system extras needed on macOS."
+    elif [[ "$DISTRO" == "arch" ]]; then
+        install_packages "cups" "xclip" "libtool"
+    else
+        install_packages "cups" "cups-client" "lpr" "xclip" "libtool-bin"
+    fi
+}
+
 install_cli_tools() {
     log "Installing general CLI tools..."
 
@@ -1085,52 +1202,13 @@ install_cli_tools() {
     shell_rc="$(get_shell_rc)"
     shell_name="$(get_shell_name)"
 
-    if [[ "$OS" == "Darwin" ]]; then
-        # Install system packages first
-        install_packages "htop" "gpg" "cloc"
+    install_cli_tools_core
 
-        # Use Brewfile for CLI tools
-        if is_installed "brew"; then
-            log "Installing CLI tools via Homebrew..."
-            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
-        fi
-
-        if ! xcode-select -p &> /dev/null; then
-            log "Xcode Command Line Tools not found. Installing..."
-            xcode-select --install || log "Error installing Xcode Command Line Tools." "WARNING"
-        else
-            log "Xcode Command Line Tools are already installed."
-        fi
-    elif [[ "$DISTRO" == "arch" ]]; then
-        if is_installed "brew"; then
-            log "Installing CLI tools via Homebrew/Linuxbrew..."
-            brew install htop gnupg cloc cmake || log "Error installing base CLI tools via Homebrew." "WARNING"
-            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
-        fi
-        # Arch: most CLI tools are in official repos
-        install_packages "htop" "gnupg" "cloc" "cups" "xclip" "libtool" "cmake"
-        # Modern CLI tools available in Arch repos
-        install_packages "eza" "bat" "ripgrep" "fd" "fzf" "zoxide" "lazygit" "tmux" "starship"
-
-        # Use Brewfile for any remaining tools
-        if is_installed "brew"; then
-            log "Installing additional CLI tools via Homebrew..."
-            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
-        fi
+    if [[ "$OS" == "Linux" ]] && no_admin_mode; then
+        log "NO_ADMIN=true: skipping CLI system-integration extras (printing, clipboard, libtool)." "WARNING"
+        log "CLI core tools installed, but optional system extras were not configured." "WARNING"
     else
-        if is_installed "brew"; then
-            log "Installing CLI tools via Homebrew/Linuxbrew..."
-            brew install htop gnupg cloc cmake || log "Error installing base CLI tools via Homebrew." "WARNING"
-            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
-        fi
-
-        # Debian/Ubuntu: Install system packages via apt
-        install_packages "htop" "gpg" "cloc" "cups" "cups-client" "lpr" "xclip" "libtool-bin" "cmake"
-
-        # Use Brewfile for CLI tools on Linux
-        if no_admin_mode; then
-            log "NO_ADMIN=true: skipping Linux-only extras that still rely on system packages (cups/xclip/libtool)." "WARNING"
-        fi
+        install_cli_tools_system
     fi
 
     # Install oh-my-tmux (gpakosz/.tmux)
@@ -1412,11 +1490,15 @@ main() {
         "install_askpass"
         "install_shell_prereqs"
         "install_git_prereqs"
+        "install_whisper_toolchain"
+        "install_whisper_audio_integration"
         "install_whisper_prereqs"
         "install_markdown_support"
         "install_yaml_support"
         "create_snippet_symlink"
         "install_vimscript_lsp"
+        "install_latex_tooling"
+        "install_latex_distribution"
         "install_latex_tools"
         "install_python_prereqs"
         "install_python_env"
@@ -1433,6 +1515,8 @@ main() {
         "install_ai_tools"
         "install_starship"
         "install_syntax_highlighting"
+        "install_cli_tools_core"
+        "install_cli_tools_system"
         "install_cli_tools"
         "install_all"
     )
