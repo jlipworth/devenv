@@ -284,9 +284,37 @@ install_git_credential() {
                 fi
             fi
         else
-            install_packages "libsecret-1-0" "libsecret-1-dev" "gnome-keyring"
-            build_git_credential_helper /usr/share/doc/git/contrib/credential/libsecret &&
-                git config --global credential.helper "$HOME/.local/bin/git-credential-libsecret"
+            # Debian/Ubuntu: need libsecret headers to compile git-credential-libsecret.
+            # Prefer brew-provided libsecret (no sudo), fall back to apt packages.
+            local libsecret_ready=false
+
+            if is_installed "brew"; then
+                if brew install libsecret 2> /dev/null; then
+                    libsecret_ready=true
+                    # Expose brew's pkg-config path so the build finds libsecret-1.pc
+                    local brew_prefix
+                    brew_prefix="$(brew --prefix)"
+                    export PKG_CONFIG_PATH="${brew_prefix}/lib/pkgconfig:${brew_prefix}/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+                fi
+            fi
+
+            if [[ "$libsecret_ready" != "true" ]]; then
+                if no_admin_mode; then
+                    log "NO_ADMIN=true: cannot install libsecret-1-dev headers needed to build git-credential-libsecret." "WARNING"
+                    log "Either install libsecret via Linuxbrew (brew install libsecret) and rerun, or configure git credentials manually." "WARNING"
+                    return 0
+                fi
+                install_packages "libsecret-1-0" "libsecret-1-dev" "gnome-keyring"
+                libsecret_ready=true
+            fi
+
+            if [[ -d /usr/share/doc/git/contrib/credential/libsecret ]]; then
+                build_git_credential_helper /usr/share/doc/git/contrib/credential/libsecret &&
+                    git config --global credential.helper "$HOME/.local/bin/git-credential-libsecret"
+            else
+                log "Git credential helper source not found at /usr/share/doc/git/contrib/credential/libsecret." "WARNING"
+                log "Ensure the 'git' package is fully installed, then rerun." "WARNING"
+            fi
         fi
     else
         log "Skipping Git credential helper setup. macOS uses the built-in keychain."
@@ -532,8 +560,24 @@ install_latex_tooling() {
         # Install texlab from pre-built binary (not available in apt)
         if ! is_installed "texlab"; then
             log "Installing texlab from GitHub releases..."
+            local texlab_arch
+            case "$(uname -m)" in
+                x86_64 | amd64) texlab_arch="x86_64" ;;
+                aarch64 | arm64) texlab_arch="aarch64" ;;
+                *)
+                    log "Unsupported architecture $(uname -m) for texlab binary download." "ERROR"
+                    return 1
+                    ;;
+            esac
+            local texlab_os
+            if [[ "$OS" == "Darwin" ]]; then
+                texlab_os="macos"
+            else
+                texlab_os="linux"
+            fi
+
             TEXLAB_VERSION=$(curl -s https://api.github.com/repos/latex-lsp/texlab/releases/latest | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')
-            TEXLAB_URL="https://github.com/latex-lsp/texlab/releases/download/v${TEXLAB_VERSION}/texlab-x86_64-linux.tar.gz"
+            TEXLAB_URL="https://github.com/latex-lsp/texlab/releases/download/v${TEXLAB_VERSION}/texlab-${texlab_arch}-${texlab_os}.tar.gz"
 
             curl -L "$TEXLAB_URL" -o /tmp/texlab.tar.gz || {
                 log "Failed to download texlab." "ERROR"
