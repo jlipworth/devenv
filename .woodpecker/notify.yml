@@ -10,6 +10,7 @@ depends_on:
   - build
   - layers
   - lint
+  - noadmin
 
 runs_on: [success, failure]
 
