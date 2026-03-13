@@ -21,9 +21,20 @@ EMACS_DIR="emacs-${EMACS_VERSION}"
 #
 # Set CI_INSTALL=true to run 'make install' even in CI mode
 # (useful for integration tests that need the installed binary)
+#
+# Install Prefix
+# By default, Linux installs to $HOME/.local (no sudo required).
+# Set EMACS_PREFIX to override (e.g. EMACS_PREFIX=/usr/local for system-wide).
+# macOS always uses the default /usr/local (Homebrew handles permissions).
 # -----------------------------------------------------------------------------
 CI="${CI:-false}"
 CI_INSTALL="${CI_INSTALL:-false}"
+
+if [[ "$OS" == "Linux" ]]; then
+    EMACS_PREFIX="${EMACS_PREFIX:-$HOME/.local}"
+else
+    EMACS_PREFIX="${EMACS_PREFIX:-/usr/local}"
+fi
 
 DRY_RUN="false"
 if [[ "$1" == "--verify" || "$1" == "--check" || "$1" == "--dry-run" ]]; then
@@ -217,8 +228,10 @@ cd "${EMACS_DIR}"
 # 3) Configure
 # -----------------------------------------------------------------------------
 log "Configuring the build…"
+log "Install prefix: $EMACS_PREFIX"
 if [[ "$OS" == "Darwin" ]]; then
     ./configure \
+        --prefix="$EMACS_PREFIX" \
         --with-native-compilation \
         --with-tree-sitter \
         --with-threads \
@@ -236,6 +249,7 @@ if [[ "$OS" == "Darwin" ]]; then
         --disable-ns-self-contained
 else
     ./configure \
+        --prefix="$EMACS_PREFIX" \
         --with-native-compilation \
         --with-tree-sitter \
         --with-threads \
@@ -277,21 +291,22 @@ log "Compilation finished at: $(date)" "SUCCESS"
 if [[ "$CI" == "true" && "$CI_INSTALL" != "true" ]]; then
     log "CI mode: Skipping 'make install' (set CI_INSTALL=true to install)" "INFO"
 else
-    log "Installing Emacs to system..."
-    if [[ "$CI" == "true" ]]; then
-        # In CI containers, we run as root - no sudo needed
+    log "Installing Emacs to $EMACS_PREFIX..."
+    # Determine if sudo is needed based on prefix writability
+    if [[ -w "$EMACS_PREFIX" ]] || [[ "$CI" == "true" ]] || [[ $(id -u) -eq 0 ]]; then
         make install
     else
+        log "Prefix $EMACS_PREFIX is not writable, using sudo..." "WARNING"
         sudo make install
     fi
-    log "System installation complete" "SUCCESS"
+    log "Installation complete" "SUCCESS"
 
     # Recompile org .elc files to prevent version mismatch warnings
     # Fresh compilation ensures .elc files match the installed .el sources
-    ORG_LISP_DIR="/usr/local/share/emacs/${EMACS_VERSION}/lisp/org"
+    ORG_LISP_DIR="${EMACS_PREFIX}/share/emacs/${EMACS_VERSION}/lisp/org"
     if [[ -d "$ORG_LISP_DIR" ]]; then
         log "Recompiling org-mode to ensure .elc files are fresh..."
-        if [[ "$CI" == "true" ]]; then
+        if [[ -w "$ORG_LISP_DIR" ]] || [[ "$CI" == "true" ]] || [[ $(id -u) -eq 0 ]]; then
             emacs --batch -L "$ORG_LISP_DIR" --eval "(byte-recompile-directory \"$ORG_LISP_DIR\" 0 t)" 2> /dev/null
         else
             sudo emacs --batch -L "$ORG_LISP_DIR" --eval "(byte-recompile-directory \"$ORG_LISP_DIR\" 0 t)" 2> /dev/null
