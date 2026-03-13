@@ -101,7 +101,7 @@ make cli_tools  # eza, bat, ripgrep, fd, fzf, zoxide, lazygit
 | [docs/ALIASES.md](docs/ALIASES.md)           | Shell aliases for modern CLI tools         |
 | [docs/BASH_TO_ZSH_MIGRATION_RUNBOOK.md](docs/BASH_TO_ZSH_MIGRATION_RUNBOOK.md) | Bash to zsh migration runbook |
 | [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md) | Dependency management and Renovate         |
-| [docs/plans/WORK_WSL2_ADMIN_PERMS_AUDIT.md](docs/plans/WORK_WSL2_ADMIN_PERMS_AUDIT.md) | Work WSL2 / no-admin audit and remaining blockers |
+| [docs/archive/WORK_WSL2_ADMIN_PERMS_AUDIT.md](docs/archive/WORK_WSL2_ADMIN_PERMS_AUDIT.md) | Work WSL2 / no-admin audit and remaining blockers |
 
 ## License
 
