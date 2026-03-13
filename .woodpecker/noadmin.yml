@@ -13,8 +13,7 @@
 #
 # Notes:
 # - We keep this lightweight on purpose.
-# - Start with one minimal image first; add richer success-path coverage later
-#   only if needed.
+# - This image mirrors the intended work-machine case: no sudo at runtime, but Homebrew is preinstalled.
 
 when:
   event: [push, pull_request, manual]
@@ -83,7 +82,8 @@ steps:
     commands:
       - set -euo pipefail
       - make r 2>&1 | tee r.log
-      - grep -q "NO_ADMIN=true and Homebrew is not available: skipping system R installation" r.log
+      - command -v brew
+      - grep -q "Installing R via Homebrew/Linuxbrew" r.log
 
   - name: noadmin-latex-tooling
     image: *noadmin_image
@@ -107,14 +107,13 @@ steps:
     commands:
       - set -euo pipefail
       - make system-prereq 2>&1 | tee system_prereq.log
-      - grep -q "NO_ADMIN=true: not attempting Homebrew bootstrap automatically" system_prereq.log
+      - command -v brew
       - grep -q "NO_ADMIN=true: skipping ksshaskpass" system_prereq.log
       - grep -q "Node.js v" system_prereq.log
       - grep -q "Shell syntax highlighting partially configured" system_prereq.log
       - test -x "$HOME/.local/bin/starship"
       - test -d "$HOME/.nvm"
 
-  # Future follow-up:
-  # - add an Emacs-specific no-admin image with preinstalled build deps, then run:
-  #     CI=true NO_ADMIN=true ./build_emacs30.sh --verify
-  # - consider a slower/manual TeX Live distribution test separately from latex_tooling
+# Future follow-up:
+# - consider adding a slower/manual full `make latex` job once the
+#   slim TeX Live package set is settled

@@ -498,6 +498,13 @@ install_texlive_user_local() {
     local TEXDIR="$TEXLIVE_HOME/$CURRENT_YEAR"
     local TEXLIVE_BIN="$TEXDIR/bin/$PLATFORM"
     local TLMGR="$TEXLIVE_BIN/tlmgr"
+    local TEXLIVE_PACKAGES=(
+        collection-latexrecommended
+        latexmk
+        amsfonts
+        ec
+        cm-super
+    )
 
     # Remove old TeX Live years if present
     if [[ -d "$TEXLIVE_HOME" ]]; then
@@ -555,8 +562,10 @@ TEXPROFILE
     add_to_path "$TEXLIVE_BIN" "TeX Live $CURRENT_YEAR"
 
     "$TLMGR" update --self || log "tlmgr update --self failed." "WARNING"
-    log "Installing LaTeX packages via tlmgr..."
-    "$TLMGR" install collection-latexextra amsfonts ec cm-super
+    log "Installing a slim default LaTeX package set via tlmgr..."
+    "$TLMGR" install "${TEXLIVE_PACKAGES[@]}" || {
+        log "Some optional LaTeX packages failed to install from the slim default set." "WARNING"
+    }
 }
 
 install_latex_tooling() {
