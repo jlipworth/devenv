@@ -1,14 +1,15 @@
 # ci/Dockerfile.noadmin
-# Minimal non-root image for NO_ADMIN=true smoke tests.
+# Non-root image for NO_ADMIN=true smoke tests in the intended "brew exists,
+# but sudo/admin access does not" environment.
 #
 # Purpose:
 # - verify repo scripts behave honestly without sudo
 # - verify user-space installs stay under $HOME
-# - avoid hiding missing dependencies behind a privileged CI image
+# - exercise Linuxbrew-backed no-admin install paths
 #
-# This image is intentionally lean:
-# - no sudo
-# - no Homebrew preinstalled
+# This image intentionally has:
+# - no sudo at runtime
+# - Homebrew preinstalled for the non-root user
 # - no passwordless escalation
 #
 # Build manually with:
@@ -19,11 +20,6 @@ FROM debian:bookworm-slim
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Keep this intentionally small. These are just the basics needed to:
-# - clone the repo
-# - run make targets
-# - download/install user-space tools
-# - compile lightweight source-based user installs when needed
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     build-essential \
@@ -31,17 +27,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     file \
     git \
-    make \
     procps \
     tar \
     unzip \
     xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -m -s /bin/bash tester
+RUN useradd -m -s /bin/bash tester \
+    && mkdir -p /home/linuxbrew/.linuxbrew /home/linuxbrew/.cache/Homebrew \
+    && chown -R tester:tester /home/linuxbrew
 
 USER tester
 ENV HOME=/home/tester
 ENV PATH="${HOME}/.local/bin:${HOME}/bin:${PATH}"
+ENV HOMEBREW_PREFIX=/home/linuxbrew/.linuxbrew
+ENV HOMEBREW_CELLAR=/home/linuxbrew/.linuxbrew/Cellar
+ENV HOMEBREW_REPOSITORY=/home/linuxbrew/.linuxbrew/Homebrew
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${HOME}/.local/bin:${HOME}/bin:${PATH}"
+
+RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" \
+    && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" \
+    && brew --version \
+    && echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)\"" >> /home/tester/.bashrc \
+    && echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)\"" >> /home/tester/.profile
 
 WORKDIR /workspace
