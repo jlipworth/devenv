@@ -1,0 +1,120 @@
+# .woodpecker/noadmin.yml
+# NO_ADMIN smoke tests.
+#
+# These jobs intentionally run in a non-root image without passwordless sudo.
+# Goal: confirm that NO_ADMIN=true:
+# - avoids privileged package-manager flows
+# - skips system-only integration cleanly
+# - reports partial setup honestly
+#
+# This is not a full replacement for the existing layer CI. It complements:
+# - .woodpecker/build.yml
+# - .woodpecker/layers.yml
+#
+# Notes:
+# - We keep this lightweight on purpose.
+# - Start with one minimal image first; add richer success-path coverage later
+#   only if needed.
+
+when:
+  event: [push, pull_request, manual]
+
+# Conditional clone based on repo
+clone:
+  gitlab-clone:
+    image: alpine/git
+    when:
+      - evaluate: 'CI_REPO == "jlipworth/GNU_files"'
+    environment:
+      SSH_KEY:
+        from_secret: ssh_key
+    commands:
+      - mkdir -p ~/.ssh
+      - echo "$SSH_KEY" > ~/.ssh/id_ed25519
+      - chmod 600 ~/.ssh/id_ed25519
+      - ssh-keyscan -t ed25519 gitlab.com >> ~/.ssh/known_hosts 2>/dev/null
+      - git clone --depth=1 --branch=$CI_COMMIT_BRANCH git@gitlab.com:jlipworth/GNU_files.git .
+      - git fetch origin $CI_COMMIT_SHA --depth=1
+      - git checkout $CI_COMMIT_SHA
+  github-clone:
+    image: woodpeckerci/plugin-git
+    when:
+      - evaluate: 'CI_REPO == "jlipworth/devenv"'
+
+variables:
+  - &noadmin_image "jlipworth/gnu-files-noadmin:latest"
+
+steps:
+  - name: noadmin-cli-tools
+    image: *noadmin_image
+    depends_on: []
+    environment:
+      CI: "true"
+      NO_ADMIN: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - set -euo pipefail
+      - make cli_tools 2>&1 | tee cli_tools.log
+      - grep -q "NO_ADMIN=true: skipping CLI system-integration extras" cli_tools.log
+      - grep -q "Shell syntax highlighting partially configured" cli_tools.log
+      - test -d "$HOME/.tmux"
+      - test -x "$HOME/.local/bin/starship"
+
+  - name: noadmin-whisper
+    image: *noadmin_image
+    depends_on: []
+    environment:
+      CI: "true"
+      NO_ADMIN: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - set -euo pipefail
+      - make whisper 2>&1 | tee whisper.log
+      - grep -q "NO_ADMIN=true: skipping distro-level audio backend setup for Whisper" whisper.log
+      - grep -q "Whisper toolchain installed, but audio integration was not configured automatically" whisper.log
+
+  - name: noadmin-r
+    image: *noadmin_image
+    depends_on: []
+    environment:
+      CI: "true"
+      NO_ADMIN: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - set -euo pipefail
+      - make r 2>&1 | tee r.log
+      - grep -q "NO_ADMIN=true and Homebrew is not available: skipping system R installation" r.log
+
+  - name: noadmin-latex-tooling
+    image: *noadmin_image
+    depends_on: []
+    environment:
+      CI: "true"
+      NO_ADMIN: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - set -euo pipefail
+      - make latex_tooling 2>&1 | tee latex_tooling.log
+      - test -x "$HOME/.local/bin/texlab"
+
+  - name: noadmin-system-prereq
+    image: *noadmin_image
+    depends_on: []
+    environment:
+      CI: "true"
+      NO_ADMIN: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - set -euo pipefail
+      - make system-prereq 2>&1 | tee system_prereq.log
+      - grep -q "NO_ADMIN=true: not attempting Homebrew bootstrap automatically" system_prereq.log
+      - grep -q "NO_ADMIN=true: skipping ksshaskpass" system_prereq.log
+      - grep -q "Node.js v" system_prereq.log
+      - grep -q "Shell syntax highlighting partially configured" system_prereq.log
+      - test -x "$HOME/.local/bin/starship"
+      - test -d "$HOME/.nvm"
+
+  # Future follow-up:
+  # - add an Emacs-specific no-admin image with preinstalled build deps, then run:
+  #     CI=true NO_ADMIN=true ./build_emacs30.sh --verify
+  # - consider a slower/manual TeX Live distribution test separately from latex_tooling

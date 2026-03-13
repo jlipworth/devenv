@@ -1,5 +1,7 @@
 # Work WSL2 admin-permissions audit
 
+Status: archived after initial no-admin refactor pass on 2026-03-13
+
 Date: 2026-03-13
 
 Purpose: capture the current repo areas that require elevated/admin permissions so they can be refactored toward user-space installs, especially for locked-down work WSL2 machines.
@@ -941,25 +943,25 @@ Keep as:
 
 ### Easy wins
 
-- [ ] Split `install_cli_tools()` into core user tools vs system integration extras
-- [ ] Make `make cli_tools` primarily user-space on Linux
-- [ ] Add Linux user-local TeX Live path
-- [ ] Split Whisper into toolchain install vs audio backend requirements
+- [x] Split `install_cli_tools()` into core user tools vs system integration extras
+- [x] Make `make cli_tools` primarily user-space on Linux
+- [x] Add Linux user-local TeX Live path
+- [x] Split Whisper into toolchain install vs audio backend requirements
 - [ ] Finish shell-layer brew-first cleanup
 
 ### Medium effort
 
-- [ ] Make `make r` explicitly Linuxbrew-first and improve fallback guidance
+- [x] Make `make r` explicitly Linuxbrew-first and improve fallback guidance
 - [ ] Make `make python` user-space-first even outside `NO_ADMIN=true`
 - [ ] Review `c_cpp`, `sql`, `kubernetes`, `terraform`, and `ocaml` for remaining hidden system-package assumptions
 
 ### Leave as external/system-level
 
-- [ ] Keep `/etc/wsl.conf` changes manual/explicit
-- [ ] Keep Docker runtime as external/admin-managed
-- [ ] Keep printing integration separate from core CLI tools
-- [ ] Keep distro audio backend plumbing separate from Whisper tooling
-- [ ] Keep apt repo/key writes in explicit privileged-only paths
+- [x] Keep `/etc/wsl.conf` changes manual/explicit
+- [x] Keep Docker runtime as external/admin-managed
+- [x] Keep printing integration separate from core CLI tools
+- [x] Keep distro audio backend plumbing separate from Whisper tooling
+- [x] Keep apt repo/key writes in explicit privileged-only paths
 
 ---
 

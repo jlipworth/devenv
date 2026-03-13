@@ -211,9 +211,18 @@ install_nodejs() {
         return 1
     fi
 
+    # nvm rejects npm global prefix overrides while installing/selecting Node.
+    # Temporarily clear them, then restore our user-local npm prefix afterward.
+    local saved_npm_config_prefix="${npm_config_prefix-}"
+    local saved_NPM_CONFIG_PREFIX="${NPM_CONFIG_PREFIX-}"
+    unset npm_config_prefix
+    unset NPM_CONFIG_PREFIX
+
     # Install specified Node version
     log "Installing Node.js v${node_version}..."
     nvm install "$node_version" || {
+        [[ -n "${saved_npm_config_prefix}" ]] && export npm_config_prefix="$saved_npm_config_prefix"
+        [[ -n "${saved_NPM_CONFIG_PREFIX}" ]] && export NPM_CONFIG_PREFIX="$saved_NPM_CONFIG_PREFIX"
         log "Failed to install Node.js v${node_version}." "ERROR"
         return 1
     }
@@ -221,6 +230,9 @@ install_nodejs() {
     # Set as default
     nvm alias default "$node_version"
     nvm use default
+
+    [[ -n "${saved_npm_config_prefix}" ]] && export npm_config_prefix="$saved_npm_config_prefix"
+    [[ -n "${saved_NPM_CONFIG_PREFIX}" ]] && export NPM_CONFIG_PREFIX="$saved_NPM_CONFIG_PREFIX"
 
     # Verify installation
     log "Node.js $(node --version) installed successfully." "SUCCESS"
@@ -1043,8 +1055,16 @@ install_starship() {
         elif [[ "$DISTRO" == "arch" ]]; then
             install_packages "starship"
         else
-            log "Installing starship via official installer..."
-            curl -sS https://starship.rs/install.sh | sh -s -- -y || {
+            local starship_bin_dir="/usr/local/bin"
+            if [[ "$OS" == "Linux" ]] && no_admin_mode; then
+                starship_bin_dir="$HOME/.local/bin"
+                mkdir -p "$starship_bin_dir"
+                log "NO_ADMIN=true: installing starship to $starship_bin_dir"
+            else
+                log "Installing starship via official installer..."
+            fi
+
+            curl -sS https://starship.rs/install.sh | sh -s -- -b "$starship_bin_dir" -y || {
                 log "Failed to install starship." "ERROR"
                 return 1
             }
@@ -1083,6 +1103,7 @@ install_syntax_highlighting() {
     log "Installing shell syntax highlighting..."
 
     local shell_name
+    local partial_setup=false
     shell_name="$(get_shell_name)"
 
     if [[ "$shell_name" == "zsh" ]]; then
@@ -1111,10 +1132,14 @@ install_syntax_highlighting() {
         if [[ "$DISTRO" == "arch" ]]; then
             if ! install_aur_packages "blesh-git"; then
                 log "AUR install failed, falling back to git clone..." "WARNING"
-                _install_blesh_from_source
+                if ! _install_blesh_from_source; then
+                    partial_setup=true
+                fi
             fi
         else
-            _install_blesh_from_source
+            if ! _install_blesh_from_source; then
+                partial_setup=true
+            fi
         fi
 
         # Symlink blesh config (.blerc) for keybinding and cursor overrides
@@ -1124,7 +1149,11 @@ install_syntax_highlighting() {
         fi
     fi
 
-    log "Shell syntax highlighting setup complete!" "SUCCESS"
+    if [[ "$partial_setup" == "true" ]]; then
+        log "Shell syntax highlighting partially configured: bash line editing support was not fully installed." "WARNING"
+    else
+        log "Shell syntax highlighting setup complete!" "SUCCESS"
+    fi
 }
 
 # Helper: build blesh from source into ~/.local
@@ -1140,6 +1169,15 @@ _install_blesh_from_source() {
     if ! is_installed "gawk"; then
         log "Installing gawk (required for blesh build)..."
         install_packages "gawk"
+        if ! is_installed "gawk"; then
+            if no_admin_mode; then
+                log "NO_ADMIN=true: unable to install gawk automatically, so blesh will be skipped." "WARNING"
+                log "Install gawk via Linuxbrew or your approved system path, then rerun shell-layer/cli_tools." "WARNING"
+            else
+                log "gawk is still unavailable after attempted install; cannot build blesh." "ERROR"
+            fi
+            return 1
+        fi
     fi
 
     log "Cloning and building blesh..."
