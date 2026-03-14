@@ -46,7 +46,7 @@ ENV HOMEBREW_REPOSITORY=/home/linuxbrew/.linuxbrew/Homebrew
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${HOME}/.local/bin:${HOME}/bin:${PATH}"
 
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" \
-    && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" \
+    && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)" \
     && brew --version \
     && echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)\"" >> /home/tester/.bashrc \
     && echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)\"" >> /home/tester/.profile
