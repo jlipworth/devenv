@@ -366,11 +366,7 @@ install_askpass() {
             return 0
         fi
         log "Installing ksshaskpass..."
-        if [[ "$DISTRO" == "arch" ]]; then
-            install_packages "ksshaskpass"
-        else
-            install_packages "ksshaskpass"
-        fi
+        install_packages "ksshaskpass"
     else
         log "Skipping askpass. I don't think MacOS uses this."
     fi
@@ -612,7 +608,11 @@ install_latex_tooling() {
         install_packages "okular" "aspell" "texlab"
     else
         # Debian/Ubuntu: user-space texlab, plus optional system viewers/spell tools
-        install_packages "okular" "aspell"
+        if no_admin_mode; then
+            log "NO_ADMIN=true: skipping okular and aspell (system packages). texlab will still be installed to user space." "WARNING"
+        else
+            install_packages "okular" "aspell"
+        fi
 
         # Install texlab from pre-built binary (not available in apt)
         if ! is_installed "texlab"; then
