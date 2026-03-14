@@ -57,7 +57,7 @@ steps:
       - 'grep -q "NO_ADMIN=true: skipping CLI system-integration extras" cli_tools.log'
       - grep -q "Shell syntax highlighting partially configured" cli_tools.log
       - test -d "$HOME/.tmux"
-      - test -x "$HOME/.local/bin/starship"
+      - command -v starship
 
   - name: noadmin-whisper
     image: *noadmin_image
@@ -111,7 +111,7 @@ steps:
       - 'grep -q "NO_ADMIN=true: skipping ksshaskpass" system_prereq.log'
       - grep -q "Node.js v" system_prereq.log
       - grep -q "Shell syntax highlighting partially configured" system_prereq.log
-      - test -x "$HOME/.local/bin/starship"
+      - command -v starship
       - test -d "$HOME/.nvm"
 
 # Future follow-up:
