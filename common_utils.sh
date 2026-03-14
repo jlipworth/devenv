@@ -2,6 +2,7 @@
 
 # Detect OS
 OS="$(uname -s)"
+NO_ADMIN="${NO_ADMIN:-false}"
 
 # Standard directory paths
 # In CI, use current working directory (repo is cloned to /workspace)
@@ -102,16 +103,73 @@ else
 fi
 
 # =============================================================================
-# CI-specific configuration (avoid sudo, ensure PATH includes user dirs)
+# User-local tool configuration (avoid sudo for npm globals, etc.)
+# On Linux, always use a user-local npm prefix to avoid needing sudo.
 # =============================================================================
-if [[ "$CI" == "true" ]]; then
-    # npm: use user-local prefix instead of /usr/lib/node_modules
+if [[ "$OS" == "Linux" ]]; then
     NPM_GLOBAL_DIR="$HOME/.npm-global"
     mkdir -p "$NPM_GLOBAL_DIR"
-    npm config set prefix "$NPM_GLOBAL_DIR"
 
-    # Add user bin directories to PATH (npm, pipx, go, etc.)
+    # Use a user-local npm global prefix for commands run from this script
+    # without mutating the user's persisted npm configuration.
+    export npm_config_prefix="$NPM_GLOBAL_DIR"
+
+    # Ensure user bin directories are on PATH (npm, pipx, go, Emacs, etc.)
     export PATH="$HOME/.local/bin:$NPM_GLOBAL_DIR/bin:$HOME/go/bin:$PATH"
+fi
+
+activate_default_node() {
+    if command -v npm &> /dev/null && command -v node &> /dev/null; then
+        return 0
+    fi
+
+    local nvm_dir="${NVM_DIR:-$HOME/.nvm}"
+    local saved_npm_config_prefix="${npm_config_prefix-}"
+    local saved_NPM_CONFIG_PREFIX="${NPM_CONFIG_PREFIX-}"
+    unset npm_config_prefix
+    unset NPM_CONFIG_PREFIX
+
+    if [[ -s "$nvm_dir/nvm.sh" ]]; then
+        # shellcheck source=/dev/null
+        source "$nvm_dir/nvm.sh"
+
+        if command -v nvm &> /dev/null; then
+            nvm use --silent default > /dev/null 2>&1 || nvm use --silent node > /dev/null 2>&1 || true
+        fi
+    fi
+
+    [[ -n "$saved_npm_config_prefix" ]] && export npm_config_prefix="$saved_npm_config_prefix"
+    [[ -n "$saved_NPM_CONFIG_PREFIX" ]] && export NPM_CONFIG_PREFIX="$saved_NPM_CONFIG_PREFIX"
+
+    command -v npm &> /dev/null && command -v node &> /dev/null
+}
+
+activate_default_node || true
+
+no_admin_mode() {
+    [[ "$NO_ADMIN" == "true" ]]
+}
+
+find_brew_bin() {
+    local candidate
+    for candidate in \
+        "$(command -v brew 2> /dev/null || true)" \
+        "/home/linuxbrew/.linuxbrew/bin/brew" \
+        "$HOME/.linuxbrew/bin/brew" \
+        "/opt/homebrew/bin/brew" \
+        "/usr/local/bin/brew"; do
+        if [[ -n "$candidate" && -x "$candidate" ]]; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# If Homebrew/Linuxbrew exists but is not yet on PATH in this shell, expose it.
+BREW_BIN_AUTO="$(find_brew_bin || true)"
+if [[ -n "$BREW_BIN_AUTO" ]] && ! command -v brew &> /dev/null; then
+    eval "$("$BREW_BIN_AUTO" shellenv)"
 fi
 
 # Check if a dependency is installed.
@@ -261,6 +319,18 @@ add_to_shell_rc_block() {
 # General function to install multiple packages
 install_packages() {
     local updated=false
+
+    if [[ "$OS" == "Linux" ]] && no_admin_mode; then
+        log "NO_ADMIN=true: skipping Linux system package installation attempts." "WARNING"
+        for package in "$@"; do
+            if ! is_installed "$package"; then
+                log "Skipping install of '$package' because it requires a system package manager." "WARNING"
+            else
+                log "$package is already available."
+            fi
+        done
+        return 0
+    fi
 
     # Run update once, only if needed
     if [[ "$updated" == "false" ]]; then

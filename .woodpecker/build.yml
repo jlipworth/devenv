@@ -43,13 +43,17 @@ steps:
       - chmod +x build_emacs30.sh common_utils.sh || true
       - ./build_emacs30.sh
       - echo "=== Build complete, verifying Emacs ==="
-      - /usr/local/bin/emacs --version
+      - |
+          export PATH="$HOME/.local/bin:$PATH"
+          test -x "$HOME/.local/bin/emacs"
+          "$HOME/.local/bin/emacs" --version
       - echo "=== Testing Spacemacs compatibility ==="
       - git clone --depth 1 --branch develop https://github.com/syl20bnr/spacemacs ~/.emacs.d
-      - /usr/local/bin/emacs --batch --eval "(progn
-          (require 'package)
-          (setq package-archives '((\"melpa\" . \"https://melpa.org/packages/\")
-                                   (\"gnu\" . \"https://elpa.gnu.org/packages/\")))
-          (package-initialize)
-          (message \"Package system initialized successfully\"))"
+      - |
+          "$HOME/.local/bin/emacs" --batch --eval "(progn
+              (require 'package)
+              (setq package-archives '((\"melpa\" . \"https://melpa.org/packages/\")
+                                       (\"gnu\" . \"https://elpa.gnu.org/packages/\")))
+              (package-initialize)
+              (message \"Package system initialized successfully\"))"
       - echo "=== Spacemacs compatibility check passed! ==="

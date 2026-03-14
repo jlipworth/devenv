@@ -75,7 +75,23 @@ setup_wsl_config() {
             log "WSL configuration already set. No changes made."
         else
             log "Configuring WSL to disable Windows PATH inheritance..."
-            echo -e "[interop]\nappendwindowspath = false" | sudo tee -a /etc/wsl.conf
+            if [[ -w /etc/wsl.conf ]] || [[ $(id -u) -eq 0 ]]; then
+                echo -e "[interop]\nappendwindowspath = false" | tee -a /etc/wsl.conf
+            elif [[ "$NO_ADMIN" == "true" ]]; then
+                log "NO_ADMIN=true: not modifying /etc/wsl.conf automatically." "WARNING"
+                log "To disable Windows PATH inheritance, manually add to /etc/wsl.conf:" "WARNING"
+                log "  [interop]" "WARNING"
+                log "  appendwindowspath = false" "WARNING"
+                return 0
+            elif command -v sudo &> /dev/null; then
+                echo -e "[interop]\nappendwindowspath = false" | sudo tee -a /etc/wsl.conf
+            else
+                log "Cannot write to /etc/wsl.conf (no sudo available)." "WARNING"
+                log "To disable Windows PATH inheritance, manually add to /etc/wsl.conf:" "WARNING"
+                log "  [interop]" "WARNING"
+                log "  appendwindowspath = false" "WARNING"
+                return 0
+            fi
             log "WSL configuration updated successfully."
         fi
     fi
@@ -86,7 +102,17 @@ install_wsl_utils() {
     if grep -q WSL /proc/version 2> /dev/null; then
         if ! is_installed "wslview"; then
             log "Installing wslu for WSL browser integration..."
-            sudo apt-get update && sudo apt-get install -y wslu
+            if is_installed "brew"; then
+                # Prefer Homebrew (no sudo required)
+                brew install wslutilities/wslu/wslu || log "Error installing wslu via brew." "WARNING"
+            elif [[ "$NO_ADMIN" == "true" ]]; then
+                log "NO_ADMIN=true: skipping wslu installation because it would require a system package manager." "WARNING"
+            elif command -v sudo &> /dev/null; then
+                sudo apt-get update && sudo apt-get install -y wslu
+            else
+                log "Cannot install wslu: no brew or sudo available." "WARNING"
+                log "Install Homebrew first, or ask IT to run: apt install wslu" "WARNING"
+            fi
         else
             log "wslu is already installed."
         fi
@@ -98,15 +124,60 @@ install_wsl_utils() {
 # Install Homebrew on Linux
 install_homebrew() {
     if [[ "$OS" == "Linux" ]]; then
+        local brew_bin=""
+
+        brew_bin="$(find_brew_bin || true)"
+
+        if [[ -n "$brew_bin" ]]; then
+            log "Homebrew is already installed at $brew_bin"
+            eval "$("$brew_bin" shellenv)"
+            add_to_shell_rc "eval \"\$($brew_bin shellenv)\"" "Homebrew (Linux)"
+            return 0
+        fi
+
+        if [[ "$NO_ADMIN" == "true" ]]; then
+            log "NO_ADMIN=true: not attempting Homebrew bootstrap automatically." "WARNING"
+            log "Install or expose an existing Linuxbrew manually, then rerun this target." "WARNING"
+            log "Expected common locations: /home/linuxbrew/.linuxbrew or ~/.linuxbrew" "WARNING"
+            return 0
+        fi
+
         if ! is_installed "brew"; then
             log "Installing Homebrew for Linux..."
-            # TODO: Need to see if CI=1 works in a desktop environment. Using to bypass passwordless sudo.
             CI=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-            add_to_path "/home/linuxbrew/.linuxbrew/bin" "Homebrew (Linux)"
+            brew_bin="$(find_brew_bin || true)"
+            if [[ -n "$brew_bin" ]]; then
+                eval "$("$brew_bin" shellenv)"
+                add_to_shell_rc "eval \"\$($brew_bin shellenv)\"" "Homebrew (Linux)"
+            else
+                log "Homebrew installer finished, but brew was not found in the expected locations." "WARNING"
+            fi
         else
             log "Homebrew is already installed."
         fi
     fi
+}
+
+ensure_uv_installed() {
+    if is_installed "uv"; then
+        return 0
+    fi
+
+    log "Installing uv..."
+    if is_installed "brew"; then
+        brew install uv || log "Brew install for uv failed, falling back to official installer." "WARNING"
+    fi
+
+    if ! is_installed "uv"; then
+        curl -LsSf https://astral.sh/uv/install.sh | env UV_NO_MODIFY_PATH=1 sh || {
+            log "Failed to install uv." "ERROR"
+            return 1
+        }
+        export PATH="$HOME/.local/bin:$PATH"
+        add_to_path "$HOME/.local/bin" "uv"
+    fi
+
+    return 0
 }
 
 # Install NodeJS and NPM via nvm for version management
@@ -119,6 +190,13 @@ install_nodejs() {
 
     # Set up NVM_DIR
     export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+
+    # nvm is sensitive to npm prefix overrides; clear them for the entire nvm
+    # bootstrap/install flow, then restore them afterward.
+    local saved_npm_config_prefix="${npm_config_prefix-}"
+    local saved_NPM_CONFIG_PREFIX="${NPM_CONFIG_PREFIX-}"
+    unset npm_config_prefix
+    unset NPM_CONFIG_PREFIX
 
     # Install nvm if not present
     if [[ ! -d "$NVM_DIR" ]]; then
@@ -136,6 +214,8 @@ install_nodejs() {
     [[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
 
     if ! command -v nvm &> /dev/null; then
+        [[ -n "${saved_npm_config_prefix}" ]] && export npm_config_prefix="$saved_npm_config_prefix"
+        [[ -n "${saved_NPM_CONFIG_PREFIX}" ]] && export NPM_CONFIG_PREFIX="$saved_NPM_CONFIG_PREFIX"
         log "nvm command not available after installation." "ERROR"
         return 1
     fi
@@ -143,6 +223,8 @@ install_nodejs() {
     # Install specified Node version
     log "Installing Node.js v${node_version}..."
     nvm install "$node_version" || {
+        [[ -n "${saved_npm_config_prefix}" ]] && export npm_config_prefix="$saved_npm_config_prefix"
+        [[ -n "${saved_NPM_CONFIG_PREFIX}" ]] && export NPM_CONFIG_PREFIX="$saved_NPM_CONFIG_PREFIX"
         log "Failed to install Node.js v${node_version}." "ERROR"
         return 1
     }
@@ -151,17 +233,67 @@ install_nodejs() {
     nvm alias default "$node_version"
     nvm use default
 
+    [[ -n "${saved_npm_config_prefix}" ]] && export npm_config_prefix="$saved_npm_config_prefix"
+    [[ -n "${saved_NPM_CONFIG_PREFIX}" ]] && export NPM_CONFIG_PREFIX="$saved_NPM_CONFIG_PREFIX"
+
     # Verify installation
     log "Node.js $(node --version) installed successfully." "SUCCESS"
     log "npm $(npm --version) available."
+
+    # Persist the user-local npm global bin dir so npm-installed language
+    # servers and tools are available in future shells, not just this process.
+    add_to_path "${HOME}/.npm-global/bin" "npm global binaries"
 
     # Update npm to latest
     npm install -g npm@latest || log "Failed to update npm." "WARNING"
 }
 
 install_git_credential() {
+    build_git_credential_helper() {
+        local source_dir="$1"
+        local build_dir
+
+        if [[ ! -d "$source_dir" ]]; then
+            log "Git credential helper source directory not found: $source_dir" "WARNING"
+            return 1
+        fi
+
+        if [[ ! -f "$source_dir/Makefile" ]]; then
+            log "Git credential helper source directory exists but has no Makefile: $source_dir" "WARNING"
+            return 1
+        fi
+
+        build_dir="$(mktemp -d)" || {
+            log "Failed to create temporary build directory for git credential helper." "ERROR"
+            return 1
+        }
+
+        cp -R "$source_dir"/. "$build_dir"/ || {
+            log "Failed to copy git credential helper source from $source_dir" "ERROR"
+            rm -rf "$build_dir"
+            return 1
+        }
+
+        make -C "$build_dir" || {
+            log "Failed to build git credential helper from copied source." "ERROR"
+            rm -rf "$build_dir"
+            return 1
+        }
+
+        cp "$build_dir/git-credential-libsecret" "$HOME/.local/bin" || {
+            log "Failed to copy git credential helper to ~/.local/bin" "ERROR"
+            rm -rf "$build_dir"
+            return 1
+        }
+        chmod +x "$HOME/.local/bin/git-credential-libsecret"
+        rm -rf "$build_dir"
+        return 0
+    }
+
     if [[ "$OS" == "Linux" ]]; then
         log "Installing Git credential helper for Linux..."
+        mkdir -p "$HOME/.local/bin"
+        add_to_path "$HOME/.local/bin" "Local user binaries"
         if [[ "$DISTRO" == "arch" ]]; then
             install_packages "libsecret" "gnome-keyring"
             # Arch has git-credential-libsecret in a different location
@@ -170,16 +302,57 @@ install_git_credential() {
             else
                 # Build from source if not available
                 if [[ -d /usr/share/git/credential/libsecret ]]; then
-                    sudo make -C /usr/share/git/credential/libsecret
-                    sudo cp /usr/share/git/credential/libsecret/git-credential-libsecret /usr/local/bin
-                    git config --global credential.helper libsecret
+                    build_git_credential_helper /usr/share/git/credential/libsecret &&
+                        git config --global credential.helper "$HOME/.local/bin/git-credential-libsecret"
                 fi
             fi
         else
-            install_packages "libsecret-1-0" "libsecret-1-dev" "gnome-keyring"
-            sudo make -C /usr/share/doc/git/contrib/credential/libsecret
-            sudo cp /usr/share/doc/git/contrib/credential/libsecret/git-credential-libsecret /usr/local/bin
-            git config --global credential.helper libsecret
+            # Debian/Ubuntu: need libsecret headers to compile git-credential-libsecret.
+            # Prefer brew-provided libsecret (no sudo), fall back to apt packages.
+            local libsecret_ready=false
+
+            if is_installed "brew"; then
+                if brew install libsecret 2> /dev/null; then
+                    libsecret_ready=true
+                    # Expose brew's pkg-config path so the build finds libsecret-1.pc
+                    local brew_prefix
+                    brew_prefix="$(brew --prefix)"
+                    export PKG_CONFIG_PATH="${brew_prefix}/lib/pkgconfig:${brew_prefix}/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+                fi
+            fi
+
+            if [[ "$libsecret_ready" != "true" ]]; then
+                if no_admin_mode; then
+                    log "NO_ADMIN=true: cannot install libsecret-1-dev headers needed to build git-credential-libsecret." "WARNING"
+                    log "Either install libsecret via Linuxbrew (brew install libsecret) and rerun, or configure git credentials manually." "WARNING"
+                    return 0
+                fi
+                install_packages "libsecret-1-0" "libsecret-1-dev" "gnome-keyring"
+                libsecret_ready=true
+            fi
+
+            local helper_source_dir=""
+            local candidate
+            local git_prefix=""
+
+            if is_installed "brew" && brew list --versions git &> /dev/null; then
+                git_prefix="$(brew --prefix git 2> /dev/null || true)"
+            fi
+
+            for candidate in /usr/share/doc/git/contrib/credential/libsecret /usr/share/git/credential/libsecret "$git_prefix/share/git-core/contrib/credential/libsecret" "$git_prefix/share/doc/git/contrib/credential/libsecret"; do
+                if [[ -n "$candidate" && -f "$candidate/Makefile" ]]; then
+                    helper_source_dir="$candidate"
+                    break
+                fi
+            done
+
+            if [[ -n "$helper_source_dir" ]]; then
+                build_git_credential_helper "$helper_source_dir" &&
+                    git config --global credential.helper "$HOME/.local/bin/git-credential-libsecret"
+            else
+                log "Git credential helper source with Makefile was not found in the expected locations." "WARNING"
+                log "Skipping git-credential-libsecret setup; configure git credentials manually or install a fuller git package if needed." "WARNING"
+            fi
         fi
     else
         log "Skipping Git credential helper setup. macOS uses the built-in keychain."
@@ -188,12 +361,12 @@ install_git_credential() {
 
 install_askpass() {
     if [[ "$OS" == "Linux" ]]; then
-        log "Installing ksshaskpass..."
-        if [[ "$DISTRO" == "arch" ]]; then
-            install_packages "ksshaskpass"
-        else
-            install_packages "ksshaskpass"
+        if no_admin_mode; then
+            log "NO_ADMIN=true: skipping ksshaskpass. This is optional and mostly useful for graphical password prompts." "WARNING"
+            return 0
         fi
+        log "Installing ksshaskpass..."
+        install_packages "ksshaskpass"
     else
         log "Skipping askpass. I don't think MacOS uses this."
     fi
@@ -202,7 +375,11 @@ install_askpass() {
 # Install prerequisites grouped by category
 install_shell_prereqs() {
     log "Installing shell prerequisites..."
-    install_packages "shellcheck" "shfmt"
+    if is_installed "brew"; then
+        brew install shellcheck shfmt || log "Error installing shellcheck/shfmt via Homebrew." "WARNING"
+    else
+        install_packages "shellcheck" "shfmt"
+    fi
     if ! is_installed "bash-language-server"; then
         $NODE_CMD install -g bash-language-server || log "Error installing bash-language-server." "WARNING"
     fi
@@ -216,27 +393,55 @@ install_git_prereqs() {
     fi
 }
 
-install_whisper_prereqs() {
-    log "Installing Whisper (Spacemacs whisper layer) prerequisites..."
-
+install_whisper_toolchain() {
     if [[ "$OS" == "Darwin" ]]; then
         # ffmpeg for recording (avfoundation) + whisper.cpp build deps
         install_packages "ffmpeg" "cmake" "pkg-config"
         # Optional convenience tools
         install_packages "sox"
+    elif is_installed "brew"; then
+        log "Installing Whisper prerequisites via Homebrew/Linuxbrew..."
+        brew install ffmpeg cmake pkg-config sox make gcc || log "Error installing Whisper tools via Homebrew." "WARNING"
+    elif [[ "$DISTRO" == "arch" ]]; then
+        install_packages_translated \
+            "ffmpeg" "cmake" "make" "gcc" "sox"
+    else
+        install_packages_translated \
+            "ffmpeg" "cmake" "make" "g++" "sox"
+    fi
+}
+
+install_whisper_audio_integration() {
+    if [[ "$OS" == "Darwin" ]]; then
+        log "Audio integration for Whisper uses native macOS devices; no extra system packages needed."
     elif [[ "$DISTRO" == "arch" ]]; then
         # Prefer PipeWire Pulse compatibility on modern Arch installs
-        install_packages_translated \
-            "ffmpeg" "cmake" "make" "gcc" \
-            "sox" "alsa-utils" "libasound2-plugins" "pipewire-pulse"
+        install_packages_translated "alsa-utils" "libasound2-plugins" "pipewire-pulse"
     else
         # Debian/Ubuntu: ensure whisper.el selects PulseAudio input backend by default
-        install_packages_translated \
-            "ffmpeg" "cmake" "make" "g++" \
-            "sox" "alsa-utils" "libasound2-plugins" "pulseaudio" "pulseaudio-utils"
+        install_packages_translated "alsa-utils" "libasound2-plugins" "pulseaudio" "pulseaudio-utils"
+    fi
+}
+
+install_whisper_prereqs() {
+    log "Installing Whisper (Spacemacs whisper layer) prerequisites..."
+    local partial_setup=false
+
+    install_whisper_toolchain
+
+    if [[ "$OS" == "Linux" ]] && no_admin_mode; then
+        log "NO_ADMIN=true: skipping distro-level audio backend setup for Whisper." "WARNING"
+        log "WSL/desktop audio integration (PulseAudio/PipeWire/ALSA bridging) must already be available." "WARNING"
+        partial_setup=true
+    else
+        install_whisper_audio_integration
     fi
 
-    log "Whisper prerequisites installed successfully." "SUCCESS"
+    if [[ "$partial_setup" == "true" ]]; then
+        log "Whisper toolchain installed, but audio integration was not configured automatically." "WARNING"
+    else
+        log "Whisper prerequisites installed successfully." "SUCCESS"
+    fi
 }
 
 install_yaml_support() {
@@ -246,6 +451,14 @@ install_yaml_support() {
 
 install_markdown_support() {
     log "Installing markdown support..."
+
+    if ! command -v npm &> /dev/null; then
+        log "npm not found; bootstrapping Node.js via nvm for markdown tooling..." "WARNING"
+        install_nodejs || log "Failed to bootstrap Node.js automatically for markdown tooling." "WARNING"
+    else
+        activate_default_node || true
+    fi
+
     # Pandoc for live preview in Spacemacs markdown layer (optional but useful)
     if is_installed "brew"; then
         brew install pandoc || log "Error installing pandoc." "WARNING"
@@ -265,6 +478,8 @@ create_snippet_symlink() {
     EMACS_SNIPPETS_DIR="$HOME/.emacs.d/private/snippets"
     TARGET_DIR="$GNU_DIR/snippets/"
 
+    mkdir -p "$(dirname "$EMACS_SNIPPETS_DIR")"
+
     if [ -L "$EMACS_SNIPPETS_DIR" ]; then
         log "A symbolic link already exists at $EMACS_SNIPPETS_DIR. Replacing it."
         rm "$EMACS_SNIPPETS_DIR"
@@ -283,51 +498,64 @@ install_vimscript_lsp() {
     $NODE_CMD install -g vim-language-server || log "Error installing vim-language-server." "WARNING"
 }
 
-install_latex_tools() {
-    log "Installing LaTeX tools..."
+texlive_platform() {
     if [[ "$OS" == "Darwin" ]]; then
-        # Use Brewfile for texlab, poppler, aspell
-        if is_installed "brew"; then
-            log "Installing LaTeX tools via Homebrew..."
-            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.latex" || log "Error with Brewfile.latex" "WARNING"
-        fi
+        echo "universal-darwin"
+        return 0
+    fi
 
-        # User-local TeX Live installation (no sudo required)
-        local TEXLIVE_HOME="$HOME/texlive"
-        local CURRENT_YEAR
-        CURRENT_YEAR="$(date +%Y)"
-        local TEXDIR="$TEXLIVE_HOME/$CURRENT_YEAR"
-        local TEXLIVE_BIN="$TEXDIR/bin/universal-darwin"
-        local TLMGR="$TEXLIVE_BIN/tlmgr"
+    local arch
+    arch="$(uname -m)"
+    case "$arch" in
+        x86_64 | amd64) echo "x86_64-linux" ;;
+        aarch64 | arm64) echo "aarch64-linux" ;;
+        *) echo "${arch}-linux" ;;
+    esac
+}
 
-        # Remove old TeX Live years if present
-        if [[ -d "$TEXLIVE_HOME" ]]; then
-            for old_dir in "$TEXLIVE_HOME"/*/; do
-                local dir_name
-                dir_name="$(basename "$old_dir")"
-                if [[ "$dir_name" =~ ^[0-9]+$ && "$dir_name" != "$CURRENT_YEAR" ]]; then
-                    log "Removing old TeX Live $dir_name..."
-                    rm -rf "$old_dir"
-                fi
-            done
-        fi
+install_texlive_user_local() {
+    local TEXLIVE_HOME="$HOME/texlive"
+    local CURRENT_YEAR
+    CURRENT_YEAR="$(date +%Y)"
+    local PLATFORM
+    PLATFORM="$(texlive_platform)"
+    local TEXDIR="$TEXLIVE_HOME/$CURRENT_YEAR"
+    local TEXLIVE_BIN="$TEXDIR/bin/$PLATFORM"
+    local TLMGR="$TEXLIVE_BIN/tlmgr"
+    local TEXLIVE_PACKAGES=(
+        collection-latexrecommended
+        latexmk
+        amsfonts
+        ec
+        cm-super
+    )
 
-        # Install TeX Live if not present for current year
-        if [[ ! -x "$TLMGR" ]]; then
-            log "Installing TeX Live $CURRENT_YEAR to $TEXDIR..."
-            local INSTALL_TMP
-            INSTALL_TMP="$(mktemp -d)"
+    # Remove old TeX Live years if present
+    if [[ -d "$TEXLIVE_HOME" ]]; then
+        for old_dir in "$TEXLIVE_HOME"/*/; do
+            local dir_name
+            dir_name="$(basename "$old_dir")"
+            if [[ "$dir_name" =~ ^[0-9]+$ && "$dir_name" != "$CURRENT_YEAR" ]]; then
+                log "Removing old TeX Live $dir_name..."
+                rm -rf "$old_dir"
+            fi
+        done
+    fi
 
-            curl -L "https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz" \
-                -o "$INSTALL_TMP/install-tl.tar.gz" || {
-                log "Failed to download TeX Live installer." "ERROR"
-                rm -rf "$INSTALL_TMP"
-                return 1
-            }
-            tar -xzf "$INSTALL_TMP/install-tl.tar.gz" -C "$INSTALL_TMP" --strip-components=1
+    if [[ ! -x "$TLMGR" ]]; then
+        log "Installing TeX Live $CURRENT_YEAR to $TEXDIR..."
+        local INSTALL_TMP
+        INSTALL_TMP="$(mktemp -d)"
 
-            # Create install profile for non-interactive install
-            cat > "$INSTALL_TMP/texlive.profile" << TEXPROFILE
+        curl -L "https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz" \
+            -o "$INSTALL_TMP/install-tl.tar.gz" || {
+            log "Failed to download TeX Live installer." "ERROR"
+            rm -rf "$INSTALL_TMP"
+            return 1
+        }
+        tar -xzf "$INSTALL_TMP/install-tl.tar.gz" -C "$INSTALL_TMP" --strip-components=1
+
+        cat > "$INSTALL_TMP/texlive.profile" << TEXPROFILE
 selected_scheme scheme-basic
 TEXDIR $TEXDIR
 TEXMFLOCAL $TEXDIR/texmf-local
@@ -336,7 +564,6 @@ TEXMFSYSVAR $TEXDIR/texmf-var
 TEXMFHOME ~/texmf
 TEXMFCONFIG ~/.texlive${CURRENT_YEAR}/texmf-config
 TEXMFVAR ~/.texlive${CURRENT_YEAR}/texmf-var
-binary_universal-darwin 1
 instopt_adjustpath 0
 instopt_adjustrepo 1
 instopt_letter 0
@@ -344,36 +571,70 @@ tlpdbopt_autobackup 1
 tlpdbopt_install_docfiles 0
 tlpdbopt_install_srcfiles 0
 TEXPROFILE
+        echo "binary_${PLATFORM} 1" >> "$INSTALL_TMP/texlive.profile"
 
-            "$INSTALL_TMP"/install-tl -profile "$INSTALL_TMP/texlive.profile" || {
-                log "TeX Live installation failed." "ERROR"
-                rm -rf "$INSTALL_TMP"
-                return 1
-            }
+        "$INSTALL_TMP"/install-tl -profile "$INSTALL_TMP/texlive.profile" || {
+            log "TeX Live installation failed." "ERROR"
             rm -rf "$INSTALL_TMP"
-            log "TeX Live $CURRENT_YEAR installed successfully." "SUCCESS"
+            return 1
+        }
+        rm -rf "$INSTALL_TMP"
+        log "TeX Live $CURRENT_YEAR installed successfully." "SUCCESS"
+    fi
+
+    export PATH="$TEXLIVE_BIN:$PATH"
+    add_to_path "$TEXLIVE_BIN" "TeX Live $CURRENT_YEAR"
+
+    "$TLMGR" update --self || log "tlmgr update --self failed." "WARNING"
+    log "Installing a slim default LaTeX package set via tlmgr..."
+    "$TLMGR" install "${TEXLIVE_PACKAGES[@]}" || {
+        log "Some optional LaTeX packages failed to install from the slim default set." "WARNING"
+    }
+}
+
+install_latex_tooling() {
+    if [[ "$OS" == "Darwin" ]]; then
+        # Use Brewfile for texlab, poppler, aspell
+        if is_installed "brew"; then
+            log "Installing LaTeX tools via Homebrew..."
+            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.latex" || log "Error with Brewfile.latex" "WARNING"
         fi
-
-        export PATH="$TEXLIVE_BIN:$PATH"
-        add_to_path "$TEXLIVE_BIN" "TeX Live $CURRENT_YEAR"
-
-        # Update tlmgr and install packages to match texlive-latex-extra on Linux
-        "$TLMGR" update --self || log "tlmgr update --self failed." "WARNING"
-        log "Installing LaTeX packages via tlmgr..."
-        "$TLMGR" install collection-latexextra amsfonts ec cm-super
+    elif is_installed "brew"; then
+        log "Installing LaTeX tools via Homebrew/Linuxbrew..."
+        brew bundle --file="$GNU_DIR/brewfiles/Brewfile.latex" || log "Error with Brewfile.latex" "WARNING"
     elif [[ "$DISTRO" == "arch" ]]; then
         # Arch: texlab is in official repos
-        log "Installing LaTeX tools for Arch..."
-        install_packages "texlive-latexextra" "okular" "aspell" "texlab"
+        log "Installing LaTeX tooling for Arch..."
+        install_packages "okular" "aspell" "texlab"
     else
-        # Debian/Ubuntu: Install minimal LaTeX with latex-extra for common packages
-        install_packages "texlive-latex-extra" "okular" "aspell"
+        # Debian/Ubuntu: user-space texlab, plus optional system viewers/spell tools
+        if no_admin_mode; then
+            log "NO_ADMIN=true: skipping okular and aspell (system packages). texlab will still be installed to user space." "WARNING"
+        else
+            install_packages "okular" "aspell"
+        fi
 
         # Install texlab from pre-built binary (not available in apt)
         if ! is_installed "texlab"; then
             log "Installing texlab from GitHub releases..."
+            local texlab_arch
+            case "$(uname -m)" in
+                x86_64 | amd64) texlab_arch="x86_64" ;;
+                aarch64 | arm64) texlab_arch="aarch64" ;;
+                *)
+                    log "Unsupported architecture $(uname -m) for texlab binary download." "ERROR"
+                    return 1
+                    ;;
+            esac
+            local texlab_os
+            if [[ "$OS" == "Darwin" ]]; then
+                texlab_os="macos"
+            else
+                texlab_os="linux"
+            fi
+
             TEXLAB_VERSION=$(curl -s https://api.github.com/repos/latex-lsp/texlab/releases/latest | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')
-            TEXLAB_URL="https://github.com/latex-lsp/texlab/releases/download/v${TEXLAB_VERSION}/texlab-x86_64-linux.tar.gz"
+            TEXLAB_URL="https://github.com/latex-lsp/texlab/releases/download/v${TEXLAB_VERSION}/texlab-${texlab_arch}-${texlab_os}.tar.gz"
 
             curl -L "$TEXLAB_URL" -o /tmp/texlab.tar.gz || {
                 log "Failed to download texlab." "ERROR"
@@ -383,21 +644,73 @@ TEXPROFILE
                 log "Failed to extract texlab." "ERROR"
                 return 1
             }
-            sudo mv /tmp/texlab /usr/local/bin/ || {
-                log "Failed to move texlab to /usr/local/bin." "ERROR"
+            mkdir -p "$HOME/.local/bin"
+            mv /tmp/texlab "$HOME/.local/bin/" || {
+                log "Failed to move texlab to ~/.local/bin." "ERROR"
                 return 1
             }
-            sudo chmod +x /usr/local/bin/texlab
+            chmod +x "$HOME/.local/bin/texlab"
             rm /tmp/texlab.tar.gz
-            log "texlab installed successfully." "SUCCESS"
+            log "texlab installed to ~/.local/bin successfully." "SUCCESS"
         else
             log "texlab is already installed."
         fi
     fi
 }
 
+install_latex_distribution() {
+    if [[ "$OS" == "Darwin" ]]; then
+        install_texlive_user_local
+    elif [[ "$OS" == "Linux" ]] && no_admin_mode; then
+        log "NO_ADMIN=true: installing user-local TeX Live instead of distro packages."
+        install_texlive_user_local
+    elif [[ "$DISTRO" == "arch" ]]; then
+        install_packages "texlive-latexextra"
+    else
+        install_packages "texlive-latex-extra"
+    fi
+}
+
+install_latex_tools() {
+    log "Installing LaTeX tools..."
+    install_latex_tooling
+    install_latex_distribution
+
+    if [[ "$OS" == "Linux" ]] && is_installed "brew"; then
+        log "Note: Homebrew/Linuxbrew covers editor/tooling support; TeX distribution support is handled separately." "WARNING"
+    fi
+}
+
 install_python_prereqs() {
     log "Installing Python tools..."
+    if [[ "$OS" == "Linux" ]] && no_admin_mode; then
+        ensure_uv_installed || return 1
+        uv python install 3.12 || log "uv could not preinstall Python 3.12; continuing with automatic Python downloads." "WARNING"
+
+        local requirements_file="$GNU_DIR/requirements.txt"
+        if [[ -f "$requirements_file" ]]; then
+            log "Installing Python tools from requirements.txt via uv..."
+            while IFS= read -r package || [ -n "$package" ]; do
+                [[ -z "$package" || "$package" =~ ^# ]] && continue
+                local pkg_name
+                pkg_name=$(echo "$package" | sed 's/\[.*\]//g' | sed 's/[><=!].*//g' | xargs)
+                log "Installing $pkg_name via uv..."
+                uv tool install --force "$package" || log "Error installing $pkg_name via uv." "WARNING"
+            done < "$requirements_file"
+        else
+            log "requirements.txt not found. Using fallback Python tool list with uv..." "WARNING"
+            local python_packages=("pyright" "debugpy" "autoflake" "flake8" "isort" "jupytext")
+            local pkg
+            for pkg in "${python_packages[@]}"; do
+                log "Installing $pkg via uv..."
+                uv tool install --force "$pkg" || log "Error installing $pkg via uv." "WARNING"
+            done
+        fi
+        add_to_path "$HOME/.local/bin" "Python/uv tools"
+        log "Python tools installed in user space via uv." "SUCCESS"
+        return 0
+    fi
+
     if [[ "$OS" == "Darwin" ]]; then
         # macOS: pip comes with python3, ipython is handled by install_python_env
         install_packages "python3" "pipx"
@@ -443,8 +756,15 @@ install_python_prereqs() {
 
 install_r_support() {
     log "Installing R tools for ESS..."
+    local r_available=false
 
-    if [[ "$OS" == "Darwin" ]]; then
+    if [[ "$OS" == "Linux" ]] && is_installed "brew"; then
+        log "Installing R via Homebrew/Linuxbrew..."
+        brew install r || log "Error installing R via Homebrew." "WARNING"
+    elif [[ "$OS" == "Linux" ]] && no_admin_mode; then
+        log "NO_ADMIN=true and Homebrew is not available: skipping system R installation." "WARNING"
+        log "Install Linuxbrew R first, then rerun this target to configure languageserver in your user library." "WARNING"
+    elif [[ "$OS" == "Darwin" ]]; then
         install_packages "r"
     elif [[ "$DISTRO" == "arch" ]]; then
         # Arch: r package includes development files
@@ -455,6 +775,7 @@ install_r_support() {
     fi
 
     if is_installed "Rscript"; then
+        r_available=true
         log "Ensuring the R languageserver package is installed..."
         # Create user library directory if it doesn't exist
         Rscript -e 'dir.create(Sys.getenv("R_LIBS_USER"), showWarnings = FALSE, recursive = TRUE)'
@@ -463,6 +784,12 @@ install_r_support() {
             log "Failed to install languageserver package for R." "WARNING"
     else
         log "Rscript not found on PATH; skipping languageserver install." "WARNING"
+    fi
+
+    if [[ "$r_available" == "true" ]]; then
+        log "R support installed/configured successfully." "SUCCESS"
+    elif [[ "$OS" == "Linux" ]] && no_admin_mode; then
+        log "R support partially configured: user-library setup was skipped because no usable R installation is available in user space yet." "WARNING"
     fi
 }
 
@@ -635,30 +962,41 @@ install_terraform_support() {
         fi
 
     elif [[ $OS == "Linux" ]]; then
-        # Debian/Ubuntu: Add HashiCorp repo
-        # Add GPG key
-        if [[ ! -f /usr/share/keyrings/hashicorp-archive-keyring.gpg ]]; then
-            log "Adding HashiCorp GPG key..."
-            wget -qO- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
-        fi
-        # Add repository - detect distro codename from /etc/os-release
-        # Works for both Debian (bookworm, bullseye) and Ubuntu (focal, jammy, noble)
-        DISTRO_CODENAME=$(grep -oP '(?<=VERSION_CODENAME=).+' /etc/os-release || echo "bookworm")
-        if ! grep -q "https://apt.releases.hashicorp.com" /etc/apt/sources.list.d/hashicorp.list 2> /dev/null; then
-            log "Adding HashiCorp apt repository for $DISTRO_CODENAME..."
-            echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $DISTRO_CODENAME main" |
-                sudo tee /etc/apt/sources.list.d/hashicorp.list > /dev/null
-        fi
-
-        sudo apt update -qq
-        install_packages "terraform" "terraform-ls" "ansible" "jq"
-
-        # Cloud provider CLIs via Brewfile (Linuxbrew)
+        # Debian/Ubuntu: prefer Homebrew (no sudo needed) over HashiCorp apt repo
         if is_installed "brew"; then
+            log "Installing Terraform tools via Linuxbrew (no sudo required)..."
+            brew tap hashicorp/tap || log "Error adding hashicorp/tap." "WARNING"
+            brew install hashicorp/tap/terraform || log "Error installing terraform." "WARNING"
+            brew install hashicorp/tap/terraform-ls || log "Error installing terraform-ls." "WARNING"
+
+            # ansible and jq via brew
+            brew install ansible jq || log "Error installing ansible/jq." "WARNING"
+
+            # Cloud provider CLIs via Brewfile
             if [[ -f "$GNU_DIR/brewfiles/Brewfile.terraform" ]]; then
                 log "Installing cloud provider CLIs via Linuxbrew..."
                 brew bundle --file="$GNU_DIR/brewfiles/Brewfile.terraform" || log "Error with Brewfile.terraform" "WARNING"
             fi
+        else
+            # Fallback: HashiCorp apt repo (requires sudo)
+            if [[ "$NO_ADMIN" == "true" ]]; then
+                log "NO_ADMIN=true: skipping Terraform apt-repo fallback because it requires system changes." "WARNING"
+                return 0
+            fi
+            log "Homebrew not found, falling back to HashiCorp apt repo (requires sudo)..." "WARNING"
+            if [[ ! -f /usr/share/keyrings/hashicorp-archive-keyring.gpg ]]; then
+                log "Adding HashiCorp GPG key..."
+                wget -qO- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
+            fi
+            DISTRO_CODENAME=$(grep -oP '(?<=VERSION_CODENAME=).+' /etc/os-release || echo "bookworm")
+            if ! grep -q "https://apt.releases.hashicorp.com" /etc/apt/sources.list.d/hashicorp.list 2> /dev/null; then
+                log "Adding HashiCorp apt repository for $DISTRO_CODENAME..."
+                echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $DISTRO_CODENAME main" |
+                    sudo tee /etc/apt/sources.list.d/hashicorp.list > /dev/null
+            fi
+
+            sudo apt update -qq
+            install_packages "terraform" "terraform-ls" "ansible" "jq"
         fi
 
     elif [[ $OS == "Darwin" ]]; then
@@ -762,8 +1100,16 @@ install_starship() {
         elif [[ "$DISTRO" == "arch" ]]; then
             install_packages "starship"
         else
-            log "Installing starship via official installer..."
-            curl -sS https://starship.rs/install.sh | sh -s -- -y || {
+            local starship_bin_dir="/usr/local/bin"
+            if [[ "$OS" == "Linux" ]] && no_admin_mode; then
+                starship_bin_dir="$HOME/.local/bin"
+                mkdir -p "$starship_bin_dir"
+                log "NO_ADMIN=true: installing starship to $starship_bin_dir"
+            else
+                log "Installing starship via official installer..."
+            fi
+
+            curl -sS https://starship.rs/install.sh | sh -s -- -b "$starship_bin_dir" -y || {
                 log "Failed to install starship." "ERROR"
                 return 1
             }
@@ -802,6 +1148,7 @@ install_syntax_highlighting() {
     log "Installing shell syntax highlighting..."
 
     local shell_name
+    local partial_setup=false
     shell_name="$(get_shell_name)"
 
     if [[ "$shell_name" == "zsh" ]]; then
@@ -830,10 +1177,14 @@ install_syntax_highlighting() {
         if [[ "$DISTRO" == "arch" ]]; then
             if ! install_aur_packages "blesh-git"; then
                 log "AUR install failed, falling back to git clone..." "WARNING"
-                _install_blesh_from_source
+                if ! _install_blesh_from_source; then
+                    partial_setup=true
+                fi
             fi
         else
-            _install_blesh_from_source
+            if ! _install_blesh_from_source; then
+                partial_setup=true
+            fi
         fi
 
         # Symlink blesh config (.blerc) for keybinding and cursor overrides
@@ -843,7 +1194,11 @@ install_syntax_highlighting() {
         fi
     fi
 
-    log "Shell syntax highlighting setup complete!" "SUCCESS"
+    if [[ "$partial_setup" == "true" ]]; then
+        log "Shell syntax highlighting partially configured: bash line editing support was not fully installed." "WARNING"
+    else
+        log "Shell syntax highlighting setup complete!" "SUCCESS"
+    fi
 }
 
 # Helper: build blesh from source into ~/.local
@@ -859,6 +1214,15 @@ _install_blesh_from_source() {
     if ! is_installed "gawk"; then
         log "Installing gawk (required for blesh build)..."
         install_packages "gawk"
+        if ! is_installed "gawk"; then
+            if no_admin_mode; then
+                log "NO_ADMIN=true: unable to install gawk automatically, so blesh will be skipped." "WARNING"
+                log "Install gawk via Linuxbrew or your approved system path, then rerun shell-layer/cli_tools." "WARNING"
+            else
+                log "gawk is still unavailable after attempted install; cannot build blesh." "ERROR"
+            fi
+            return 1
+        fi
     fi
 
     log "Cloning and building blesh..."
@@ -898,6 +1262,57 @@ _install_zsh_vi_mode_from_source() {
     log "zsh-vi-mode installed to $zvm_dir" "SUCCESS"
 }
 
+install_cli_tools_core() {
+    log "Installing core CLI tools..."
+
+    if [[ "$OS" == "Darwin" ]]; then
+        install_packages "htop" "gpg" "cloc"
+
+        if is_installed "brew"; then
+            log "Installing CLI core via Homebrew..."
+            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
+        fi
+
+        if ! xcode-select -p &> /dev/null; then
+            log "Xcode Command Line Tools not found. Installing..."
+            xcode-select --install || log "Error installing Xcode Command Line Tools." "WARNING"
+        else
+            log "Xcode Command Line Tools are already installed."
+        fi
+    elif [[ "$DISTRO" == "arch" ]]; then
+        if is_installed "brew"; then
+            log "Installing CLI core via Homebrew/Linuxbrew..."
+            brew install htop gnupg cloc cmake || log "Error installing base CLI tools via Homebrew." "WARNING"
+            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
+        else
+            log "Homebrew not found; falling back to distro packages for CLI core tools..."
+            install_packages "htop" "gnupg" "cloc" "cmake"
+            install_packages "eza" "bat" "ripgrep" "fd" "fzf" "zoxide" "lazygit" "tmux" "starship"
+        fi
+    else
+        if is_installed "brew"; then
+            log "Installing CLI core via Homebrew/Linuxbrew..."
+            brew install htop gnupg cloc cmake || log "Error installing base CLI tools via Homebrew." "WARNING"
+            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
+        else
+            log "Homebrew not found; falling back to distro packages for available CLI core tools..."
+            install_packages "htop" "gpg" "cloc" "cmake" "tmux" "fzf" "ripgrep" "zoxide"
+        fi
+    fi
+}
+
+install_cli_tools_system() {
+    log "Installing CLI system-integration extras..."
+
+    if [[ "$OS" == "Darwin" ]]; then
+        log "No separate CLI system extras needed on macOS."
+    elif [[ "$DISTRO" == "arch" ]]; then
+        install_packages "cups" "xclip" "libtool"
+    else
+        install_packages "cups" "cups-client" "lpr" "xclip" "libtool-bin"
+    fi
+}
+
 install_cli_tools() {
     log "Installing general CLI tools..."
 
@@ -914,42 +1329,13 @@ install_cli_tools() {
     shell_rc="$(get_shell_rc)"
     shell_name="$(get_shell_name)"
 
-    if [[ "$OS" == "Darwin" ]]; then
-        # Install system packages first
-        install_packages "htop" "gpg" "cloc"
+    install_cli_tools_core
 
-        # Use Brewfile for CLI tools
-        if is_installed "brew"; then
-            log "Installing CLI tools via Homebrew..."
-            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
-        fi
-
-        if ! xcode-select -p &> /dev/null; then
-            log "Xcode Command Line Tools not found. Installing..."
-            xcode-select --install || log "Error installing Xcode Command Line Tools." "WARNING"
-        else
-            log "Xcode Command Line Tools are already installed."
-        fi
-    elif [[ "$DISTRO" == "arch" ]]; then
-        # Arch: most CLI tools are in official repos
-        install_packages "htop" "gnupg" "cloc" "cups" "xclip" "libtool" "cmake"
-        # Modern CLI tools available in Arch repos
-        install_packages "eza" "bat" "ripgrep" "fd" "fzf" "zoxide" "lazygit" "tmux" "starship"
-
-        # Use Brewfile for any remaining tools
-        if is_installed "brew"; then
-            log "Installing additional CLI tools via Homebrew..."
-            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
-        fi
+    if [[ "$OS" == "Linux" ]] && no_admin_mode; then
+        log "NO_ADMIN=true: skipping CLI system-integration extras (printing, clipboard, libtool)." "WARNING"
+        log "CLI core tools installed, but optional system extras were not configured." "WARNING"
     else
-        # Debian/Ubuntu: Install system packages via apt
-        install_packages "htop" "gpg" "cloc" "cups" "cups-client" "lpr" "xclip" "libtool-bin" "cmake"
-
-        # Use Brewfile for CLI tools on Linux
-        if is_installed "brew"; then
-            log "Installing CLI tools via Homebrew..."
-            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.cli_tools" || log "Error with Brewfile.cli_tools" "WARNING"
-        fi
+        install_cli_tools_system
     fi
 
     # Install oh-my-tmux (gpakosz/.tmux)
@@ -1231,11 +1617,15 @@ main() {
         "install_askpass"
         "install_shell_prereqs"
         "install_git_prereqs"
+        "install_whisper_toolchain"
+        "install_whisper_audio_integration"
         "install_whisper_prereqs"
         "install_markdown_support"
         "install_yaml_support"
         "create_snippet_symlink"
         "install_vimscript_lsp"
+        "install_latex_tooling"
+        "install_latex_distribution"
         "install_latex_tools"
         "install_python_prereqs"
         "install_python_env"
@@ -1252,6 +1642,8 @@ main() {
         "install_ai_tools"
         "install_starship"
         "install_syntax_highlighting"
+        "install_cli_tools_core"
+        "install_cli_tools_system"
         "install_cli_tools"
         "install_all"
     )

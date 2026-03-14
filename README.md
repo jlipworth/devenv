@@ -36,6 +36,38 @@ make linking-prereq     # Symlinks for configs and fonts
 make prereq-layers-all  # All layer prerequisites (language servers, tooling, etc.)
 ```
 
+## No-admin / work-WSL2 mode
+
+For locked-down Linux or WSL2 machines, the scripts support a repo-specific flag:
+
+```bash
+NO_ADMIN=true make spacemacs
+NO_ADMIN=true make system-prereq
+```
+
+This is a **best-effort no-admin mode** for this repo. It is not a standard system environment variable.
+
+What it does:
+
+- avoids attempting Linux system package installs in helper flows
+- prefers existing Linuxbrew/Homebrew where available
+- installs Emacs to `~/.local` on Linux by default
+- skips or downgrades some privileged operations to warnings/manual steps
+
+What is still **not** possible under `NO_ADMIN=true` unless already preinstalled or otherwise available:
+
+- distro package manager installs via `apt`, `pacman`, or `dnf`
+- WSL config changes under `/etc/wsl.conf`
+- system-wide installs under `/usr/local`
+- Terraform apt-repo/key setup under `/etc` and `/usr/share`
+- any fallback path that still depends on root-owned system packages being present
+
+Practical recommendation:
+
+- use `NO_ADMIN=true` for work WSL2 or no-sudo environments
+- prefer `make spacemacs` first
+- expect `make full-setup` and `make system-prereq` to remain only partially successful unless Linuxbrew and other prerequisites are already available
+
 ## Individual Language Layers
 
 ```bash
@@ -69,6 +101,7 @@ make cli_tools  # eza, bat, ripgrep, fd, fzf, zoxide, lazygit
 | [docs/ALIASES.md](docs/ALIASES.md)           | Shell aliases for modern CLI tools         |
 | [docs/BASH_TO_ZSH_MIGRATION_RUNBOOK.md](docs/BASH_TO_ZSH_MIGRATION_RUNBOOK.md) | Bash to zsh migration runbook |
 | [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md) | Dependency management and Renovate         |
+| [docs/NO_ADMIN_SETUP.md](docs/NO_ADMIN_SETUP.md) | NO_ADMIN setup guide: target compatibility, prerequisites, troubleshooting |
 
 ## License
 

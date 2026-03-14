@@ -21,9 +21,20 @@ EMACS_DIR="emacs-${EMACS_VERSION}"
 #
 # Set CI_INSTALL=true to run 'make install' even in CI mode
 # (useful for integration tests that need the installed binary)
+#
+# Install Prefix
+# By default, Linux installs to $HOME/.local (no sudo required).
+# Set EMACS_PREFIX to override (e.g. EMACS_PREFIX=/usr/local for system-wide).
+# macOS always uses the default /usr/local (Homebrew handles permissions).
 # -----------------------------------------------------------------------------
 CI="${CI:-false}"
 CI_INSTALL="${CI_INSTALL:-false}"
+
+if [[ "$OS" == "Linux" ]]; then
+    EMACS_PREFIX="${EMACS_PREFIX:-$HOME/.local}"
+else
+    EMACS_PREFIX="${EMACS_PREFIX:-/usr/local}"
+fi
 
 DRY_RUN="false"
 if [[ "$1" == "--verify" || "$1" == "--check" || "$1" == "--dry-run" ]]; then
@@ -95,59 +106,173 @@ if [[ "$OS" == "Linux" && "$DISTRO" == "arch" ]]; then
 
 elif [[ "$OS" == "Linux" ]]; then
     # Debian/Ubuntu build dependencies
-    # Determine if we need sudo (CI containers run as root)
-    if [[ "$CI" == "true" ]] || [[ $(id -u) -eq 0 ]]; then
-        APT_CMD="apt"
+    # Strategy: prefer Homebrew/Linuxbrew (no sudo needed) when available,
+    # fall back to apt (which requires sudo) otherwise.
+
+    BREW_BIN="$(find_brew_bin || true)"
+    if [[ -n "$BREW_BIN" ]]; then
+        eval "$("$BREW_BIN" shellenv)"
+        log "Installing dependencies on Linux via Linuxbrew (no sudo required)…"
+        brew bundle --file="$GNU_DIR/brewfiles/Brewfile.emacs-30"
+
+        # Ensure Homebrew binaries and libraries are discoverable
+        BREW_PREFIX="$(brew --prefix)"
+        export PATH="${BREW_PREFIX}/bin:${BREW_PREFIX}/sbin:$PATH"
+
+        # pkg-config needs to find brew-installed libraries
+        export PKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig:${BREW_PREFIX}/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+
+        # Prefer Homebrew binutils when available so Homebrew GCC uses a
+        # matching assembler/linker toolchain on Linux. This avoids newer GCC
+        # emitting directives unsupported by older system binutils.
+        BINUTILS_PREFIX="$(brew --prefix binutils 2> /dev/null || true)"
+        if [[ -n "$BINUTILS_PREFIX" && -d "$BINUTILS_PREFIX" ]]; then
+            if [[ -d "${BINUTILS_PREFIX}/libexec/gnubin" ]]; then
+                export PATH="${BINUTILS_PREFIX}/libexec/gnubin:$PATH"
+            elif [[ -d "${BINUTILS_PREFIX}/bin" ]]; then
+                export PATH="${BINUTILS_PREFIX}/bin:$PATH"
+            fi
+            log "binutils tools configured from: $BINUTILS_PREFIX"
+        fi
+
+        TREE_SITTER_VERSION="$(brew list --versions tree-sitter 2> /dev/null | awk '{print $2}' | head -n 1)"
+        if [[ -n "$TREE_SITTER_VERSION" ]] && [[ "$(printf '%s\n' '0.25.0' "$TREE_SITTER_VERSION" | sort -V | head -n 1)" == '0.25.0' ]]; then
+            export CPPFLAGS="-Dts_language_version=ts_language_abi_version ${CPPFLAGS:-}"
+            log "Using tree-sitter 0.25+ compatibility define for Emacs 30"
+        fi
+
+        # ncurses is keg-only; explicitly expose its headers and libs
+        NCURSES_PREFIX="$(brew --prefix ncurses 2> /dev/null || true)"
+        if [[ -n "$NCURSES_PREFIX" && -d "$NCURSES_PREFIX" ]]; then
+            export CPPFLAGS="-I${NCURSES_PREFIX}/include ${CPPFLAGS:-}"
+            export LDFLAGS="-L${NCURSES_PREFIX}/lib ${LDFLAGS:-}"
+            export PKG_CONFIG_PATH="${NCURSES_PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
+        fi
+
+        # libgccjit: expose its library path for native compilation
+        LIBGCCJIT_PREFIX="$(brew --prefix libgccjit 2> /dev/null || true)"
+        if [[ -n "$LIBGCCJIT_PREFIX" && -d "$LIBGCCJIT_PREFIX" ]]; then
+            export LIBRARY_PATH="${LIBGCCJIT_PREFIX}/lib/gcc/current:${LIBRARY_PATH:-}"
+            export LD_LIBRARY_PATH="${LIBGCCJIT_PREFIX}/lib/gcc/current:${LD_LIBRARY_PATH:-}"
+            export PKG_CONFIG_PATH="${LIBGCCJIT_PREFIX}/lib/gcc/current/pkgconfig:$PKG_CONFIG_PATH"
+            log "libgccjit paths configured: $LIBGCCJIT_PREFIX"
+        fi
+
+        # Use brew's gcc
+        BREW_GCC="$(brew --prefix gcc)"
+        LATEST_GCC_EXECUTABLE=$(ls -1 "${BREW_PREFIX}"/bin/gcc-[0-9]* 2> /dev/null | sort -V | tail -n 1)
+        if [[ -n "$LATEST_GCC_EXECUTABLE" ]]; then
+            GCC_MAJOR=$("$LATEST_GCC_EXECUTABLE" -dumpversion | cut -d. -f1)
+            export CC="gcc-${GCC_MAJOR}"
+            export CXX="g++-${GCC_MAJOR}"
+            # Add gcc lib path
+            if [[ -d "${BREW_GCC}/lib/gcc/${GCC_MAJOR}" ]]; then
+                export LIBRARY_PATH="${BREW_GCC}/lib/gcc/${GCC_MAJOR}:${LIBRARY_PATH:-}"
+                export LD_LIBRARY_PATH="${BREW_GCC}/lib/gcc/${GCC_MAJOR}:${LD_LIBRARY_PATH:-}"
+            fi
+        else
+            export CC="gcc"
+            export CXX="g++"
+        fi
+        log "Using compiler: CC=$CC, CXX=$CXX"
+        log "Dependencies installed via Linuxbrew successfully" "SUCCESS"
+
     else
-        APT_CMD="sudo apt"
-    fi
+        # Fallback: apt-based installation (requires sudo)
+        if no_admin_mode; then
+            log "Homebrew not found and NO_ADMIN=true, so apt fallback is disabled." "WARNING"
+            log "Attempting to continue with preinstalled system dependencies already available on this machine." "WARNING"
+            log "If configure fails, install or expose Linuxbrew first, or preinstall the Emacs build dependencies through your admin-approved path." "WARNING"
 
-    log "Installing dependencies on Linux…"
-    $APT_CMD update
+            if [[ "$GCC_VERSION" == "auto" || -z "$GCC_VERSION" ]]; then
+                GCC_VERSION=$(detect_linux_gcc_version)
+            fi
 
-    # First install build-essential to get default gcc
-    $APT_CMD install -y build-essential
+            if command -v "gcc-${GCC_VERSION}" &> /dev/null; then
+                export CC="gcc-${GCC_VERSION}"
+            elif command -v gcc &> /dev/null; then
+                export CC="gcc"
+            fi
 
-    # Detect GCC version to install matching libgccjit
-    # If GCC_VERSION is "auto" or unset, detect it dynamically
-    if [[ "$GCC_VERSION" == "auto" || -z "$GCC_VERSION" ]]; then
-        GCC_VERSION=$(detect_linux_gcc_version)
-    fi
-    log "Detected GCC version: $GCC_VERSION"
+            if command -v "g++-${GCC_VERSION}" &> /dev/null; then
+                export CXX="g++-${GCC_VERSION}"
+            elif command -v g++ &> /dev/null; then
+                export CXX="g++"
+            fi
 
-    # Install packages with dynamically detected GCC version
-    log "Installing build packages..."
-    $APT_CMD install -y \
-        cmake pkg-config libgtk-3-dev libgnutls28-dev \
-        libxpm-dev libncurses-dev libharfbuzz-dev libtree-sitter-dev \
-        wget tar "libgccjit-${GCC_VERSION}-dev" autoconf automake texinfo libsqlite3-dev libx11-dev \
-        libxft-dev libcairo2-dev libmagickwand-dev libvterm-dev libxml2-dev \
-        libwebp-dev liblcms2-dev "gcc-${GCC_VERSION}" "g++-${GCC_VERSION}" \
-        ca-certificates git
-    log "Dependencies installed successfully" "SUCCESS"
+            if [[ -n "${CC:-}" || -n "${CXX:-}" ]]; then
+                log "Using preinstalled compiler toolchain: CC=${CC:-unset}, CXX=${CXX:-unset}"
+            fi
 
-    export CC="gcc-${GCC_VERSION}"
-    export CXX="g++-${GCC_VERSION}"
-    log "Using compiler: CC=$CC, CXX=$CXX"
+            ARCH=$(dpkg --print-architecture 2> /dev/null || uname -m)
+            case "$ARCH" in
+                amd64 | x86_64) GCC_ARCH="x86_64-linux-gnu" ;;
+                arm64 | aarch64) GCC_ARCH="aarch64-linux-gnu" ;;
+                *) GCC_ARCH="$ARCH" ;;
+            esac
 
-    # Dynamically find GCC library paths based on architecture
-    ARCH=$(dpkg --print-architecture 2> /dev/null || uname -m)
-    log "Detected architecture: $ARCH"
-    case "$ARCH" in
-        amd64 | x86_64) GCC_ARCH="x86_64-linux-gnu" ;;
-        arm64 | aarch64) GCC_ARCH="aarch64-linux-gnu" ;;
-        *) GCC_ARCH="$ARCH" ;;
-    esac
+            GCC_LIB_PATH="/usr/lib/gcc/${GCC_ARCH}/${GCC_VERSION}"
+            if [[ -d "$GCC_LIB_PATH" ]]; then
+                export LD_LIBRARY_PATH="${GCC_LIB_PATH}:${LD_LIBRARY_PATH:-}"
+                export LIBRARY_PATH="${GCC_LIB_PATH}:${LIBRARY_PATH:-}"
+                export CPATH="${GCC_LIB_PATH}/include:${CPATH:-}"
+                export PKG_CONFIG_PATH="${GCC_LIB_PATH}/pkgconfig:${PKG_CONFIG_PATH:-}"
+                log "Using preinstalled GCC library path: $GCC_LIB_PATH"
+            fi
+        else
+            log "Homebrew not found, falling back to apt (requires sudo)…" "WARNING"
 
-    GCC_LIB_PATH="/usr/lib/gcc/${GCC_ARCH}/${GCC_VERSION}"
-    if [[ -d "$GCC_LIB_PATH" ]]; then
-        export LD_LIBRARY_PATH="${GCC_LIB_PATH}:${LD_LIBRARY_PATH:-}"
-        export LIBRARY_PATH="${GCC_LIB_PATH}:${LIBRARY_PATH:-}"
-        export CPATH="${GCC_LIB_PATH}/include:${CPATH:-}"
-        export PKG_CONFIG_PATH="${GCC_LIB_PATH}/pkgconfig:${PKG_CONFIG_PATH:-}"
-        log "GCC library paths configured: $GCC_LIB_PATH"
-    else
-        log "Warning: GCC library path not found at $GCC_LIB_PATH" "WARNING"
+            if [[ "$CI" == "true" ]] || [[ $(id -u) -eq 0 ]]; then
+                APT_CMD="apt"
+            else
+                APT_CMD="sudo apt"
+            fi
+
+            $APT_CMD update
+
+            # First install build-essential to get default gcc
+            $APT_CMD install -y build-essential
+
+            # Detect GCC version to install matching libgccjit
+            if [[ "$GCC_VERSION" == "auto" || -z "$GCC_VERSION" ]]; then
+                GCC_VERSION=$(detect_linux_gcc_version)
+            fi
+            log "Detected GCC version: $GCC_VERSION"
+
+            log "Installing build packages..."
+            $APT_CMD install -y \
+                cmake pkg-config libgtk-3-dev libgnutls28-dev \
+                libxpm-dev libncurses-dev libharfbuzz-dev libtree-sitter-dev \
+                wget tar "libgccjit-${GCC_VERSION}-dev" autoconf automake texinfo libsqlite3-dev libx11-dev \
+                libxft-dev libcairo2-dev libmagickwand-dev libvterm-dev libxml2-dev \
+                libwebp-dev liblcms2-dev "gcc-${GCC_VERSION}" "g++-${GCC_VERSION}" \
+                ca-certificates git
+            log "Dependencies installed successfully" "SUCCESS"
+
+            export CC="gcc-${GCC_VERSION}"
+            export CXX="g++-${GCC_VERSION}"
+            log "Using compiler: CC=$CC, CXX=$CXX"
+
+            # Dynamically find GCC library paths based on architecture
+            ARCH=$(dpkg --print-architecture 2> /dev/null || uname -m)
+            log "Detected architecture: $ARCH"
+            case "$ARCH" in
+                amd64 | x86_64) GCC_ARCH="x86_64-linux-gnu" ;;
+                arm64 | aarch64) GCC_ARCH="aarch64-linux-gnu" ;;
+                *) GCC_ARCH="$ARCH" ;;
+            esac
+
+            GCC_LIB_PATH="/usr/lib/gcc/${GCC_ARCH}/${GCC_VERSION}"
+            if [[ -d "$GCC_LIB_PATH" ]]; then
+                export LD_LIBRARY_PATH="${GCC_LIB_PATH}:${LD_LIBRARY_PATH:-}"
+                export LIBRARY_PATH="${GCC_LIB_PATH}:${LIBRARY_PATH:-}"
+                export CPATH="${GCC_LIB_PATH}/include:${CPATH:-}"
+                export PKG_CONFIG_PATH="${GCC_LIB_PATH}/pkgconfig:${PKG_CONFIG_PATH:-}"
+                log "GCC library paths configured: $GCC_LIB_PATH"
+            else
+                log "Warning: GCC library path not found at $GCC_LIB_PATH" "WARNING"
+            fi
+        fi
     fi
 
 elif [[ "$OS" == "Darwin" ]]; then
@@ -185,6 +310,9 @@ if [[ -d "$EMACS_DIR" ]]; then
         # In CI, always start fresh
         log "CI mode: Removing existing source directory for clean build" "INFO"
         rm -rf "$EMACS_DIR" "$EMACS_TAR"
+    elif [[ ! -t 0 ]]; then
+        log "Non-interactive shell detected. Reusing '$EMACS_DIR' and cleaning previous build outputs…" "INFO"
+        make -C "$EMACS_DIR" distclean > /dev/null 2>&1 || make -C "$EMACS_DIR" clean > /dev/null 2>&1 || true
     else
         read -p "Directory '$EMACS_DIR' exists. Redownload & replace? [y/N] " resp
         if [[ "$resp" =~ ^[Yy]$ ]]; then
@@ -217,8 +345,10 @@ cd "${EMACS_DIR}"
 # 3) Configure
 # -----------------------------------------------------------------------------
 log "Configuring the build…"
+log "Install prefix: $EMACS_PREFIX"
 if [[ "$OS" == "Darwin" ]]; then
     ./configure \
+        --prefix="$EMACS_PREFIX" \
         --with-native-compilation \
         --with-tree-sitter \
         --with-threads \
@@ -236,6 +366,7 @@ if [[ "$OS" == "Darwin" ]]; then
         --disable-ns-self-contained
 else
     ./configure \
+        --prefix="$EMACS_PREFIX" \
         --with-native-compilation \
         --with-tree-sitter \
         --with-threads \
@@ -277,21 +408,23 @@ log "Compilation finished at: $(date)" "SUCCESS"
 if [[ "$CI" == "true" && "$CI_INSTALL" != "true" ]]; then
     log "CI mode: Skipping 'make install' (set CI_INSTALL=true to install)" "INFO"
 else
-    log "Installing Emacs to system..."
-    if [[ "$CI" == "true" ]]; then
-        # In CI containers, we run as root - no sudo needed
+    log "Installing Emacs to $EMACS_PREFIX..."
+    mkdir -p "$EMACS_PREFIX" 2> /dev/null || true
+    # Determine if sudo is needed based on prefix writability
+    if [[ -w "$EMACS_PREFIX" ]] || [[ "$CI" == "true" ]] || [[ $(id -u) -eq 0 ]]; then
         make install
     else
+        log "Prefix $EMACS_PREFIX is not writable, using sudo..." "WARNING"
         sudo make install
     fi
-    log "System installation complete" "SUCCESS"
+    log "Installation complete" "SUCCESS"
 
     # Recompile org .elc files to prevent version mismatch warnings
     # Fresh compilation ensures .elc files match the installed .el sources
-    ORG_LISP_DIR="/usr/local/share/emacs/${EMACS_VERSION}/lisp/org"
+    ORG_LISP_DIR="${EMACS_PREFIX}/share/emacs/${EMACS_VERSION}/lisp/org"
     if [[ -d "$ORG_LISP_DIR" ]]; then
         log "Recompiling org-mode to ensure .elc files are fresh..."
-        if [[ "$CI" == "true" ]]; then
+        if [[ -w "$ORG_LISP_DIR" ]] || [[ "$CI" == "true" ]] || [[ $(id -u) -eq 0 ]]; then
             emacs --batch -L "$ORG_LISP_DIR" --eval "(byte-recompile-directory \"$ORG_LISP_DIR\" 0 t)" 2> /dev/null
         else
             sudo emacs --batch -L "$ORG_LISP_DIR" --eval "(byte-recompile-directory \"$ORG_LISP_DIR\" 0 t)" 2> /dev/null

@@ -1,0 +1,54 @@
+# ci/Dockerfile.noadmin
+# Non-root image for NO_ADMIN=true smoke tests in the intended "brew exists,
+# but sudo/admin access does not" environment.
+#
+# Purpose:
+# - verify repo scripts behave honestly without sudo
+# - verify user-space installs stay under $HOME
+# - exercise Linuxbrew-backed no-admin install paths
+#
+# This image intentionally has:
+# - no sudo at runtime
+# - Homebrew preinstalled for the non-root user
+# - no passwordless escalation
+#
+# Build manually with:
+#   docker build -t jlipworth/gnu-files-noadmin:latest -f ci/Dockerfile.noadmin .
+
+FROM debian:bookworm-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    build-essential \
+    ca-certificates \
+    curl \
+    file \
+    git \
+    procps \
+    tar \
+    unzip \
+    xz-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -s /bin/bash tester \
+    && mkdir -p /home/linuxbrew/.linuxbrew /home/linuxbrew/.cache/Homebrew \
+    && chown -R tester:tester /home/linuxbrew
+
+USER tester
+ENV HOME=/home/tester
+ENV PATH="${HOME}/.local/bin:${HOME}/bin:${PATH}"
+ENV HOMEBREW_PREFIX=/home/linuxbrew/.linuxbrew
+ENV HOMEBREW_CELLAR=/home/linuxbrew/.linuxbrew/Cellar
+ENV HOMEBREW_REPOSITORY=/home/linuxbrew/.linuxbrew/Homebrew
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${HOME}/.local/bin:${HOME}/bin:${PATH}"
+
+RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" \
+    && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)" \
+    && brew --version \
+    && echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)\"" >> /home/tester/.bashrc \
+    && echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)\"" >> /home/tester/.profile
+
+WORKDIR /workspace

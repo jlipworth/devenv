@@ -4,3 +4,6 @@
 brew "git-delta"
 brew "gh"
 brew "glab"
+
+# Linux-only: libsecret for git-credential-libsecret (no sudo needed via brew)
+brew "libsecret" if OS.linux?
