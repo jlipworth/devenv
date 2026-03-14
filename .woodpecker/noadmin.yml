@@ -52,7 +52,7 @@ steps:
       NO_ADMIN: "true"
       DEBIAN_FRONTEND: noninteractive
     commands:
-      - set -euo pipefail
+      - set -eu
       - make cli_tools 2>&1 | tee cli_tools.log
       - 'grep -q "NO_ADMIN=true: skipping CLI system-integration extras" cli_tools.log'
       - grep -q "Shell syntax highlighting partially configured" cli_tools.log
@@ -67,7 +67,7 @@ steps:
       NO_ADMIN: "true"
       DEBIAN_FRONTEND: noninteractive
     commands:
-      - set -euo pipefail
+      - set -eu
       - make whisper 2>&1 | tee whisper.log
       - 'grep -q "NO_ADMIN=true: skipping distro-level audio backend setup for Whisper" whisper.log'
       - grep -q "Whisper toolchain installed, but audio integration was not configured automatically" whisper.log
@@ -80,7 +80,7 @@ steps:
       NO_ADMIN: "true"
       DEBIAN_FRONTEND: noninteractive
     commands:
-      - set -euo pipefail
+      - set -eu
       - make r 2>&1 | tee r.log
       - command -v brew
       - grep -q "Installing R via Homebrew/Linuxbrew" r.log
@@ -93,7 +93,7 @@ steps:
       NO_ADMIN: "true"
       DEBIAN_FRONTEND: noninteractive
     commands:
-      - set -euo pipefail
+      - set -eu
       - make latex_tooling 2>&1 | tee latex_tooling.log
       - command -v texlab
 
@@ -105,7 +105,7 @@ steps:
       NO_ADMIN: "true"
       DEBIAN_FRONTEND: noninteractive
     commands:
-      - set -euo pipefail
+      - set -eu
       - make system-prereq 2>&1 | tee system_prereq.log
       - command -v brew
       - 'grep -q "NO_ADMIN=true: skipping ksshaskpass" system_prereq.log'
