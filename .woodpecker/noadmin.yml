@@ -54,7 +54,7 @@ steps:
     commands:
       - set -euo pipefail
       - make cli_tools 2>&1 | tee cli_tools.log
-      - grep -q "NO_ADMIN=true: skipping CLI system-integration extras" cli_tools.log
+      - 'grep -q "NO_ADMIN=true: skipping CLI system-integration extras" cli_tools.log'
       - grep -q "Shell syntax highlighting partially configured" cli_tools.log
       - test -d "$HOME/.tmux"
       - test -x "$HOME/.local/bin/starship"
@@ -69,7 +69,7 @@ steps:
     commands:
       - set -euo pipefail
       - make whisper 2>&1 | tee whisper.log
-      - grep -q "NO_ADMIN=true: skipping distro-level audio backend setup for Whisper" whisper.log
+      - 'grep -q "NO_ADMIN=true: skipping distro-level audio backend setup for Whisper" whisper.log'
       - grep -q "Whisper toolchain installed, but audio integration was not configured automatically" whisper.log
 
   - name: noadmin-r
@@ -108,7 +108,7 @@ steps:
       - set -euo pipefail
       - make system-prereq 2>&1 | tee system_prereq.log
       - command -v brew
-      - grep -q "NO_ADMIN=true: skipping ksshaskpass" system_prereq.log
+      - 'grep -q "NO_ADMIN=true: skipping ksshaskpass" system_prereq.log'
       - grep -q "Node.js v" system_prereq.log
       - grep -q "Shell syntax highlighting partially configured" system_prereq.log
       - test -x "$HOME/.local/bin/starship"
