@@ -95,7 +95,7 @@ steps:
     commands:
       - set -euo pipefail
       - make latex_tooling 2>&1 | tee latex_tooling.log
-      - test -x "$HOME/.local/bin/texlab"
+      - command -v texlab
 
   - name: noadmin-system-prereq
     image: *noadmin_image
