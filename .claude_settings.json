@@ -31,8 +31,5 @@
   "preferences": {
     "inputMode": "vim"
   },
-  "preferredNotifChannel": "notifications_disabled",
-  "env": {
-    "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1"
-  }
+  "preferredNotifChannel": "notifications_disabled"
 }
