@@ -33,7 +33,7 @@ steps:
       - set -eu
       - make cli_tools 2>&1 | tee cli_tools.log
       - 'grep -q "NO_ADMIN=true: skipping CLI system-integration extras" cli_tools.log'
-      - grep -q "Shell syntax highlighting partially configured" cli_tools.log
+      - grep -q "Shell syntax highlighting setup complete" cli_tools.log
       - test -d "$HOME/.tmux"
       - command -v starship
 
@@ -88,7 +88,7 @@ steps:
       - command -v brew
       - 'grep -q "NO_ADMIN=true: skipping ksshaskpass" system_prereq.log'
       - grep -q "Node.js v" system_prereq.log
-      - grep -q "Shell syntax highlighting partially configured" system_prereq.log
+      - grep -q "Shell syntax highlighting setup complete" system_prereq.log
       - command -v starship
       - test -d "$HOME/.nvm"
 
