@@ -1214,10 +1214,13 @@ _install_blesh_from_source() {
     if ! is_installed "gawk"; then
         log "Installing gawk (required for blesh build)..."
         install_packages "gawk"
+        if ! is_installed "gawk" && is_installed "brew"; then
+            log "Trying gawk via Homebrew/Linuxbrew..."
+            brew install gawk || log "brew install gawk failed." "WARNING"
+        fi
         if ! is_installed "gawk"; then
             if no_admin_mode; then
                 log "NO_ADMIN=true: unable to install gawk automatically, so blesh will be skipped." "WARNING"
-                log "Install gawk via Linuxbrew or your approved system path, then rerun shell-layer/cli_tools." "WARNING"
             else
                 log "gawk is still unavailable after attempted install; cannot build blesh." "ERROR"
             fi
