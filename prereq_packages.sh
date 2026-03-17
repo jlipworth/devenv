@@ -1541,12 +1541,36 @@ install_ai_tools() {
         log "Claude statusline script not found at $GNU_DIR/.claude_statusline.sh" "WARNING"
     fi
 
-    # Create symlink for Codex config
+    # Copy Codex config (not symlink) — preserves local [projects.*] trust entries
     log "Setting up Codex config..."
     mkdir -p "$HOME/.codex"
     if [[ -f "$GNU_DIR/.codex_config.toml" ]]; then
-        ln -sf "$GNU_DIR/.codex_config.toml" "$HOME/.codex/config.toml"
-        log "Symlinked Codex config (global defaults)."
+        local codex_target="$HOME/.codex/config.toml"
+        local codex_tmp
+        codex_tmp="$(mktemp "$HOME/.codex/config.toml.XXXXXX")"
+
+        # Extract local [projects.*] blocks from existing config (if any)
+        local project_blocks=""
+        if [[ -f "$codex_target" ]] && [[ -s "$codex_target" ]]; then
+            project_blocks="$(sed -n '/^\[projects\./,$p' "$codex_target")"
+        fi
+
+        # Remove existing symlink if present (prevents writing through to repo)
+        [[ -L "$codex_target" ]] && rm -f "$codex_target"
+
+        # Write base config (everything before first [projects. line in tracked file)
+        # Strip trailing blank lines from base to ensure idempotent output
+        sed '/^\[projects\./,$d' "$GNU_DIR/.codex_config.toml" |
+            sed -e :a -e '/^\n*$/{$d;N;ba;}' > "$codex_tmp"
+
+        # Append preserved local project blocks with single blank separator
+        if [[ -n "$project_blocks" ]]; then
+            printf '\n\n%s\n' "$project_blocks" >> "$codex_tmp"
+        fi
+
+        # Atomic move
+        mv "$codex_tmp" "$codex_target"
+        log "Copied Codex config (base settings synced, local project trust preserved)."
     else
         log "Codex config not found at $GNU_DIR/.codex_config.toml" "WARNING"
     fi
