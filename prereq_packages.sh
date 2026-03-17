@@ -1639,7 +1639,7 @@ install_ai_tools() {
         # Write base config (everything before first [projects. line in tracked file)
         # Strip trailing blank lines from base to ensure idempotent output
         sed '/^\[projects\./,$d' "$GNU_DIR/.codex_config.toml" |
-            sed -e :a -e '/^\n*$/{$d;N;ba;}' > "$codex_tmp"
+            awk '{a[NR]=$0} END{e=NR; while(e>0&&a[e]=="")e--; for(i=1;i<=e;i++)print a[i]}' > "$codex_tmp"
 
         # Append preserved local project blocks with single blank separator
         if [[ -n "$project_blocks" ]]; then
