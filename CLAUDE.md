@@ -66,7 +66,6 @@ GNU_files/
 │   ├── SPACEMACS_PRODUCTIVITY.md
 │   ├── SSH_SETUP.md
 │   └── UV_MIGRATION_RUNBOOK.md
-└── .claude/commands/        # Claude Code custom commands
 ```
 
 ## Key Patterns
