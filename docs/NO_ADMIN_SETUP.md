@@ -8,7 +8,8 @@ unavailable.
 
 ```bash
 export NO_ADMIN=true
-make linking-prereq          # symlinks + fonts (always user-space)
+make editor-symlinks         # .vimrc + .spacemacs symlinks (always user-space)
+make editor                  # fonts + vim-plug (always user-space)
 make spacemacs               # build Emacs to ~/.local (needs Linuxbrew)
 make system-prereq           # Node, CLI tools, git credential helper
 make prereq-layers-all       # language servers and tooling
@@ -58,7 +59,8 @@ Legend:
 
 | Target              | Status       | Notes |
 |---------------------|--------------|-------|
-| `make linking-prereq` | User-space | Symlinks dotfiles, installs fonts to `~/.fonts` |
+| `make editor-symlinks` | User-space | Symlinks `.vimrc` and `.spacemacs` |
+| `make editor`         | User-space | Installs fonts to `~/.fonts`, sets up vim-plug |
 | `make spacemacs`    | Conditional  | User-local Emacs build (`~/.local`); needs Linuxbrew for build deps |
 | `make node-manual`  | User-space   | nvm installs to `~/.nvm` |
 

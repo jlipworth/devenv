@@ -32,7 +32,7 @@ make full-setup
 
 # Or individual components
 make spacemacs          # Build Emacs 30.1 + Spacemacs
-make linking-prereq     # Symlinks for configs and fonts
+make editor-symlinks    # Symlinks for .vimrc and .spacemacs
 make prereq-layers-all  # All layer prerequisites (language servers, tooling, etc.)
 ```
 

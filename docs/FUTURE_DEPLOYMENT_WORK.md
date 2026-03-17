@@ -45,7 +45,6 @@ The repository currently uses shell scripts for setup:
 GNU_files/
 ├── build_emacs30.sh      # Compile Emacs from source
 ├── prereq_packages.sh    # Install language servers
-├── linking_script.sh     # Symlink configs, install fonts
 ├── common_utils.sh       # Shared utilities
 └── makefile              # Orchestration
 ```

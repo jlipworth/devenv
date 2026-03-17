@@ -5,7 +5,6 @@ This document describes all shell aliases configured in `.shell_aliases` for mod
 ## Setup
 
 The `.shell_aliases` file is automatically symlinked to `~/.shell_aliases` by:
-- `make linking-prereq` (creates symlink)
 - `make cli_tools` (installs tools, creates symlink, and configures shell)
 
 To apply changes after editing:

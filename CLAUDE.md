@@ -22,7 +22,6 @@ GNU_files/
 ├── bootstrap.sh             # Initial system bootstrap
 ├── build_emacs30.sh         # Emacs compilation
 ├── prereq_packages.sh       # Language server installation
-├── linking_script.sh        # Symlinks and fonts
 ├── common_utils.sh          # Shared utilities
 ├── update_dependencies.sh   # Dependency update helper
 ├── versions.conf            # Pinned versions (Emacs, GCC)
