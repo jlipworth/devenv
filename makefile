@@ -1,13 +1,13 @@
 # Makefile for JAL Emacs Installation
 
-.PHONY: spacemacs prereq-layers-all linking-prereq system-prereq node-manual \
+.PHONY: spacemacs prereq-layers-all editor-symlinks editor system-prereq node-manual \
         shell-layer git-layer yaml markdown completion vimscript \
         latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools \
         whisper whisper_toolchain whisper_audio latex_tooling latex_distribution \
         cli_tools cli_tools_core cli_tools_system starship syntax-highlighting update-deps full-setup help
 
 # Default target to install all prerequisite layers
-prereq-layers-all: shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools
+prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools
 
 cli_tools:
 	@echo "Installing CLI tools only..."
@@ -33,10 +33,16 @@ spacemacs:
 	@echo "Triggering spacemacs build script..."
 	@./build_emacs30.sh
 
-# Symlink and font prerequisites
-linking-prereq:
-	@echo "Running linking and font script..."
-	@./linking_script.sh
+# Editor config symlinks (early foundation step)
+editor-symlinks:
+	@echo "Creating editor symlinks..."
+	@ln -sf "$$(pwd)/.vimrc" "$$HOME/.vimrc"
+	@ln -sf "$$(pwd)/.spacemacs" "$$HOME/.spacemacs"
+
+# Editor fonts and vim-plug
+editor:
+	@echo "Installing editor fonts and vim-plug..."
+	@./prereq_packages.sh install_editor_prereqs
 
 
 # System prerequisite installations
@@ -164,7 +170,7 @@ update-deps:
 # Sequential setup of foundations, followed by parallel layers
 full-setup:
 	@echo "Starting sequential foundations..."
-	@$(MAKE) linking-prereq
+	@$(MAKE) editor-symlinks
 	@$(MAKE) system-prereq
 	@echo "Foundations complete. Starting sequential layer installation..."
 	@$(MAKE) prereq-layers-all
@@ -177,7 +183,7 @@ help:
 	@echo "Main targets:"
 	@echo "  full-setup        - Complete system setup (linking + system + all layers)"
 	@echo "  spacemacs         - Build Emacs 30.1 from source + install Spacemacs"
-	@echo "  linking-prereq    - Create symlinks for .vimrc, .spacemacs, install fonts"
+	@echo "  editor-symlinks   - Create symlinks for .vimrc and .spacemacs"
 	@echo "  system-prereq     - Install system packages (git, nodejs, CLI tools)"
 	@echo "  prereq-layers-all - Install all language server prerequisites"
 	@echo ""
@@ -196,6 +202,7 @@ help:
 	@echo "  r           - R/ESS support"
 	@echo ""
 	@echo "Other targets:"
+	@echo "  editor          - Install fonts and vim-plug"
 	@echo "  whisper         - Install Whisper prerequisites (toolchain + audio integration unless NO_ADMIN=true)"
 	@echo "  whisper_toolchain - Install Whisper toolchain only"
 	@echo "  whisper_audio   - Install Whisper audio integration prerequisites"

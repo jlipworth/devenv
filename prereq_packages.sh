@@ -1505,6 +1505,84 @@ install_python_env() {
     log "Python environment setup complete." "SUCCESS"
 }
 
+install_editor_prereqs() {
+    log "Installing editor fonts and vim-plug..."
+
+    local font_dir="$GNU_DIR/good_fonts"
+    local need_fc_cache=false
+
+    # 1. Install fonts from good_fonts/
+    if [[ -d "$font_dir" ]]; then
+        if [[ "$OS" == "Darwin" ]]; then
+            log "Installing fonts for macOS..."
+            while IFS= read -r -d '' font; do
+                if cp "$font" "$HOME/Library/Fonts/" 2> /dev/null; then
+                    log "Installed: $(basename "$font")"
+                else
+                    log "Failed to install: $font" "WARNING"
+                fi
+            done < <(find "$font_dir" -type f \( -name "*.ttf" -o -name "*.otf" \) -print0)
+            log "Fonts installed for macOS."
+        else
+            log "Installing fonts for Linux..."
+            mkdir -p "$HOME/.fonts"
+            while IFS= read -r -d '' font; do
+                if cp "$font" "$HOME/.fonts/" 2> /dev/null; then
+                    log "Installed: $(basename "$font")"
+                else
+                    log "Failed to install: $font" "WARNING"
+                fi
+            done < <(find "$font_dir" -type f \( -name "*.ttf" -o -name "*.otf" \) -print0)
+            need_fc_cache=true
+            log "Fonts installed for Linux."
+        fi
+    else
+        log "Font directory $font_dir does not exist. Skipping font installation." "WARNING"
+    fi
+
+    # 2. Install vim-plug
+    local vim_plug_file="$HOME/.vim/autoload/plug.vim"
+    if [[ ! -f "$vim_plug_file" ]]; then
+        log "Installing vim-plug..."
+        curl -fLo "$vim_plug_file" --create-dirs \
+            https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+    else
+        log "vim-plug is already installed."
+    fi
+
+    # 3. Install Vim plugins
+    if command -v vim &> /dev/null; then
+        log "Installing Vim plugins..."
+        vim +PlugInstall +qall || log "Vim plugin installation failed." "WARNING"
+    else
+        log "Vim is not installed. Skipping plugin installation." "WARNING"
+    fi
+
+    # 4. Install DejaVu Sans Mono for Powerline fonts (from vim-plug)
+    local dejavu_dir="$HOME/.vim/plugged/fonts/DejaVuSansMono"
+    if [[ -d "$dejavu_dir" ]]; then
+        log "Installing DejaVu Sans Mono for Powerline fonts..."
+        for font in "$dejavu_dir"/*.ttf "$dejavu_dir"/*.otf; do
+            [[ -e "$font" ]] || continue
+            if [[ "$OS" == "Darwin" ]]; then
+                cp "$font" ~/Library/Fonts/
+            else
+                mkdir -p "$HOME/.fonts"
+                cp "$font" "$HOME/.fonts/"
+                need_fc_cache=true
+            fi
+        done
+        log "DejaVu Sans Mono for Powerline fonts installed."
+    else
+        log "DejaVu Powerline font directory not found. Skipping."
+    fi
+
+    # 5. Rebuild font cache once (Linux only)
+    if [[ "$need_fc_cache" == true ]]; then
+        fc-cache -fv
+    fi
+}
+
 install_ai_tools() {
     log "Installing AI coding assistant tools..."
 
@@ -1608,6 +1686,7 @@ install_ai_tools() {
 
 install_all() {
     log "Installing all dependencies..."
+    install_editor_prereqs
     setup_wsl_config
     install_homebrew
     install_nodejs
@@ -1666,6 +1745,7 @@ main() {
         "install_ocaml_support"
         "install_terraform_support"
         "install_rust_support"
+        "install_editor_prereqs"
         "install_ai_tools"
         "install_starship"
         "install_syntax_highlighting"
