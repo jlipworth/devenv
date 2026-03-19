@@ -1506,7 +1506,7 @@ install_python_env() {
 }
 
 install_editor_prereqs() {
-    log "Installing editor fonts and vim-plug..."
+    log "Installing editor fonts, all-the-icons fonts, and vim-plug..."
 
     local font_dir="$GNU_DIR/good_fonts"
     local need_fc_cache=false
@@ -1540,7 +1540,11 @@ install_editor_prereqs() {
         log "Font directory $font_dir does not exist. Skipping font installation." "WARNING"
     fi
 
-    # 2. Install vim-plug
+    # 2. Install all-the-icons fonts for Spacemacs/Emacs (best-effort).
+    # This complements the vendored terminal/editor fonts above.
+    install_all_the_icons_fonts
+
+    # 3. Install vim-plug
     local vim_plug_file="$HOME/.vim/autoload/plug.vim"
     if [[ ! -f "$vim_plug_file" ]]; then
         log "Installing vim-plug..."
@@ -1550,7 +1554,7 @@ install_editor_prereqs() {
         log "vim-plug is already installed."
     fi
 
-    # 3. Install Vim plugins
+    # 4. Install Vim plugins
     if command -v vim &> /dev/null; then
         log "Installing Vim plugins..."
         vim +PlugInstall +qall || log "Vim plugin installation failed." "WARNING"
@@ -1558,7 +1562,7 @@ install_editor_prereqs() {
         log "Vim is not installed. Skipping plugin installation." "WARNING"
     fi
 
-    # 4. Install DejaVu Sans Mono for Powerline fonts (from vim-plug)
+    # 5. Install DejaVu Sans Mono for Powerline fonts (from vim-plug)
     local dejavu_dir="$HOME/.vim/plugged/fonts/DejaVuSansMono"
     if [[ -d "$dejavu_dir" ]]; then
         log "Installing DejaVu Sans Mono for Powerline fonts..."
@@ -1577,7 +1581,7 @@ install_editor_prereqs() {
         log "DejaVu Powerline font directory not found. Skipping."
     fi
 
-    # 5. Rebuild font cache once (Linux only)
+    # 6. Rebuild font cache once (Linux only)
     if [[ "$need_fc_cache" == true ]]; then
         fc-cache -fv
     fi
