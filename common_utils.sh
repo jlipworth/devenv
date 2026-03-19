@@ -214,15 +214,6 @@ is_installed() {
 # =============================================================================
 
 install_all_the_icons_fonts() {
-    local font_root required_fonts=(
-        "all-the-icons.ttf"
-        "file-icons.ttf"
-        "fontawesome.ttf"
-        "material-design-icons.ttf"
-        "octicons.ttf"
-        "weathericons.ttf"
-    )
-
     if [[ "${CI:-false}" == "true" ]]; then
         log "CI=true: skipping all-the-icons font installation." "INFO"
         return 0
@@ -235,27 +226,6 @@ install_all_the_icons_fonts() {
 
     if [[ ! -d "$HOME/.emacs.d" ]]; then
         log "$HOME/.emacs.d not found yet. Skipping all-the-icons font installation for now." "INFO"
-        return 0
-    fi
-
-    if [[ "$OS" == "Darwin" ]]; then
-        font_root="$HOME/Library/Fonts"
-    else
-        font_root="$HOME/.local/share/fonts"
-        [[ -d "$font_root" ]] || font_root="$HOME/.fonts"
-    fi
-
-    local missing_font=false
-    local font_name
-    for font_name in "${required_fonts[@]}"; do
-        if [[ ! -f "$font_root/$font_name" ]]; then
-            missing_font=true
-            break
-        fi
-    done
-
-    if [[ "$missing_font" == false ]]; then
-        log "all-the-icons fonts already present in $font_root. Skipping reinstall."
         return 0
     fi
 
