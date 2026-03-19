@@ -230,18 +230,7 @@ install_all_the_icons_fonts() {
     fi
 
     log "Installing all-the-icons fonts for Emacs..."
-    emacs --batch --eval "
-(progn
-  (require 'package)
-  (setq package-archives '((\"melpa\" . \"https://melpa.org/packages/\")
-                           (\"gnu\" . \"https://elpa.gnu.org/packages/\")))
-  (package-initialize)
-  (unless (package-installed-p 'all-the-icons)
-    (unless package-archive-contents
-      (package-refresh-contents))
-    (package-install 'all-the-icons))
-  (require 'all-the-icons)
-  (all-the-icons-install-fonts t))" &&
+    emacs --batch -l "$GNU_DIR/install_all_the_icons_fonts.el" &&
         log "all-the-icons fonts installed." "SUCCESS" ||
         log "Failed to install all-the-icons fonts automatically. You can rerun setup or use M-x all-the-icons-install-fonts inside Emacs." "WARNING"
 }
