@@ -234,7 +234,7 @@ install_all_the_icons_fonts() {
     fi
 
     if [[ ! -d "$HOME/.emacs.d" ]]; then
-        log "~/.emacs.d not found yet. Skipping all-the-icons font installation for now." "INFO"
+        log "$HOME/.emacs.d not found yet. Skipping all-the-icons font installation for now." "INFO"
         return 0
     fi
 
