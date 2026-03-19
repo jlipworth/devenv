@@ -210,6 +210,73 @@ is_installed() {
 }
 
 # =============================================================================
+# Emacs font helpers
+# =============================================================================
+
+install_all_the_icons_fonts() {
+    local font_root required_fonts=(
+        "all-the-icons.ttf"
+        "file-icons.ttf"
+        "fontawesome.ttf"
+        "material-design-icons.ttf"
+        "octicons.ttf"
+        "weathericons.ttf"
+    )
+
+    if [[ "${CI:-false}" == "true" ]]; then
+        log "CI=true: skipping all-the-icons font installation." "INFO"
+        return 0
+    fi
+
+    if ! command -v emacs &> /dev/null; then
+        log "Emacs not found in PATH. Skipping all-the-icons font installation for now." "WARNING"
+        return 0
+    fi
+
+    if [[ ! -d "$HOME/.emacs.d" ]]; then
+        log "~/.emacs.d not found yet. Skipping all-the-icons font installation for now." "INFO"
+        return 0
+    fi
+
+    if [[ "$OS" == "Darwin" ]]; then
+        font_root="$HOME/Library/Fonts"
+    else
+        font_root="$HOME/.local/share/fonts"
+        [[ -d "$font_root" ]] || font_root="$HOME/.fonts"
+    fi
+
+    local missing_font=false
+    local font_name
+    for font_name in "${required_fonts[@]}"; do
+        if [[ ! -f "$font_root/$font_name" ]]; then
+            missing_font=true
+            break
+        fi
+    done
+
+    if [[ "$missing_font" == false ]]; then
+        log "all-the-icons fonts already present in $font_root. Skipping reinstall."
+        return 0
+    fi
+
+    log "Installing all-the-icons fonts for Emacs..."
+    emacs --batch --eval "
+(progn
+  (require 'package)
+  (setq package-archives '((\"melpa\" . \"https://melpa.org/packages/\")
+                           (\"gnu\" . \"https://elpa.gnu.org/packages/\")))
+  (package-initialize)
+  (unless (package-installed-p 'all-the-icons)
+    (unless package-archive-contents
+      (package-refresh-contents))
+    (package-install 'all-the-icons))
+  (require 'all-the-icons)
+  (all-the-icons-install-fonts t))" &&
+        log "all-the-icons fonts installed." "SUCCESS" ||
+        log "Failed to install all-the-icons fonts automatically. You can rerun setup or use M-x all-the-icons-install-fonts inside Emacs." "WARNING"
+}
+
+# =============================================================================
 # Shell configuration helpers
 # =============================================================================
 

@@ -35,7 +35,6 @@ GNU_files/
 ├── .tmux.conf.local         # tmux local overrides (oh-my-tmux)
 ├── alacritty.toml           # Alacritty terminal config
 ├── starship.toml            # Starship prompt config
-├── tabby-config.yaml        # Tabby terminal config
 ├── .pre-commit-config.yaml  # Pre-commit hooks
 ├── .shellcheckrc            # ShellCheck settings
 ├── brewfiles/               # Per-layer Homebrew packages
@@ -57,7 +56,6 @@ GNU_files/
 ├── .woodpecker/             # Woodpecker CI pipelines
 ├── docs/                    # Documentation
 │   ├── ALIASES.md
-│   ├── BACKLOG.md
 │   ├── BASH_TO_ZSH_MIGRATION_RUNBOOK.md
 │   ├── DEPENDENCIES.md
 │   ├── FORGE_SETUP.md

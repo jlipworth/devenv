@@ -504,3 +504,5 @@ git clone --depth 100 --branch develop https://github.com/syl20bnr/spacemacs "$H
         log "Failed to clone Spacemacs." "ERROR"
         exit 1
     }
+
+install_all_the_icons_fonts
