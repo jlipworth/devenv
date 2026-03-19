@@ -1,10 +1,10 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
-set -euo pipefail
+set -eu
 
 config_file=".codex_config.toml"
 
-if [[ ! -f "$config_file" ]]; then
+if [ ! -f "$config_file" ]; then
     echo "ERROR: $config_file not found." >&2
     exit 1
 fi
