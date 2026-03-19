@@ -2,6 +2,15 @@
 # See https://pre-commit.com for more information
 
 repos:
+  - repo: local
+    hooks:
+      - id: check-codex-config
+        name: check codex config stays shared
+        entry: ./check_codex_config.sh
+        language: system
+        pass_filenames: false
+        files: ^\.codex_config\.toml$
+
   # General file formatting hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0

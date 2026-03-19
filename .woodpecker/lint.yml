@@ -9,3 +9,4 @@ steps:
     image: koalaman/shellcheck-alpine:stable
     commands:
       - shellcheck --source-path=SCRIPTDIR -x *.sh
+      - ./check_codex_config.sh
