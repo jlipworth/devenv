@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# tmux-pop-pane: Break the current pane out into its own new tmux session.
+# Usage: tmux-pop-pane <new-session-name> <pane-id>
+#
+# Designed to be called from a tmux keybinding:
+#   bind B command-prompt -p "Pop pane to session:" \
+#     "run-shell 'tmux-pop-pane \"%1\" #{pane_id}'"
+set -euo pipefail
+
+if [[ $# -ne 2 ]]; then
+    echo "Usage: tmux-pop-pane <session-name> <pane-id>" >&2
+    exit 1
+fi
+
+session_name="$1"
+pane_id="$2"
+
+# Exact-match check (= prefix prevents prefix-matching)
+if tmux has-session -t "=$session_name" 2>/dev/null; then
+    tmux display-message "Session '$session_name' already exists"
+    exit 1
+fi
+
+# Break the pane into a new window in its current session (detached)
+new_window=$(tmux break-pane -d -s "$pane_id" -P -F '#{session_name}:#{window_index}')
+
+# Create the target session (comes with a default empty window at index 0)
+tmux new-session -d -s "$session_name"
+
+# Move the broken-out window into the new session, replacing its default window
+tmux move-window -k -s "$new_window" -t "$session_name:0"
+
+tmux display-message "Popped pane to session '$session_name'"
