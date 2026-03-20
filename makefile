@@ -4,7 +4,8 @@
         shell-layer git-layer yaml markdown completion vimscript \
         latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools \
         whisper whisper_toolchain whisper_audio latex_tooling latex_distribution \
-        cli_tools cli_tools_core cli_tools_system starship syntax-highlighting update-deps full-setup help
+        cli_tools cli_tools_core cli_tools_system starship syntax-highlighting update-deps \
+        full-setup noadmin-setup help
 
 # Default target to install all prerequisite layers
 prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools
@@ -176,16 +177,25 @@ full-setup:
 	@$(MAKE) prereq-layers-all
 	@echo "Completed full system setup."
 
+# No-admin setup: full install without sudo-requiring steps
+noadmin-setup:
+	@NO_ADMIN=true $(MAKE) full-setup
+
 # Help target
 help:
 	@echo "JAL Emacs Installation Makefile"
 	@echo ""
 	@echo "Main targets:"
 	@echo "  full-setup        - Complete system setup (linking + system + all layers)"
+	@echo "  noadmin-setup     - Full setup without sudo (skips system packages)"
 	@echo "  spacemacs         - Build Emacs 30.1 from source + install Spacemacs"
 	@echo "  editor-symlinks   - Create symlinks for .vimrc and .spacemacs"
 	@echo "  system-prereq     - Install system packages (git, nodejs, CLI tools)"
 	@echo "  prereq-layers-all - Install all language server prerequisites"
+	@echo ""
+	@echo "Environment variables:"
+	@echo "  NO_ADMIN=true     - Prefix any target to skip sudo-requiring steps"
+	@echo "                      (e.g. NO_ADMIN=true make latex)"
 	@echo ""
 	@echo "Language layers:"
 	@echo "  python      - Python LSP, debugpy, linters"
