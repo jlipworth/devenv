@@ -432,11 +432,11 @@ bind m run "cut -c3- '#{TMUX_CONF}' | sh -s _toggle_mouse" \; display 'mouse #{?
 bind B command-prompt -p "Pop pane to session:" \
   "run-shell 'tmux-pop-pane \"%1\" #{pane_id}'"
 
-# Fold current window into another session (shows session picker)
-bind < choose-tree -s "move-window -t '%%:'"
+# Fold current window into another session (tab-completes session names)
+bind S command-prompt -p "Send window to session:" -T target { move-window -t "%%" }
 
-# Fold current pane into another session's active window (shows session picker)
-bind > choose-tree -s "join-pane -h -t '%%:'"
+# Fold current pane into another session's active window (tab-completes session names)
+bind G command-prompt -p "Send pane to session:" -T target { join-pane -h -t "%%" }
 
 
 # -- tpm -----------------------------------------------------------------------

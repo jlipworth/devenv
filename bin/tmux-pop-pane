@@ -24,10 +24,11 @@ fi
 # Break the pane into a new window in its current session (detached)
 new_window=$(tmux break-pane -d -s "$pane_id" -P -F '#{session_name}:#{window_index}')
 
-# Create the target session (comes with a default empty window at index 0)
+# Create the target session and find its default window index (respects base-index)
 tmux new-session -d -s "$session_name"
+default_window=$(tmux list-windows -t "=$session_name" -F '#{window_index}' | head -1)
 
 # Move the broken-out window into the new session, replacing its default window
-tmux move-window -k -s "$new_window" -t "$session_name:0"
+tmux move-window -k -s "$new_window" -t "$session_name:$default_window"
 
 tmux display-message "Popped pane to session '$session_name'"
