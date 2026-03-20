@@ -1677,6 +1677,15 @@ install_ai_tools() {
         log "AI notification helper not found at $GNU_DIR/notifications/ai-notify-if-unfocused" "WARNING"
     fi
 
+    # Install tmux helper scripts
+    log "Setting up tmux helper scripts..."
+    for helper in "$GNU_DIR"/bin/tmux-*; do
+        [[ -f "$helper" ]] || continue
+        chmod +x "$helper"
+        ln -sf "$helper" "$HOME/.local/bin/$(basename "$helper")"
+    done
+    log "Symlinked tmux helpers to ~/.local/bin."
+
     # Create symlink for OpenCode config
     log "Setting up OpenCode config..."
     mkdir -p "$HOME/.config/opencode"

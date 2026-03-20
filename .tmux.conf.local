@@ -427,6 +427,17 @@ bind m run "cut -c3- '#{TMUX_CONF}' | sh -s _toggle_mouse" \; display 'mouse #{?
 # move status line to top
 #set -g status-position top
 
+# -- pane/window session management --------------------------------------------
+# Pop current pane out to its own new session (prompts for name)
+bind B command-prompt -p "Pop pane to session:" \
+  "run-shell 'tmux-pop-pane \"%1\" #{pane_id}'"
+
+# Fold current window into another session (shows session picker)
+bind < choose-tree -s "move-window -t '%%:'"
+
+# Fold current pane into another session's active window (shows session picker)
+bind > choose-tree -s "join-pane -h -t '%%:'"
+
 
 # -- tpm -----------------------------------------------------------------------
 
