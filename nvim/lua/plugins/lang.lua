@@ -7,13 +7,20 @@ return {
   { import = "lazyvim.plugins.extras.lang.markdown" },
   { import = "lazyvim.plugins.extras.lang.sql" },
   { import = "lazyvim.plugins.extras.lang.toml" },
+  { import = "lazyvim.plugins.extras.lang.r" },
+  { import = "lazyvim.plugins.extras.lang.tex" },
+  { import = "lazyvim.plugins.extras.lang.tailwind" },
 
-  -- Shell LSP (no built-in LazyVim extra — manual config)
+  -- Shell + HTML/CSS LSP (no built-in LazyVim extras — manual config)
   {
     "neovim/nvim-lspconfig",
     opts = {
       servers = {
         bashls = {},
+        -- HTML/CSS/SCSS LSP (matches Spacemacs html layer with css/scss/html lsp)
+        html = {},
+        cssls = {},
+        emmet_ls = {},
       },
     },
   },
@@ -28,6 +35,11 @@ return {
         "shellcheck",
         "ruff",
         "prettier",
+        "html-lsp",
+        "css-lsp",
+        "emmet-ls",
+        "texlab",
+        "r-languageserver",
       })
     end,
   },
@@ -44,6 +56,8 @@ return {
         typescriptreact = { "prettier" },
         javascriptreact = { "prettier" },
         css = { "prettier" },
+        scss = { "prettier" },
+        less = { "prettier" },
         html = { "prettier" },
         json = { "prettier" },
         yaml = { "prettier" },

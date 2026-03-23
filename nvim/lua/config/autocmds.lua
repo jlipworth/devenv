@@ -3,7 +3,7 @@
 
 -- Filetype-specific indentation (matches .vimrc settings)
 vim.api.nvim_create_autocmd("FileType", {
-  pattern = { "javascript", "typescript", "typescriptreact", "javascriptreact", "json", "yaml", "html", "css" },
+  pattern = { "javascript", "typescript", "typescriptreact", "javascriptreact", "json", "yaml", "html", "css", "scss", "less", "r" },
   callback = function()
     vim.opt_local.tabstop = 2
     vim.opt_local.shiftwidth = 2
