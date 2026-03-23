@@ -18,7 +18,7 @@ return {
     },
   },
   {
-    "williamboman/mason.nvim",
+    "mason-org/mason.nvim",
     -- Use function form (not table) to merge ensure_installed with entries from
     -- LazyVim language extras, which also contribute to this list.
     opts = function(_, opts)
