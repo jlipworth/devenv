@@ -1,0 +1,244 @@
+# Neovim Support for devenv
+
+**Date:** 2026-03-23
+**Status:** Draft
+**Branch:** `feature/neovim-support`
+
+## Summary
+
+Add cross-platform Neovim support to the devenv repo using LazyVim as the distribution. Neovim is an opt-in, explicitly requested target — it is never part of `full-setup`, `noadmin-setup`, or `prereq-layers-all`. The existing Spacemacs workflow remains the default and is not modified.
+
+## Motivation
+
+Temporary Windows machines reset regularly and have no admin rights. Spacemacs requires building Emacs from source and downloading hundreds of packages on first launch — impractical for ephemeral environments. Neovim + LazyVim provides a fast, self-bootstrapping editor that auto-installs plugins and LSP servers on first launch.
+
+Secondary benefit: cross-platform Neovim config available on Linux/Mac machines as an alternative to Spacemacs when desired.
+
+## Scope
+
+### In scope
+
+- LazyVim-based Neovim config in `nvim/` directory
+- LSP support: Python (Pyright), JavaScript/TypeScript, YAML, JSON, TOML, Shell, SQL, Markdown
+- Core features: git integration (lazygit), fuzzy finding (telescope), file explorer, which-key, completion, treesitter syntax highlighting
+- Custom keybindings preserving Spacemacs muscle memory (`jk` escape, leader-key patterns)
+- `make neovim` target in makefile (explicit opt-in only)
+- `install_neovim()` function in `prereq_packages.sh` (cross-platform)
+- Neovim step added to `setup-dev-tools.ps1` (Windows)
+- Keybinding reference doc: `docs/NEOVIM_KEYBINDINGS.md`
+
+### Out of scope
+
+- Replacing or modifying the Spacemacs workflow
+- Org-mode, Whisper, DAP, Mermaid, or other Spacemacs-specific features
+- Languages not needed on temporary machines (C/C++, Rust, OCaml, Terraform, LaTeX, R)
+- Neovim GUI (neovide, etc.)
+
+## Design
+
+### Config structure
+
+```
+nvim/
+├── init.lua                  # LazyVim bootstrap (~10 lines, clones lazy.nvim and calls config.lazy)
+└── lua/
+    ├── config/
+    │   ├── options.lua       # Vim options (textwidth, tabs, colorscheme prefs)
+    │   ├── keymaps.lua       # Custom keybindings (jk escape, Spacemacs-compatible leader maps)
+    │   └── lazy.lua          # require("lazy").setup() call importing LazyVim + plugins dir
+    └── plugins/
+        ├── colorscheme.lua   # Theme config (molokai or tokyonight)
+        ├── editor.lua        # Overrides for editor plugins (which-key tweaks, etc.)
+        └── lang.lua          # Language extras imports + shell LSP manual config
+```
+
+This follows LazyVim's standard directory convention. Files in `lua/config/` and `lua/plugins/` are auto-discovered.
+
+### LazyVim extras activation
+
+Extras are enabled programmatically via `import` statements in `lua/plugins/lang.lua` (version-control friendly, avoids conflicts with LazyVim's auto-managed `lazyvim.json`):
+
+```lua
+-- lua/plugins/lang.lua
+return {
+  { import = "lazyvim.plugins.extras.lang.python" },
+  { import = "lazyvim.plugins.extras.lang.typescript" },
+  { import = "lazyvim.plugins.extras.lang.yaml" },
+  { import = "lazyvim.plugins.extras.lang.json" },
+  { import = "lazyvim.plugins.extras.lang.markdown" },
+  { import = "lazyvim.plugins.extras.lang.sql" },
+  { import = "lazyvim.plugins.extras.lang.toml" },
+
+  -- Shell LSP (no built-in LazyVim extra — manual config)
+  {
+    "neovim/nvim-lspconfig",
+    opts = {
+      servers = {
+        bashls = {},
+      },
+    },
+  },
+  {
+    "williamboman/mason.nvim",
+    opts = {
+      ensure_installed = { "bash-language-server", "shellcheck" },
+    },
+  },
+}
+```
+
+### config/lazy.lua contents
+
+This file contains the `require("lazy").setup()` call that imports LazyVim and auto-discovers the `plugins/` directory:
+
+```lua
+require("lazy").setup({
+  spec = {
+    { "LazyVim/LazyVim", import = "lazyvim.plugins" },
+    { import = "plugins" },
+  },
+  defaults = { lazy = false },
+  checker = { enabled = true },
+  performance = {
+    rtp = {
+      disabled_plugins = { "gzip", "tarPlugin", "tohtml", "tutor", "zipPlugin" },
+    },
+  },
+})
+```
+
+### Key custom settings
+
+**options.lua:**
+- `textwidth=100`
+- `tabstop=4`, `shiftwidth=4`, `expandtab`
+- System clipboard integration (`clipboard = "unnamedplus"`)
+- Leader key = Space (LazyVim default, matches Spacemacs)
+
+**keymaps.lua:**
+- `jk` mapped to Escape in insert mode (matching Spacemacs evil-escape)
+- Any additional Spacemacs-compatible leader mappings
+
+### Symlink strategy
+
+The `nvim/` directory in the repo is symlinked to the platform config location:
+
+| Platform | Symlink target |
+|----------|---------------|
+| Linux/Mac | `~/.config/nvim` → `$GNU_DIR/nvim` |
+| Windows | `$env:LOCALAPPDATA\nvim` → `$GNU_DIR\nvim` |
+
+The `install_neovim()` function must handle pre-existing `~/.config/nvim`:
+- If it's a symlink: replace it
+- If it's a directory: back it up (append timestamp), then create symlink
+- Following the same pattern as `create_snippet_symlink()` in `prereq_packages.sh`
+
+**Windows note:** Uses `New-Item -ItemType Junction` which works without admin for local paths. If the user's home directory is on a network share, junction will fail — the fallback is to copy the `nvim/` directory instead and note that manual sync is needed.
+
+### Plugin/LSP auto-install behavior
+
+On first launch, LazyVim + mason.nvim will:
+1. Download and install all plugins (lazy.nvim handles this)
+2. Download and install LSP servers (mason.nvim handles this)
+
+This requires internet on first launch but no admin rights and no pre-installed tools beyond Neovim itself.
+
+### Dependencies
+
+- **lazygit** is required for `<leader>gg` (LazyVim's default git integration). `install_neovim()` should install it, or document that `make cli_tools_core` provides it. Since `neovim` is a standalone target, lazygit should be installed as part of it.
+
+## Integration
+
+### makefile
+
+New target (opt-in only, never added to any existing composite target):
+
+```makefile
+neovim:
+	@echo "Installing Neovim and configuring LazyVim..."
+	@./prereq_packages.sh install_neovim
+```
+
+**Implementation notes:**
+- Add `neovim` to the `.PHONY` declaration
+- Add `neovim` to the `help` target output under "Other targets"
+- Do NOT add `neovim` to `prereq-layers-all`, `full-setup`, or `noadmin-setup`
+
+### prereq_packages.sh
+
+New function `install_neovim()`:
+
+- **Mac:** `brew install neovim lazygit`
+- **Linux (brew available):** `brew install neovim lazygit`
+- **Linux (no brew, no admin):** Download Neovim appimage to `~/.local/bin` (extract with `--appimage-extract` if FUSE unavailable). Install lazygit binary from GitHub releases.
+- **Arch:** `install_packages neovim lazygit` (respects `NO_ADMIN` — falls through to brew/appimage path when `NO_ADMIN=true`)
+- **Debian (no brew, no admin):** Same appimage path as above
+- Creates `~/.config/nvim` symlink → `$GNU_DIR/nvim` (with backup handling for pre-existing directory)
+- Does NOT install LSP servers (mason handles that on first launch)
+
+**Implementation notes:**
+- Add `install_neovim` to the `valid_functions` array in `main()`
+- Do NOT add `install_neovim` to `install_all()`
+- Add `NEOVIM_VERSION="0.11.6"` to `versions.conf` for the appimage download path
+
+### setup-dev-tools.ps1 (Windows)
+
+This file already exists at the repo root (created earlier in this session at `~/setup-dev-tools.ps1`; will be moved into the repo). New step added:
+
+- `winget install Neovim.Neovim --scope user` (preferred path)
+- Fallback: download `nvim-win64.zip` from GitHub releases, extract to `$env:LOCALAPPDATA\nvim-bin`, add to PATH
+- Clone devenv repo: `git clone https://github.com/jlipworth/devenv.git $env:USERPROFILE\GNU_files`
+- Create junction: `New-Item -ItemType Junction -Path "$env:LOCALAPPDATA\nvim" -Target "$env:USERPROFILE\GNU_files\nvim"`
+
+### docs/NEOVIM_KEYBINDINGS.md
+
+Reference card mapping Spacemacs habits to LazyVim equivalents:
+
+| Action | Spacemacs | LazyVim |
+|--------|-----------|---------|
+| Find file | `SPC f f` | `<leader>ff` |
+| Grep project | `SPC /` | `<leader>sg` |
+| File explorer | `SPC f t` | `<leader>e` |
+| Git status | `SPC g s` | `<leader>gg` (lazygit) |
+| Buffer list | `SPC b b` | `<leader>fb` |
+| Save file | `SPC f s` | `<leader>w` or `:w` |
+| Close buffer | `SPC b d` | `<leader>bd` |
+| Split vertical | `SPC w v` | `<leader>w` + `v` |
+| Split horizontal | `SPC w s` | `<leader>w` + `s` |
+| Switch window | `SPC w w` | `<C-w>w` |
+| LSP go to def | `g d` | `gd` |
+| LSP references | `g r` | `gr` |
+| LSP rename | `SPC l r` | `<leader>cr` |
+| LSP code action | `SPC l a` | `<leader>ca` |
+| Which-key help | `SPC` (wait) | `<leader>` (wait) |
+
+## Constraints
+
+- Neovim config must not require admin rights to use
+- Neovim target must never be included in `full-setup`, `noadmin-setup`, or `prereq-layers-all`
+- Existing `.vimrc` remains untouched and continues serving Vim/VSCode
+- No modifications to any existing Spacemacs-related code
+- Config should work offline after first launch (all plugins cached locally)
+
+## Cleanup / Uninstall
+
+To remove Neovim setup:
+1. Remove config symlink: `rm ~/.config/nvim` (Linux/Mac) or remove junction on Windows
+2. Remove plugin/mason data: `rm -rf ~/.local/share/nvim ~/.local/state/nvim ~/.cache/nvim`
+3. Optionally uninstall Neovim binary (`brew uninstall neovim` or remove appimage)
+
+## Testing
+
+- Fresh launch on Linux: `make neovim && nvim` — plugins and LSP servers auto-install
+- Fresh launch on Windows: run `setup-dev-tools.ps1`, open `nvim` — same behavior
+- Verify LSP works for each language: open a file of that type, run `:LspInfo`, confirm the correct server attaches, hover docs work (`K` on a symbol)
+  - Python: Pyright attaches
+  - TypeScript: ts_ls attaches
+  - YAML: yamlls attaches
+  - JSON: jsonls attaches
+  - Shell: bashls attaches
+  - SQL: sqlls attaches
+  - Markdown: markdownlint attaches
+- Verify keybindings: `jk` exits insert mode, `<leader>ff` opens telescope, `<leader>sg` greps project, `<leader>e` opens file explorer, `<leader>gg` opens lazygit
+- Verify no changes to `make full-setup` or `make noadmin-setup` behavior
+- Verify `make help` shows the `neovim` target
