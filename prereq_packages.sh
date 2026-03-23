@@ -1697,6 +1697,127 @@ install_ai_tools() {
     fi
 }
 
+install_neovim() {
+    log "Installing Neovim and configuring LazyVim..."
+
+    # Source versions.conf for NEOVIM_VERSION
+    source "$GNU_DIR/versions.conf"
+    local neovim_version="${NEOVIM_VERSION:-0.11.6}"
+
+    # --- Install Neovim binary ---
+    if is_installed "nvim"; then
+        log "Neovim is already installed: $(nvim --version | head -1)"
+    elif is_installed "brew"; then
+        log "Installing Neovim via Homebrew..."
+        brew install neovim || log "Error installing Neovim via Homebrew." "WARNING"
+    elif [[ "$DISTRO" == "arch" ]] && ! no_admin_mode; then
+        install_packages "neovim"
+    else
+        # Fallback: download from GitHub releases (no admin needed)
+        log "Installing Neovim v${neovim_version} from GitHub releases..."
+        mkdir -p "$HOME/.local/bin"
+
+        local arch
+        arch="$(uname -m)"
+        case "$arch" in
+            x86_64 | amd64) arch="x86_64" ;;
+            aarch64 | arm64) arch="aarch64" ;;
+            *)
+                log "Unsupported architecture $arch for Neovim download." "ERROR"
+                return 1
+                ;;
+        esac
+
+        local nvim_url="https://github.com/neovim/neovim/releases/download/v${neovim_version}/nvim-linux-${arch}.appimage"
+        local nvim_dest="$HOME/.local/bin/nvim"
+
+        curl -fsSL "$nvim_url" -o "$nvim_dest" || {
+            log "Failed to download Neovim appimage." "ERROR"
+            return 1
+        }
+        chmod +x "$nvim_dest"
+
+        # Test if FUSE is available; if not, extract the appimage
+        if ! "$nvim_dest" --version &> /dev/null; then
+            log "FUSE not available, extracting appimage..."
+            local extract_dir="$HOME/.local/share/nvim-appimage"
+            rm -rf "$extract_dir"
+            cd /tmp && "$nvim_dest" --appimage-extract > /dev/null 2>&1
+            mv /tmp/squashfs-root "$extract_dir"
+            rm -f "$nvim_dest"
+            ln -sf "$extract_dir/AppRun" "$nvim_dest"
+            cd "$GNU_DIR"
+        fi
+
+        add_to_path "$HOME/.local/bin" "Neovim"
+        log "Neovim installed to $nvim_dest" "SUCCESS"
+    fi
+
+    # --- Install lazygit (required for LazyVim git integration) ---
+    if ! is_installed "lazygit"; then
+        log "Installing lazygit..."
+        if is_installed "brew"; then
+            brew install lazygit || log "Error installing lazygit via Homebrew." "WARNING"
+        elif [[ "$DISTRO" == "arch" ]] && ! no_admin_mode; then
+            install_packages "lazygit"
+        else
+            # Download lazygit binary from GitHub releases
+            log "Installing lazygit from GitHub releases..."
+            local lg_version
+            lg_version=$(curl -s https://api.github.com/repos/jesseduffield/lazygit/releases/latest | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')
+
+            local lg_arch
+            case "$(uname -m)" in
+                x86_64 | amd64) lg_arch="x86_64" ;;
+                aarch64 | arm64) lg_arch="arm64" ;;
+                *) lg_arch="$(uname -m)" ;;
+            esac
+
+            local lg_os
+            if [[ "$OS" == "Darwin" ]]; then
+                lg_os="Darwin"
+            else
+                lg_os="Linux"
+            fi
+
+            curl -fsSL "https://github.com/jesseduffield/lazygit/releases/download/v${lg_version}/lazygit_${lg_version}_${lg_os}_${lg_arch}.tar.gz" \
+                -o /tmp/lazygit.tar.gz || {
+                log "Failed to download lazygit." "WARNING"
+            }
+
+            if [[ -f /tmp/lazygit.tar.gz ]]; then
+                tar -xzf /tmp/lazygit.tar.gz -C /tmp lazygit
+                mkdir -p "$HOME/.local/bin"
+                mv /tmp/lazygit "$HOME/.local/bin/"
+                chmod +x "$HOME/.local/bin/lazygit"
+                rm /tmp/lazygit.tar.gz
+                log "lazygit installed to ~/.local/bin" "SUCCESS"
+            fi
+        fi
+    else
+        log "lazygit is already installed."
+    fi
+
+    # --- Create Neovim config symlink ---
+    local nvim_config_dir="$HOME/.config/nvim"
+    local nvim_source="$GNU_DIR/nvim"
+
+    mkdir -p "$HOME/.config"
+
+    if [ -L "$nvim_config_dir" ]; then
+        log "A symbolic link already exists at $nvim_config_dir. Replacing it."
+        rm "$nvim_config_dir"
+    elif [ -d "$nvim_config_dir" ]; then
+        log "A directory exists at $nvim_config_dir. Backing it up."
+        mv "$nvim_config_dir" "${nvim_config_dir}_backup_$(date +%Y%m%d%H%M%S)"
+    fi
+
+    ln -s "$nvim_source" "$nvim_config_dir"
+    log "Neovim config symlinked: $nvim_config_dir -> $nvim_source" "SUCCESS"
+
+    log "Neovim setup complete! Run 'nvim' to auto-install plugins and LSP servers on first launch." "SUCCESS"
+}
+
 install_all() {
     log "Installing all dependencies..."
     install_editor_prereqs
@@ -1765,6 +1886,7 @@ main() {
         "install_cli_tools_core"
         "install_cli_tools_system"
         "install_cli_tools"
+        "install_neovim"
         "install_all"
     )
 
