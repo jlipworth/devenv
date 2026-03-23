@@ -72,7 +72,7 @@ repos:
     rev: v2.4.1
     hooks:
       - id: codespell
-        args: ['-L', 'crate,hda,ser,thru,ot']  # Ignore false positives
+        args: ['-L', 'crate,hda,ser,thru,ot,noice']  # Ignore false positives
         exclude: '\.org$'
 
   # Dockerfile linting
