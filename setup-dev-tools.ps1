@@ -1,5 +1,5 @@
 # setup-dev-tools.ps1
-# Installs Git, Node.js (via fnm), OpenAI Codex CLI, uv, Neovim, and devenv config — no admin required.
+# Installs Git, Node.js (via fnm), OpenAI Codex CLI, Claude Code, uv, Neovim, and GNU_files config — no admin required.
 # Safe to re-run on machines that reset regularly.
 #
 # Usage: powershell -ExecutionPolicy Bypass -File setup-dev-tools.ps1
@@ -66,7 +66,7 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
 }
 
 # --- 1. Git ---
-Write-Host "`n[1/7] Installing Git..." -ForegroundColor Yellow
+Write-Host "`n[1/8] Installing Git..." -ForegroundColor Yellow
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     winget install --id Git.Git -e --scope user --accept-source-agreements --accept-package-agreements
@@ -78,10 +78,11 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     throw "Git was installed but is not on PATH. Check '$env:LOCALAPPDATA\Programs\Git\cmd'."
 }
 
-Write-Host "Git $(git --version)" -ForegroundColor Green
+$gitVersion = (git --version).Trim()
+Write-Host "Git $gitVersion" -ForegroundColor Green
 
 # --- 2. fnm + Node.js + npm ---
-Write-Host "`n[2/7] Installing fnm + Node.js..." -ForegroundColor Yellow
+Write-Host "`n[2/8] Installing fnm + Node.js..." -ForegroundColor Yellow
 
 if (-not (Get-Command fnm -ErrorAction SilentlyContinue)) {
     winget install --id Schniz.fnm -e --scope user --accept-source-agreements --accept-package-agreements
@@ -102,10 +103,11 @@ fnm use lts
 $nodeVersion = (node --version).Trim()
 fnm default $nodeVersion
 
-Write-Host "Node $nodeVersion | npm $(npm --version)" -ForegroundColor Green
+$npmVersion = (npm --version).Trim()
+Write-Host "Node $nodeVersion | npm $npmVersion" -ForegroundColor Green
 
 # --- 3. OpenAI Codex CLI ---
-Write-Host "`n[3/7] Installing OpenAI Codex CLI..." -ForegroundColor Yellow
+Write-Host "`n[3/8] Installing OpenAI Codex CLI..." -ForegroundColor Yellow
 
 if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
     npm install -g @openai/codex
@@ -126,8 +128,43 @@ try {
 
 Write-Host "Codex: $codexVersion" -ForegroundColor Green
 
-# --- 4. uv (Python manager) ---
-Write-Host "`n[4/7] Installing uv..." -ForegroundColor Yellow
+# --- 4. Claude Code ---
+Write-Host "`n[4/8] Installing Claude Code..." -ForegroundColor Yellow
+
+if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+    npm install -g @anthropic-ai/claude-code
+}
+
+if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+    Write-Warning "Claude Code was installed, but 'claude' is not on PATH in this session yet. Restart PowerShell if needed."
+}
+
+try {
+    $claudeVersion = (claude --version).Trim()
+} catch {
+    $claudeVersion = "installed"
+}
+
+$gitBashCandidates = @(
+    "$env:LOCALAPPDATA\Programs\Git\bin\bash.exe",
+    "$env:ProgramFiles\Git\bin\bash.exe"
+)
+$gitBashPath = $gitBashCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if ($gitBashPath) {
+    $env:CLAUDE_CODE_GIT_BASH_PATH = $gitBashPath
+    $existingClaudeGitBash = [Environment]::GetEnvironmentVariable("CLAUDE_CODE_GIT_BASH_PATH", "User")
+    if ($existingClaudeGitBash -ne $gitBashPath) {
+        [Environment]::SetEnvironmentVariable("CLAUDE_CODE_GIT_BASH_PATH", $gitBashPath, "User")
+    }
+} else {
+    Write-Warning "Git Bash was not found. Claude Code works best on Windows with WSL or Git Bash."
+}
+
+Write-Host "Claude Code: $claudeVersion" -ForegroundColor Green
+
+# --- 5. uv (Python manager) ---
+Write-Host "`n[5/8] Installing uv..." -ForegroundColor Yellow
 
 if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
     $uvInstaller = irm https://astral.sh/uv/install.ps1
@@ -143,61 +180,85 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
     throw "uv was installed but is not on PATH. Check '$env:USERPROFILE\.local\bin'."
 }
 
-Write-Host "uv $(uv --version)" -ForegroundColor Green
+$uvVersion = (uv --version).Trim()
+Write-Host "uv $uvVersion" -ForegroundColor Green
 
-# --- 5. Clone devenv repo ---
-Write-Host "`n[5/7] Cloning devenv repo..." -ForegroundColor Yellow
+# --- 6. Clone GNU_files repo ---
+Write-Host "`n[6/8] Preparing GNU_files repo..." -ForegroundColor Yellow
 
-$devenvPath = "$env:USERPROFILE\GNU_files"
-if (-not (Test-Path "$devenvPath\.git")) {
-    git clone https://github.com/jlipworth/devenv.git $devenvPath
-    Write-Host "devenv cloned to $devenvPath" -ForegroundColor Green
+$gnuFilesPath = "$env:USERPROFILE\GNU_files"
+$scriptRepoPath = $PSScriptRoot
+
+if ((Test-Path "$scriptRepoPath\.git") -and (Test-Path "$scriptRepoPath\nvim")) {
+    $gnuFilesPath = $scriptRepoPath
+    Write-Host "Using GNU_files from script directory: $gnuFilesPath" -ForegroundColor Green
+} elseif (-not (Test-Path $gnuFilesPath)) {
+    git clone https://github.com/jlipworth/devenv.git $gnuFilesPath
+    Write-Host "GNU_files cloned to $gnuFilesPath" -ForegroundColor Green
+} elseif (Test-Path "$gnuFilesPath\.git") {
+    git -C $gnuFilesPath pull --ff-only
+    Write-Host "GNU_files updated at $gnuFilesPath" -ForegroundColor Green
 } else {
-    git -C $devenvPath pull --ff-only
-    Write-Host "devenv updated at $devenvPath" -ForegroundColor Green
+    throw "Path exists but is not a git repo: $gnuFilesPath"
 }
 
-# --- 6. Neovim ---
-Write-Host "`n[6/7] Installing Neovim..." -ForegroundColor Yellow
+# --- 7. Neovim ---
+Write-Host "`n[7/8] Installing Neovim..." -ForegroundColor Yellow
+
+$portableNvimBinPath = "$env:LOCALAPPDATA\nvim-bin\nvim-win64\bin"
+Add-UserPathOnce $portableNvimBinPath
 
 if (-not (Get-Command nvim -ErrorAction SilentlyContinue)) {
     # Try winget first
     $wingetSuccess = $false
     try {
-        winget install Neovim.Neovim --scope user --accept-source-agreements --accept-package-agreements
+        winget install --id Neovim.Neovim -e --scope user --accept-source-agreements --accept-package-agreements
         $wingetSuccess = $true
     } catch {
         Write-Host "winget install failed, falling back to portable zip..." -ForegroundColor Yellow
     }
 
+    Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+
     if (-not $wingetSuccess) {
         # Fallback: download portable zip
         $nvimDir = "$env:LOCALAPPDATA\nvim-bin"
         $nvimZip = "$env:TEMP\nvim-win64.zip"
+        $nvimExtractedDir = "$nvimDir\nvim-win64"
         # Version pinned here — keep in sync with versions.conf NEOVIM_VERSION
+        if (Test-Path $nvimExtractedDir) {
+            Remove-Item $nvimExtractedDir -Recurse -Force
+        }
         Invoke-WebRequest -Uri "https://github.com/neovim/neovim/releases/download/v0.11.6/nvim-win64.zip" -OutFile $nvimZip
         Expand-Archive -Path $nvimZip -DestinationPath $nvimDir -Force
-        Remove-Item $nvimZip
-        # Add to session and user PATH
-        $nvimBinPath = "$nvimDir\nvim-win64\bin"
-        if ($env:Path -notlike "*$nvimBinPath*") {
-            $env:Path += ";$nvimBinPath"
-        }
-        [Environment]::SetEnvironmentVariable("Path", "$([Environment]::GetEnvironmentVariable('Path', 'User'));$nvimBinPath", "User")
+        Remove-Item $nvimZip -Force
+        Add-UserPathOnce $portableNvimBinPath
     }
 }
 
-Write-Host "Neovim: $(nvim --version | Select-Object -First 1)" -ForegroundColor Green
+$nvimVersion = (nvim --version | Select-Object -First 1).Trim()
+Write-Host "Neovim: $nvimVersion" -ForegroundColor Green
 
-# --- 7. Neovim config junction ---
-Write-Host "`n[7/7] Linking Neovim config..." -ForegroundColor Yellow
+# --- 8. Neovim config junction ---
+Write-Host "`n[8/8] Linking Neovim config..." -ForegroundColor Yellow
 
 $nvimConfigPath = "$env:LOCALAPPDATA\nvim"
-$nvimSourcePath = "$devenvPath\nvim"
+$nvimSourcePath = "$gnuFilesPath\nvim"
+$skipNvimRelink = $false
+
+if (-not (Test-Path $nvimSourcePath)) {
+    throw "Neovim config source path not found: $nvimSourcePath"
+}
 
 if (Test-Path $nvimConfigPath) {
-    if ((Get-Item $nvimConfigPath).Attributes -band [IO.FileAttributes]::ReparsePoint) {
-        Remove-Item $nvimConfigPath -Force
+    $existingConfigItem = Get-Item $nvimConfigPath
+    if ($existingConfigItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        if ($existingConfigItem.Target -eq $nvimSourcePath) {
+            Write-Host "Neovim config already linked: $nvimConfigPath -> $nvimSourcePath" -ForegroundColor Green
+            $skipNvimRelink = $true
+        } else {
+            Remove-Item $nvimConfigPath -Force
+        }
     } else {
         $backupPath = "${nvimConfigPath}_backup_$(Get-Date -Format 'yyyyMMddHHmmss')"
         Move-Item $nvimConfigPath $backupPath
@@ -205,22 +266,30 @@ if (Test-Path $nvimConfigPath) {
     }
 }
 
-try {
-    New-Item -ItemType Junction -Path $nvimConfigPath -Target $nvimSourcePath -ErrorAction Stop | Out-Null
-    Write-Host "Neovim config linked: $nvimConfigPath -> $nvimSourcePath" -ForegroundColor Green
-} catch {
-    # Junction fails on network shares — fall back to copy
-    Write-Host "Junction failed (network share?), copying config instead..." -ForegroundColor Yellow
-    Copy-Item -Path $nvimSourcePath -Destination $nvimConfigPath -Recurse
-    Write-Host "Neovim config copied to $nvimConfigPath (manual sync needed after repo updates)" -ForegroundColor Yellow
+if (-not $skipNvimRelink) {
+    try {
+        New-Item -ItemType Junction -Path $nvimConfigPath -Target $nvimSourcePath -ErrorAction Stop | Out-Null
+        Write-Host "Neovim config linked: $nvimConfigPath -> $nvimSourcePath" -ForegroundColor Green
+    } catch {
+        # Junction fails on network shares — fall back to copy
+        Write-Host "Junction failed (network share?), copying config instead..." -ForegroundColor Yellow
+        Copy-Item -Path $nvimSourcePath -Destination $nvimConfigPath -Recurse
+        Write-Host "Neovim config copied to $nvimConfigPath (manual sync needed after repo updates)" -ForegroundColor Yellow
+    }
 }
 
 # --- Done ---
 Write-Host "`n=== All tools installed ===" -ForegroundColor Cyan
-Write-Host "  git   : $(git --version)"
+Write-Host "  git   : $gitVersion"
 Write-Host "  node  : $nodeVersion"
-Write-Host "  npm   : $(npm --version)"
+Write-Host "  npm   : $npmVersion"
 Write-Host "  codex : $codexVersion"
-Write-Host "  uv    : $(uv --version)"
-Write-Host "  nvim  : $(nvim --version | Select-Object -First 1)"
-Write-Host "  devenv: $devenvPath"
+Write-Host "  claude: $claudeVersion"
+Write-Host "  uv    : $uvVersion"
+Write-Host "  nvim  : $nvimVersion"
+Write-Host "  GNU_files: $gnuFilesPath"
+Write-Host ""
+Write-Host "Next steps:" -ForegroundColor Cyan
+Write-Host "  1. Restart PowerShell so PATH/profile changes are fully picked up."
+Write-Host "  2. Run 'codex' and 'claude' once to complete sign-in/setup."
+Write-Host "  3. Run 'nvim' to verify the GNU_files config loads."
