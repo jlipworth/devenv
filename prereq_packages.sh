@@ -1704,6 +1704,22 @@ install_neovim() {
     source "$GNU_DIR/versions.conf"
     local neovim_version="${NEOVIM_VERSION:-0.11.6}"
 
+    # LazyVim bootstraps itself via git on first launch, so fail fast if git is
+    # not available instead of leaving the user with a broken nvim startup.
+    if ! is_installed "git"; then
+        log "git is required for Neovim/LazyVim bootstrap, but it is not installed." "ERROR"
+        log "Install git first (for example: 'make system-prereq'), then re-run 'make neovim'." "ERROR"
+        return 1
+    fi
+
+    # Many Mason-managed Neovim tools in this config are distributed via npm
+    # (bash-language-server, prettier, html/css/emmet LSPs, markdown tooling).
+    # Neovim itself can still run without node/npm, so warn instead of aborting.
+    if ! command -v node &> /dev/null || ! command -v npm &> /dev/null; then
+        log "node/npm are not installed. Neovim will work, but some Mason-managed LSPs/formatters will not auto-install." "WARNING"
+        log "Install Node.js first (for example: 'make system-prereq' or './prereq_packages.sh install_nodejs') for full Neovim language support." "WARNING"
+    fi
+
     # --- Install Neovim binary ---
     if is_installed "nvim"; then
         log "Neovim is already installed: $(nvim --version | head -1)"
@@ -1815,6 +1831,7 @@ install_neovim() {
                 mv /tmp/lazygit "$HOME/.local/bin/"
                 chmod +x "$HOME/.local/bin/lazygit"
                 rm /tmp/lazygit.tar.gz
+                add_to_path "$HOME/.local/bin" "lazygit"
                 log "lazygit installed to ~/.local/bin" "SUCCESS"
             fi
         fi
