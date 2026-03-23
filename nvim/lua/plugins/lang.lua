@@ -23,7 +23,32 @@ return {
     -- LazyVim language extras, which also contribute to this list.
     opts = function(_, opts)
       opts.ensure_installed = opts.ensure_installed or {}
-      vim.list_extend(opts.ensure_installed, { "bash-language-server", "shellcheck" })
+      vim.list_extend(opts.ensure_installed, {
+        "bash-language-server",
+        "shellcheck",
+        "ruff",
+        "prettier",
+      })
     end,
+  },
+
+  -- Format-on-save: ruff for Python (with import sorting), prettier for JS/TS
+  -- Matches Spacemacs python-format-on-save + python-sort-imports-on-save
+  {
+    "stevearc/conform.nvim",
+    opts = {
+      formatters_by_ft = {
+        python = { "ruff_organize_imports", "ruff_format" },
+        javascript = { "prettier" },
+        typescript = { "prettier" },
+        typescriptreact = { "prettier" },
+        javascriptreact = { "prettier" },
+        css = { "prettier" },
+        html = { "prettier" },
+        json = { "prettier" },
+        yaml = { "prettier" },
+        markdown = { "prettier" },
+      },
+    },
   },
 }
