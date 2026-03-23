@@ -1,0 +1,226 @@
+# setup-dev-tools.ps1
+# Installs Git, Node.js (via fnm), OpenAI Codex CLI, uv, Neovim, and devenv config — no admin required.
+# Safe to re-run on machines that reset regularly.
+#
+# Usage: powershell -ExecutionPolicy Bypass -File setup-dev-tools.ps1
+
+$ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
+
+function Add-PathOnce {
+    param([Parameter(Mandatory = $true)][string]$Dir)
+
+    if (-not $Dir) { return }
+    if (-not (Test-Path $Dir)) { return }
+
+    $pathEntries = $env:Path -split ';'
+    if ($pathEntries -notcontains $Dir) {
+        $env:Path = "$Dir;$env:Path"
+    }
+}
+
+function Add-UserPathOnce {
+    param([Parameter(Mandatory = $true)][string]$Dir)
+
+    if (-not $Dir) { return }
+    if (-not (Test-Path $Dir)) { return }
+
+    Add-PathOnce $Dir
+
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $pathEntries = @()
+
+    if ($userPath) {
+        $pathEntries = $userPath -split ';' | Where-Object { $_ }
+    }
+
+    if ($pathEntries -notcontains $Dir) {
+        $newUserPath = if ($userPath) { "$userPath;$Dir" } else { $Dir }
+        [Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
+    }
+}
+
+function Ensure-ProfileLine {
+    param([Parameter(Mandatory = $true)][string]$Line)
+
+    $profileDir = Split-Path -Parent $PROFILE
+    if (-not (Test-Path $profileDir)) {
+        New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
+    }
+
+    if (-not (Test-Path $PROFILE)) {
+        New-Item -ItemType File -Path $PROFILE -Force | Out-Null
+    }
+
+    $content = Get-Content -Path $PROFILE -Raw -ErrorAction SilentlyContinue
+    if ($content -notmatch [regex]::Escape($Line)) {
+        Add-Content -Path $PROFILE -Value "`r`n$Line`r`n"
+    }
+}
+
+Write-Host "=== Dev Tools Setup (no admin) ===" -ForegroundColor Cyan
+
+# --- Pre-flight: check winget ---
+if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+    throw "winget is not available. Install App Installer from the Microsoft Store."
+}
+
+# --- 1. Git ---
+Write-Host "`n[1/7] Installing Git..." -ForegroundColor Yellow
+
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    winget install --id Git.Git -e --scope user --accept-source-agreements --accept-package-agreements
+}
+
+Add-UserPathOnce "$env:LOCALAPPDATA\Programs\Git\cmd"
+
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    throw "Git was installed but is not on PATH. Check '$env:LOCALAPPDATA\Programs\Git\cmd'."
+}
+
+Write-Host "Git $(git --version)" -ForegroundColor Green
+
+# --- 2. fnm + Node.js + npm ---
+Write-Host "`n[2/7] Installing fnm + Node.js..." -ForegroundColor Yellow
+
+if (-not (Get-Command fnm -ErrorAction SilentlyContinue)) {
+    winget install --id Schniz.fnm -e --scope user --accept-source-agreements --accept-package-agreements
+}
+
+Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+
+if (-not (Get-Command fnm -ErrorAction SilentlyContinue)) {
+    throw "fnm was installed but is not on PATH. Check '$env:LOCALAPPDATA\Microsoft\WinGet\Links'."
+}
+
+$fnmInit = 'fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression'
+Ensure-ProfileLine $fnmInit
+Invoke-Expression ((fnm env --use-on-cd --shell powershell) | Out-String)
+
+fnm install --lts
+fnm use lts
+$nodeVersion = (node --version).Trim()
+fnm default $nodeVersion
+
+Write-Host "Node $nodeVersion | npm $(npm --version)" -ForegroundColor Green
+
+# --- 3. OpenAI Codex CLI ---
+Write-Host "`n[3/7] Installing OpenAI Codex CLI..." -ForegroundColor Yellow
+
+if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
+    npm install -g @openai/codex
+}
+
+$npmPrefix = (npm config get prefix).Trim()
+Add-UserPathOnce $npmPrefix
+
+if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
+    Write-Warning "Codex was installed, but 'codex' is not on PATH in this session yet. Restart PowerShell if needed."
+}
+
+try {
+    $codexVersion = (codex --version).Trim()
+} catch {
+    $codexVersion = "installed"
+}
+
+Write-Host "Codex: $codexVersion" -ForegroundColor Green
+
+# --- 4. uv (Python manager) ---
+Write-Host "`n[4/7] Installing uv..." -ForegroundColor Yellow
+
+if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    $uvInstaller = irm https://astral.sh/uv/install.ps1
+    if (-not $uvInstaller) {
+        throw "Failed to download uv installer."
+    }
+    Invoke-Expression $uvInstaller
+}
+
+Add-UserPathOnce "$env:USERPROFILE\.local\bin"
+
+if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    throw "uv was installed but is not on PATH. Check '$env:USERPROFILE\.local\bin'."
+}
+
+Write-Host "uv $(uv --version)" -ForegroundColor Green
+
+# --- 5. Clone devenv repo ---
+Write-Host "`n[5/7] Cloning devenv repo..." -ForegroundColor Yellow
+
+$devenvPath = "$env:USERPROFILE\GNU_files"
+if (-not (Test-Path "$devenvPath\.git")) {
+    git clone https://github.com/jlipworth/devenv.git $devenvPath
+    Write-Host "devenv cloned to $devenvPath" -ForegroundColor Green
+} else {
+    git -C $devenvPath pull --ff-only
+    Write-Host "devenv updated at $devenvPath" -ForegroundColor Green
+}
+
+# --- 6. Neovim ---
+Write-Host "`n[6/7] Installing Neovim..." -ForegroundColor Yellow
+
+if (-not (Get-Command nvim -ErrorAction SilentlyContinue)) {
+    # Try winget first
+    $wingetSuccess = $false
+    try {
+        winget install Neovim.Neovim --scope user --accept-source-agreements --accept-package-agreements
+        $wingetSuccess = $true
+    } catch {
+        Write-Host "winget install failed, falling back to portable zip..." -ForegroundColor Yellow
+    }
+
+    if (-not $wingetSuccess) {
+        # Fallback: download portable zip
+        $nvimDir = "$env:LOCALAPPDATA\nvim-bin"
+        $nvimZip = "$env:TEMP\nvim-win64.zip"
+        # Version pinned here — keep in sync with versions.conf NEOVIM_VERSION
+        Invoke-WebRequest -Uri "https://github.com/neovim/neovim/releases/download/v0.11.6/nvim-win64.zip" -OutFile $nvimZip
+        Expand-Archive -Path $nvimZip -DestinationPath $nvimDir -Force
+        Remove-Item $nvimZip
+        # Add to session and user PATH
+        $nvimBinPath = "$nvimDir\nvim-win64\bin"
+        if ($env:Path -notlike "*$nvimBinPath*") {
+            $env:Path += ";$nvimBinPath"
+        }
+        [Environment]::SetEnvironmentVariable("Path", "$([Environment]::GetEnvironmentVariable('Path', 'User'));$nvimBinPath", "User")
+    }
+}
+
+Write-Host "Neovim: $(nvim --version | Select-Object -First 1)" -ForegroundColor Green
+
+# --- 7. Neovim config junction ---
+Write-Host "`n[7/7] Linking Neovim config..." -ForegroundColor Yellow
+
+$nvimConfigPath = "$env:LOCALAPPDATA\nvim"
+$nvimSourcePath = "$devenvPath\nvim"
+
+if (Test-Path $nvimConfigPath) {
+    if ((Get-Item $nvimConfigPath).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        Remove-Item $nvimConfigPath -Force
+    } else {
+        $backupPath = "${nvimConfigPath}_backup_$(Get-Date -Format 'yyyyMMddHHmmss')"
+        Move-Item $nvimConfigPath $backupPath
+        Write-Host "Existing nvim config backed up to $backupPath" -ForegroundColor Yellow
+    }
+}
+
+try {
+    New-Item -ItemType Junction -Path $nvimConfigPath -Target $nvimSourcePath -ErrorAction Stop | Out-Null
+    Write-Host "Neovim config linked: $nvimConfigPath -> $nvimSourcePath" -ForegroundColor Green
+} catch {
+    # Junction fails on network shares — fall back to copy
+    Write-Host "Junction failed (network share?), copying config instead..." -ForegroundColor Yellow
+    Copy-Item -Path $nvimSourcePath -Destination $nvimConfigPath -Recurse
+    Write-Host "Neovim config copied to $nvimConfigPath (manual sync needed after repo updates)" -ForegroundColor Yellow
+}
+
+# --- Done ---
+Write-Host "`n=== All tools installed ===" -ForegroundColor Cyan
+Write-Host "  git   : $(git --version)"
+Write-Host "  node  : $nodeVersion"
+Write-Host "  npm   : $(npm --version)"
+Write-Host "  codex : $codexVersion"
+Write-Host "  uv    : $(uv --version)"
+Write-Host "  nvim  : $(nvim --version | Select-Object -First 1)"
+Write-Host "  devenv: $devenvPath"
