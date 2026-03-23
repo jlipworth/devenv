@@ -5,7 +5,7 @@
         latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools \
         whisper whisper_toolchain whisper_audio latex_tooling latex_distribution \
         cli_tools cli_tools_core cli_tools_system starship syntax-highlighting update-deps \
-        full-setup noadmin-setup help
+        full-setup noadmin-setup help neovim
 
 # Default target to install all prerequisite layers
 prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools
@@ -163,6 +163,10 @@ ai-tools:
 	@echo "Installing AI coding assistant tools..."
 	@./prereq_packages.sh install_ai_tools
 
+neovim:
+	@echo "Installing Neovim and configuring LazyVim..."
+	@./prereq_packages.sh install_neovim
+
 # Update dependencies after Renovate MRs
 update-deps:
 	@echo "Updating all dependencies from git..."
@@ -224,3 +228,4 @@ help:
 	@echo "  starship        - Install Starship prompt with Ayu Mirage config"
 	@echo "  syntax-highlighting - Install shell syntax highlighting (blesh/zsh-syntax-highlighting)"
 	@echo "  update-deps     - Update dependencies after Renovate PRs"
+	@echo "  neovim          - Install Neovim + LazyVim (opt-in, not part of full-setup)"
