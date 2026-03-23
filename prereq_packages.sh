@@ -1721,32 +1721,51 @@ install_neovim() {
         arch="$(uname -m)"
         case "$arch" in
             x86_64 | amd64) arch="x86_64" ;;
-            aarch64 | arm64) arch="aarch64" ;;
+            aarch64 | arm64) arch="arm64" ;;
             *)
                 log "Unsupported architecture $arch for Neovim download." "ERROR"
                 return 1
                 ;;
         esac
 
-        local nvim_url="https://github.com/neovim/neovim/releases/download/v${neovim_version}/nvim-linux-${arch}.appimage"
         local nvim_dest="$HOME/.local/bin/nvim"
 
-        curl -fsSL "$nvim_url" -o "$nvim_dest" || {
-            log "Failed to download Neovim appimage." "ERROR"
-            return 1
-        }
-        chmod +x "$nvim_dest"
+        if [[ "$OS" == "Darwin" ]]; then
+            # macOS: download tarball (appimage is Linux-only)
+            local nvim_url="https://github.com/neovim/neovim/releases/download/v${neovim_version}/nvim-macos-${arch}.tar.gz"
+            curl -fsSL "$nvim_url" -o /tmp/nvim-macos.tar.gz || {
+                log "Failed to download Neovim for macOS." "ERROR"
+                return 1
+            }
+            local nvim_extract_dir="$HOME/.local/share/nvim-macos"
+            rm -rf "$nvim_extract_dir"
+            mkdir -p "$nvim_extract_dir"
+            tar -xzf /tmp/nvim-macos.tar.gz -C "$nvim_extract_dir" --strip-components=1
+            rm -f /tmp/nvim-macos.tar.gz
+            ln -sf "$nvim_extract_dir/bin/nvim" "$nvim_dest"
+        else
+            # Linux: download appimage
+            local nvim_url="https://github.com/neovim/neovim/releases/download/v${neovim_version}/nvim-linux-${arch}.appimage"
+            curl -fsSL "$nvim_url" -o "$nvim_dest" || {
+                log "Failed to download Neovim appimage." "ERROR"
+                return 1
+            }
+            chmod +x "$nvim_dest"
 
-        # Test if FUSE is available; if not, extract the appimage
-        if ! "$nvim_dest" --version &> /dev/null; then
-            log "FUSE not available, extracting appimage..."
-            local extract_dir="$HOME/.local/share/nvim-appimage"
-            rm -rf "$extract_dir"
-            cd /tmp && "$nvim_dest" --appimage-extract > /dev/null 2>&1
-            mv /tmp/squashfs-root "$extract_dir"
-            rm -f "$nvim_dest"
-            ln -sf "$extract_dir/AppRun" "$nvim_dest"
-            cd "$GNU_DIR"
+            # Test if FUSE is available; if not, extract the appimage
+            if ! "$nvim_dest" --version &> /dev/null; then
+                log "FUSE not available, extracting appimage..."
+                local extract_dir="$HOME/.local/share/nvim-appimage"
+                rm -rf "$extract_dir" /tmp/squashfs-root
+                (cd /tmp && "$nvim_dest" --appimage-extract > /dev/null 2>&1) || {
+                    log "Failed to extract Neovim appimage." "ERROR"
+                    rm -f "$nvim_dest"
+                    return 1
+                }
+                mv /tmp/squashfs-root "$extract_dir"
+                rm -f "$nvim_dest"
+                ln -sf "$extract_dir/AppRun" "$nvim_dest"
+            fi
         fi
 
         add_to_path "$HOME/.local/bin" "Neovim"
@@ -1765,6 +1784,11 @@ install_neovim() {
             log "Installing lazygit from GitHub releases..."
             local lg_version
             lg_version=$(curl -s https://api.github.com/repos/jesseduffield/lazygit/releases/latest | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')
+
+            if [[ -z "$lg_version" ]]; then
+                log "Failed to determine latest lazygit version from GitHub API." "WARNING"
+                return 0
+            fi
 
             local lg_arch
             case "$(uname -m)" in

@@ -7,6 +7,9 @@
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
+# Version pins — keep in sync with versions.conf
+$NeovimVersion = "0.11.6"
+
 function Add-PathOnce {
     param([Parameter(Mandatory = $true)][string]$Dir)
 
@@ -197,7 +200,11 @@ if ((Test-Path "$scriptRepoPath\.git") -and (Test-Path "$scriptRepoPath\nvim")) 
     Write-Host "GNU_files cloned to $gnuFilesPath" -ForegroundColor Green
 } elseif (Test-Path "$gnuFilesPath\.git") {
     git -C $gnuFilesPath pull --ff-only
-    Write-Host "GNU_files updated at $gnuFilesPath" -ForegroundColor Green
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "git pull failed (local changes?). Continuing with existing checkout."
+    } else {
+        Write-Host "GNU_files updated at $gnuFilesPath" -ForegroundColor Green
+    }
 } else {
     throw "Path exists but is not a git repo: $gnuFilesPath"
 }
@@ -209,13 +216,14 @@ $portableNvimBinPath = "$env:LOCALAPPDATA\nvim-bin\nvim-win64\bin"
 Add-UserPathOnce $portableNvimBinPath
 
 if (-not (Get-Command nvim -ErrorAction SilentlyContinue)) {
-    # Try winget first
+    # Try winget first (try/catch does NOT catch native exe failures in PS 5.1,
+    # so we must check $LASTEXITCODE)
     $wingetSuccess = $false
-    try {
-        winget install --id Neovim.Neovim -e --scope user --accept-source-agreements --accept-package-agreements
+    winget install --id Neovim.Neovim -e --scope user --accept-source-agreements --accept-package-agreements
+    if ($LASTEXITCODE -eq 0) {
         $wingetSuccess = $true
-    } catch {
-        Write-Host "winget install failed, falling back to portable zip..." -ForegroundColor Yellow
+    } else {
+        Write-Host "winget install failed (exit code $LASTEXITCODE), falling back to portable zip..." -ForegroundColor Yellow
     }
 
     Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
@@ -225,11 +233,10 @@ if (-not (Get-Command nvim -ErrorAction SilentlyContinue)) {
         $nvimDir = "$env:LOCALAPPDATA\nvim-bin"
         $nvimZip = "$env:TEMP\nvim-win64.zip"
         $nvimExtractedDir = "$nvimDir\nvim-win64"
-        # Version pinned here — keep in sync with versions.conf NEOVIM_VERSION
         if (Test-Path $nvimExtractedDir) {
             Remove-Item $nvimExtractedDir -Recurse -Force
         }
-        Invoke-WebRequest -Uri "https://github.com/neovim/neovim/releases/download/v0.11.6/nvim-win64.zip" -OutFile $nvimZip
+        Invoke-WebRequest -Uri "https://github.com/neovim/neovim/releases/download/v$NeovimVersion/nvim-win64.zip" -OutFile $nvimZip
         Expand-Archive -Path $nvimZip -DestinationPath $nvimDir -Force
         Remove-Item $nvimZip -Force
         Add-UserPathOnce $portableNvimBinPath
