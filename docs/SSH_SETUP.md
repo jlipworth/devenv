@@ -2,6 +2,9 @@
 
 Quick reference for setting up SSH keys on a new machine.
 
+`make cli_tools` also sets up a Ghostty-friendly `TERM=xterm-256color`
+override in `~/.ssh/config` when it configures the repo shell tooling.
+
 ## Generate Key
 
 ```bash

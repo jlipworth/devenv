@@ -8,14 +8,14 @@ This repository manages **80+ dependencies** across multiple package managers to
 
 ## Dependency Files
 
-### Structured Dependency Files (Renovate-Compatible)
+### Renovate-Managed Files
 
-These files contain version-pinnable dependencies that can be automatically updated:
+These files are currently managed by Renovate:
 
 | File | Purpose | Manager |
 |------|---------|---------|
-| `requirements.txt` | Python packages (pyright, debugpy, etc.) | Renovate |
-| `brewfiles/Brewfile.*` | Homebrew packages (macOS and Linuxbrew, per-layer) | Renovate |
+| `requirements.txt` | Python packages (pyright, debugpy, etc.) | `pip_requirements` |
+| `ci/Dockerfile` | CI base image and system packages | `dockerfile` |
 | `renovate.json` | Renovate bot configuration | - |
 
 ### Shell Script Dependencies (Manual Management)
@@ -23,31 +23,25 @@ These files contain version-pinnable dependencies that can be automatically upda
 These require manual updates:
 
 - **`build_emacs30.sh`** - Emacs 30.1 and build dependencies
-- **`prereq_packages.sh`** - apt packages, language-specific tools
+- **`prereq_packages.sh`** - apt packages, language-specific tools, Brewfile-driven installs
 - **`common_utils.sh`** - Package manager setup
 
 ## Automated Updates with Renovate
 
 ### How It Works
 
-**Weekly Schedule** (Mondays before 6am):
-- Renovate checks for Python and Homebrew updates
-- Creates grouped pull requests by package manager
+Renovate currently watches the configured managers in `renovate.json`:
 
-**Monthly Schedule** (1st of month):
-- Major version updates reviewed separately
-- Requires manual approval (no auto-merge)
+- `pip_requirements` for Python packages
+- `dockerfile` for the CI image base layer
 
-**Auto-Merge Policy**:
-- Minor/patch updates: Auto-merge after CI passes
-- Major updates: Manual review required
+Minor/patch updates are auto-merged after CI passes. Major updates and CI image changes remain manual-review items.
 
 ### After Renovate Updates
 
 ```bash
-cd ~/GNU_files
+cd /path/to/your/clone
 git pull
-make js          # Updates JavaScript packages
 make python      # Updates Python packages
 ```
 
@@ -72,14 +66,15 @@ make python      # Updates Python packages
 
 | Layer | Command | Dependency File | Status |
 |-------|---------|-----------------|--------|
-| **Python** | `make python` | requirements.txt | Integrated |
-| **Homebrew** | various | brewfiles/Brewfile.* | Integrated |
+| **Python** | `make python` | requirements.txt | Renovate-managed |
+| **CI image** | Woodpecker/Docker build | ci/Dockerfile | Renovate-managed |
 
 ### Non-Integrated Layers
 
-These use npm global installs or platform package managers:
-- JavaScript, Shell, YAML, Vimscript, HTML/CSS, Docker, AI Tools
+These use npm global installs, Brewfiles, or platform package managers and are updated manually:
+- JavaScript, Shell, YAML, Vimscript, HTML/CSS, AI Tools
 - LaTeX, C/C++, SQL, OCaml, Terraform
+- Homebrew packages under `brewfiles/Brewfile.*`
 
 ## Manual Dependency Updates
 

@@ -13,6 +13,7 @@ make editor                  # fonts + vim-plug (always user-space)
 make spacemacs               # build Emacs to ~/.local (needs Linuxbrew)
 make system-prereq           # Node, CLI tools, git credential helper
 make prereq-layers-all       # language servers and tooling
+make noadmin-setup           # full no-admin setup path
 ```
 
 ## Prerequisites
@@ -21,10 +22,13 @@ The repo's NO_ADMIN mode depends on **Linuxbrew** being available. Without it,
 most Linux package installs will be skipped with a warning.
 
 If Linuxbrew is not already installed, ask your admin to set up
-`/home/linuxbrew/.linuxbrew` or install it into `~/.linuxbrew`. Then run:
+`/home/linuxbrew/.linuxbrew` or install it into `~/.linuxbrew`. Then use the
+brew binary from that install to add it to your shell:
 
 ```bash
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+# or, if installed under your home directory:
+eval "$("$HOME/.linuxbrew/bin/brew" shellenv)"
 ```
 
 Other user-space toolchains used automatically:
@@ -92,7 +96,7 @@ Legend:
 | `c_cpp`       | Conditional  | brew-first for LLVM; fallback is admin-backed |
 | `sql`         | Conditional  | brew-first for Go; sqls via `go install` (user-space) |
 | `js`          | Conditional  | brew + npm globals; user-space with nvm |
-| `html_css`    | User-space   | Piggybacks on JS layer |
+| `html_css`    | User-space   | Stub target; actual tooling comes from the JS layer |
 | `docker`      | Admin-only   | Docker daemon access is external/system-level |
 | `kubernetes`  | Conditional  | brew-first; fallback is admin-backed |
 | `ocaml`       | Conditional  | brew-first; opam itself is user-space |
@@ -133,7 +137,7 @@ non-root Debian container with Linuxbrew pre-installed and no sudo. It validates
 - `whisper` — toolchain installs, audio integration skipped
 - `r` — R installs via Linuxbrew
 - `latex_tooling` — texlab available
-- `system-prereq` — Node, starship, askpass skipped
+- `system-prereq` — Node present, syntax highlighting validated, starship present, ksshaskpass skipped
 
 ## Troubleshooting
 

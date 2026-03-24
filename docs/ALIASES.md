@@ -1,6 +1,6 @@
 # Shell Aliases Guide
 
-This document describes all shell aliases configured in `.shell_aliases` for modern CLI tools.
+This document covers the shell shortcuts configured in `.shell_aliases` for modern CLI tools.
 
 ## Setup
 
@@ -15,10 +15,13 @@ source ~/.shell_aliases
 
 ## Important Notes
 
-**All aliases are conditional** - they only activate if the corresponding tool is installed via `make cli_tools`. This means:
+Most tool-backed aliases are conditional - they only activate if the corresponding tool is installed via `make cli_tools`. This means:
 - You can source `.shell_aliases` even if tools aren't installed (no errors)
 - Aliases automatically become available when you install the tools
 - The file is safe to use across different machines with different tool sets
+
+Helper functions like `mkcd` and `extract` are always available.
+Some AI-tool aliases are installed by `make ai-tools`, not `make cli_tools`.
 
 ### .gitignore Awareness
 
@@ -163,6 +166,14 @@ zi                    # Interactive selection
 |-------|---------|----------------------------|
 | `top` | `htop`  | Interactive process viewer |
 
+### procs (ps replacement)
+
+| Alias | Command             | Description              |
+|-------|---------------------|--------------------------|
+| `ps`  | `procs`             | Modern process listing   |
+| `psa` | `procs --tree`      | Show process tree        |
+| `psg` | `procs --keyword`   | Search processes by term |
+
 ## Version Control
 
 ### lazygit (Git TUI)
@@ -196,10 +207,12 @@ diffside -r dir1 dir2               # Side-by-side directory diff
 
 ### fzf (Fuzzy finder)
 
+<!-- codespell:ignore fo -->
 | Function       | Description                                           |
 |----------------|-------------------------------------------------------|
 | `fcd [dir]`    | Interactive cd with fzf (respects .gitignore)         |
 | `fcdall [dir]` | Interactive cd with fzf (shows all directories)       |
+| `fo`           | Open selected file(s) via your platform default opener |
 
 **Examples:**
 ```bash
@@ -230,6 +243,22 @@ extract file.7z
 
 Supports: `.tar.gz`, `.tar.bz2`, `.zip`, `.rar`, `.7z`, `.tar`, `.bz2`, `.gz`
 
+### tmux
+
+| Alias   | Command        | Description            |
+|---------|----------------|------------------------|
+| `tmuxa` | `tmux attach`  | Attach to a tmux session |
+
+### AI CLI aliases
+
+These are conditional on the corresponding CLI being installed:
+
+| Alias    | Command                                 | Installed by        |
+|----------|------------------------------------------|---------------------|
+| `claud`  | `claude --dangerously-skip-permissions` | `make ai-tools`     |
+| `codey`  | `codex --yolo`                          | `make ai-tools`     |
+| `geminy` | `gemini --yolo`                         | `make ai-tools`     |
+
 ## Customization
 
 Add your own project-specific shortcuts at the bottom of `.shell_aliases`:
@@ -237,7 +266,7 @@ Add your own project-specific shortcuts at the bottom of `.shell_aliases`:
 ```bash
 # Quick project navigation
 alias proj='cd ~/projects'
-alias gnu='cd ~/GNU_files'
+alias devenv='cd /path/to/your/devenv'
 alias dots='cd ~/.config'
 ```
 
