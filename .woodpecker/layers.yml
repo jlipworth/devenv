@@ -1,5 +1,5 @@
 # .woodpecker/layers.yml
-# Language layer tests - run in parallel
+# Language/editor layer tests - run in parallel
 # All use the pre-built CI image with dependencies already installed
 
 when:
@@ -179,3 +179,14 @@ steps:
       DEBIAN_FRONTEND: noninteractive
     commands:
       - make cli_tools
+
+  - name: layer-neovim
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+    commands:
+      - chmod +x ci/neovim-smoke.sh
+      - ./ci/neovim-smoke.sh

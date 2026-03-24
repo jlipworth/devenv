@@ -5,12 +5,22 @@ OS="$(uname -s)"
 NO_ADMIN="${NO_ADMIN:-false}"
 
 # Standard directory paths
-# In CI, use current working directory (repo is cloned to /workspace)
-# Otherwise, use the standard $HOME/GNU_files location
-if [[ "$CI" == "true" ]]; then
-    GNU_DIR="$(pwd)"
+# Priority:
+# 1. Explicit GNU_DIR environment override
+# 2. Directory containing this repo's common_utils.sh (works for any clone location)
+# 3. CI current working directory fallback
+# 4. Historical default: $HOME/GNU_files
+if [[ -n "${GNU_DIR:-}" ]]; then
+    GNU_DIR="$GNU_DIR"
 else
-    GNU_DIR="$HOME/GNU_files"
+    COMMON_UTILS_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+    if [[ -f "$COMMON_UTILS_DIR/versions.conf" ]]; then
+        GNU_DIR="$COMMON_UTILS_DIR"
+    elif [[ "$CI" == "true" ]]; then
+        GNU_DIR="$(pwd)"
+    else
+        GNU_DIR="$HOME/GNU_files"
+    fi
 fi
 
 # =============================================================================
