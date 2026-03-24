@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add opt-in, cross-platform Neovim + LazyVim support to devenv, with support for Python/JS/TS/YAML/JSON/TOML/Shell/SQL/Markdown plus the branch's additional HTML/CSS, R, LaTeX, Tailwind, conditional PowerShell coverage when `pwsh`/PowerShell is available, optional Harpoon 2 working-set support, Spacemacs-compatible keybindings, and integration into the existing makefile/prereq_packages infrastructure.
+**Goal:** Add opt-in, cross-platform Neovim + LazyVim support to devenv, with support for Python/JS/TS/YAML/JSON/TOML/Shell/SQL/Markdown plus the branch's additional HTML/CSS, R, LaTeX, Tailwind, conditional PowerShell coverage when `pwsh`/PowerShell is available, optional Harpoon 2 working-set support, and integration into the existing makefile/prereq_packages infrastructure. The keybindings and editor behavior should be traced to current Spacemacs conventions rather than legacy Vim-config assumptions.
 
 **Architecture:** LazyVim distribution bootstrapped via lazy.nvim in `nvim/` directory, symlinked to platform config locations. Mason.nvim auto-installs LSP servers on first launch. `install_neovim()` in `prereq_packages.sh` handles cross-platform binary installation. Windows setup via `setup-dev-tools.ps1`.
 
@@ -129,30 +129,11 @@ git commit -m "feat(neovim): add LazyVim bootstrap (init.lua + config/lazy.lua)"
 
 local opt = vim.opt
 
--- Line wrapping and formatting
-opt.textwidth = 100
-opt.linebreak = true
-opt.breakindent = true
-
--- Indentation
-opt.tabstop = 4
-opt.shiftwidth = 4
-opt.expandtab = true
-
--- Search
-opt.ignorecase = true
-opt.smartcase = true
-
--- Clipboard
-opt.clipboard = "unnamedplus"
-
--- UI
+-- Match the current `.spacemacs` line-number preference.
 opt.number = true
 opt.relativenumber = true
-opt.scrolloff = 8
-opt.termguicolors = true
 
--- Timeout for key sequences (matches Spacemacs evil-escape-delay)
+-- Match Spacemacs `evil-escape-delay`.
 opt.timeoutlen = 200
 ```
 
@@ -164,18 +145,13 @@ opt.timeoutlen = 200
 
 local map = vim.keymap.set
 
--- jk to escape (matches Spacemacs evil-escape)
+-- Match current Spacemacs `evil-escape` usage.
 map("i", "jk", "<Esc>", { desc = "Exit insert mode" })
 
--- Visual line navigation (don't skip wrapped lines)
-map("n", "j", "gj", { desc = "Down (visual line)" })
-map("n", "k", "gk", { desc = "Up (visual line)" })
-
--- Insert date (matches Spacemacs ,oc and .vimrc <leader>dat)
-map("n", "<leader>id", function()
-  local date = os.date("%b %d, %Y")
-  vim.api.nvim_put({ date }, "c", true, true)
-end, { desc = "Insert date" })
+-- Approximate `evil-respect-visual-line-mode`: only use screen-line
+-- movement when wrapping is enabled for the current buffer.
+map({ "n", "x" }, "j", "v:count == 0 && &wrap ? 'gj' : 'j'", { expr = true, silent = true, desc = "Down (respect wrapped lines)" })
+map({ "n", "x" }, "k", "v:count == 0 && &wrap ? 'gk' : 'k'", { expr = true, silent = true, desc = "Up (respect wrapped lines)" })
 ```
 
 - [ ] **Step 3: Verify files exist**
@@ -230,7 +206,7 @@ return {
 
 ```lua
 return {
-  -- Telescope: use ripgrep if available (matches .vimrc FZF_DEFAULT_COMMAND)
+  -- Telescope: use ripgrep if available (aligned with current Spacemacs search-tool preferences)
   {
     "nvim-telescope/telescope.nvim",
     opts = {
@@ -718,7 +694,7 @@ Leader key is Space (same as Spacemacs).
 |--------|-----------|---------|-------|
 | Search in buffer | `/` | `/` | Same |
 | Search word under cursor | `*` | `*` | Same |
-| Search and replace | `:%s/old/new/g` | `:%s/old/new/g` | Same (Vim native) |
+| Search and replace | `:%s/old/new/g` | `:%s/old/new/g` | Same (standard Ex workflow) |
 | Clear search highlight | `SPC s c` | `<Esc>` | LazyVim clears on Esc |
 
 ## Which-Key
@@ -739,7 +715,7 @@ Key groups:
 
 | Action | Keybinding | Notes |
 |--------|-----------|-------|
-| Insert date | `<leader>id` | Inserts "Mon DD, YYYY" (matches Spacemacs `,oc`) |
+| Insert date | `<localleader>oc` | Inserts "Mon DD, YYYY" in `tex`/`org` buffers, matching the current Spacemacs major-mode date habit |
 
 ## Sessions / Workspace Story
 
@@ -765,9 +741,9 @@ Neovim does not have Spacemacs layout parity out of the box. The practical workf
 ## Tips for Spacemacs Users
 
 1. **Leader is the same** — Space key works identically as the leader
-2. **Evil mode is NOT installed** — LazyVim uses native Vim keybindings. If you used Spacemacs Evil mode, the motions (`hjkl`, `ciw`, `dd`, etc.) are identical
+2. **Evil mode is not a separate plugin here** — LazyVim keeps the modal editing model familiar for Spacemacs Evil users. Motions like `hjkl`, `ciw`, and `dd` still feel the same.
 3. **Which-key is your friend** — press Space and read the popup, just like Spacemacs
-4. **`:` commands still work** — `:w`, `:q`, `:wq`, `:%s` all work exactly as in Vim
+4. **`:` commands still work** — `:w`, `:q`, `:wq`, `:%s` are available through the usual Ex command line
 5. **Snacks picker/explorer replace the older Telescope/Neo-tree assumption** in earlier drafts
 6. **Mason manages LSPs** — run `:Mason` to see/install/update language servers
 7. **Lazy manages plugins** — run `:Lazy` to see/update/install plugins
@@ -812,9 +788,9 @@ Expected: No output
 Run: `make -n neovim`
 Expected: Shows echo and prereq_packages.sh commands
 
-- [ ] **Step 6: Verify .vimrc is unchanged**
+- [ ] **Step 6: Verify legacy Vim config is unchanged**
 
-Run: `git diff .vimrc`
+Run: `git diff` against the legacy Vim config
 Expected: No output (no changes)
 
 - [ ] **Step 7: Verify .spacemacs is unchanged**

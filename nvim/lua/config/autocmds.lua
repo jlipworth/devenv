@@ -1,19 +1,19 @@
 -- Autocmds are automatically loaded on the VeryLazy event
 -- Default autocmds that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/autocmds.lua
 
--- Filetype-specific indentation (matches .vimrc settings)
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = { "javascript", "typescript", "typescriptreact", "javascriptreact", "json", "yaml", "html", "css", "scss", "less", "r" },
-  callback = function()
-    vim.opt_local.tabstop = 2
-    vim.opt_local.shiftwidth = 2
-  end,
-})
+local function insert_current_date()
+  local date = os.date("%b %d, %Y")
+  vim.api.nvim_put({ date }, "c", true, true)
+end
 
--- Spell checking for text-oriented filetypes (matches .vimrc)
+-- Match the current Spacemacs major-mode date insertion habit (`<localleader>oc`)
+-- for the filetypes where it is configured today.
 vim.api.nvim_create_autocmd("FileType", {
-  pattern = { "tex", "text", "markdown", "gitcommit" },
-  callback = function()
-    vim.opt_local.spell = true
+  pattern = { "tex", "plaintex", "org" },
+  callback = function(event)
+    vim.keymap.set("n", "<localleader>oc", insert_current_date, {
+      buffer = event.buf,
+      desc = "Insert current date",
+    })
   end,
 })

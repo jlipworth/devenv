@@ -1,5 +1,4 @@
 return {
-  -- Telescope: use ripgrep if available (matches .vimrc FZF_DEFAULT_COMMAND)
   {
     "nvim-telescope/telescope.nvim",
     opts = {

@@ -1,7 +1,9 @@
 # Neovim (LazyVim) Keybinding Reference
 
 Quick reference for Spacemacs users transitioning to Neovim with LazyVim.
+This reference is grounded in the current `.spacemacs` conventions: leader key, `jk` escape, layouts/projects, which-key, and relative line numbers.
 Leader key is Space (same as Spacemacs).
+Major-mode leader is `,` (via `<localleader>`), matching the current `.spacemacs` setup.
 
 This config currently uses:
 - **Snacks picker** for file/search pickers
@@ -144,7 +146,7 @@ Harpoon 2 is installed as an optional helper for the files you revisit constantl
 |--------|-----------|---------|-------|
 | Search in buffer | `/` | `/` | Same |
 | Search word under cursor | `*` | `*` | Same |
-| Search and replace | `:%s/old/new/g` | `:%s/old/new/g` | Same (Vim native) |
+| Search and replace | `:%s/old/new/g` | `:%s/old/new/g` | Same (standard Ex workflow) |
 | Clear search highlight | `SPC s c` | `<Esc>` | LazyVim clears on Esc |
 
 ## Which-Key
@@ -167,14 +169,14 @@ Key groups:
 
 | Action | Keybinding | Notes |
 |--------|-----------|-------|
-| Insert date | `<leader>id` | Inserts "Mon DD, YYYY" (matches Spacemacs `,oc`) |
+| Insert date | `<localleader>oc` | Inserts "Mon DD, YYYY" in `tex`/`org` buffers, matching the current Spacemacs major-mode date habit |
 
 ## Tips for Spacemacs Users
 
 1. **Leader is the same** — Space still drives discovery.
 2. **Snacks picker/explorer replace the old Telescope/Neo-tree assumptions** in earlier drafts of this branch.
 3. **Which-key is your friend** — press Space and read the popup.
-4. **`:` commands still work** — `:w`, `:q`, `:wq`, `:%s` all work exactly as in Vim.
+4. **`:` commands still work** — `:w`, `:q`, `:wq`, `:%s` are available through the usual Ex command line.
 5. **Sessions are the workspace story here** — think project picker + persistence first; tmux is optional.
 6. **Harpoon 2 is a working-set helper** — use it if you like curated hot files; ignore it if you prefer picker/buffer flows.
 7. **Mason manages tool installs** — run `:Mason` to inspect/update language servers and related tools.

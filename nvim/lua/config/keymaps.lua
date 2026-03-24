@@ -3,15 +3,18 @@
 
 local map = vim.keymap.set
 
--- jk to escape (matches Spacemacs evil-escape)
+-- Match current Spacemacs `evil-escape` usage.
 map("i", "jk", "<Esc>", { desc = "Exit insert mode" })
 
--- Visual line navigation (don't skip wrapped lines)
-map("n", "j", "gj", { desc = "Down (visual line)" })
-map("n", "k", "gk", { desc = "Up (visual line)" })
-
--- Insert date (matches Spacemacs ,oc and .vimrc <leader>dat)
-map("n", "<leader>id", function()
-  local date = os.date("%b %d, %Y")
-  vim.api.nvim_put({ date }, "c", true, true)
-end, { desc = "Insert date" })
+-- Approximate `evil-respect-visual-line-mode`: only move by screen lines when
+-- wrapping is actually enabled for the current buffer and no count was given.
+map({ "n", "x" }, "j", "v:count == 0 && &wrap ? 'gj' : 'j'", {
+  expr = true,
+  silent = true,
+  desc = "Down (respect wrapped lines)",
+})
+map({ "n", "x" }, "k", "v:count == 0 && &wrap ? 'gk' : 'k'", {
+  expr = true,
+  silent = true,
+  desc = "Up (respect wrapped lines)",
+})

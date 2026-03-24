@@ -8,6 +8,10 @@
 set nocompatible
 filetype off
 
+" Match the current Spacemacs leader model
+let mapleader = " "
+let maplocalleader = ","
+
 " =============================================================================
 " ENVIRONMENT DETECTION
 " =============================================================================
@@ -50,14 +54,12 @@ if g:is_vscode
   set hlsearch
   set incsearch
   set number
-  set expandtab
-  set tabstop=4
-  set shiftwidth=4
+  set relativenumber
 
-  " Basic remaps VSCode respects
-  nnoremap j gj
-  nnoremap k gk
+  " Match current Spacemacs escape and wrapped-line behavior
   inoremap jk <Esc>
+  nnoremap <expr> j (v:count == 0 && &wrap ? 'gj' : 'j')
+  nnoremap <expr> k (v:count == 0 && &wrap ? 'gk' : 'k')
 
   " VSCode command integration
   nnoremap <leader>ff <Cmd>call VSCodeNotify('workbench.action.quickOpen')<CR>
@@ -141,13 +143,8 @@ filetype plugin indent on
 " =============================================================================
 
 set number                    " Line numbers
-set expandtab                 " Spaces instead of tabs
-set tabstop=4                 " Tab = 4 spaces
-set shiftwidth=4              " Indent = 4 spaces
+set relativenumber            " Match current Spacemacs relative numbering
 set autoindent                " Copy indent from current line
-set breakindent               " Wrapped lines preserve indent
-set linebreak                 " Wrap at word boundaries
-set textwidth=100             " Wrap at 100 chars
 set backspace=indent,eol,start
 
 " Search
@@ -195,9 +192,12 @@ set foldmarker=~~,c~~
 " Escape from insert mode
 inoremap jk <Esc>
 
-" Visual line navigation
-nnoremap j gj
-nnoremap k gk
+" Respect wrapped lines only when wrap is enabled (like current Spacemacs
+" visual-line behavior, not unconditional screen-line remaps)
+nnoremap <expr> j (v:count == 0 && &wrap ? 'gj' : 'j')
+nnoremap <expr> k (v:count == 0 && &wrap ? 'gk' : 'k')
+xnoremap <expr> j (v:count == 0 && &wrap ? 'gj' : 'j')
+xnoremap <expr> k (v:count == 0 && &wrap ? 'gk' : 'k')
 
 " Command-line navigation
 cnoremap <C-h> <Left>
@@ -210,11 +210,7 @@ cnoremap <C-$> <End>
 " Replace char with space
 nnoremap ;m i <Esc>r
 
-" Insert date (global - matches old .vimrc)
-nnoremap <leader>dat "=strftime("%b %d, %Y")<CR>p
-
-" Insert date (Spacemacs style: localleader o c)
-let maplocalleader = ","
+" Insert date uses the current Spacemacs local-leader habit (`<localleader>oc`)
 
 " =============================================================================
 " PLUGIN CONFIGURATIONS
@@ -237,7 +233,7 @@ if s:PlugLoaded('fzf.vim')
   nnoremap <leader>fh :History<CR>
   nnoremap <leader>fm :Marks<CR>
 
-  " Use ripgrep if available
+  " Align picker search with the current Spacemacs search-tool preference
   if executable('rg')
     let $FZF_DEFAULT_COMMAND = 'rg --files --hidden --glob "!.git/*"'
   endif
@@ -315,10 +311,7 @@ augroup filetypes
   autocmd!
 
   " --- TeX/LaTeX ---
-  autocmd FileType tex setlocal spell
   autocmd FileType tex setlocal formatoptions-=t
-  autocmd FileType tex nnoremap <buffer> j gj
-  autocmd FileType tex nnoremap <buffer> k gk
   autocmd FileType tex nnoremap <buffer> $ g$
   autocmd FileType tex nnoremap <buffer> 0 g0
   autocmd FileType tex nnoremap <buffer> ^ g^
@@ -330,7 +323,6 @@ augroup filetypes
 
   " --- Text ---
   autocmd FileType text setlocal formatoptions-=t
-  autocmd FileType text setlocal spell
 
   " --- Vim ---
   autocmd FileType vim setlocal foldmethod=marker
@@ -339,10 +331,7 @@ augroup filetypes
   autocmd FileType python setlocal tabstop=4 shiftwidth=4
 
   " --- JavaScript/TypeScript ---
-  autocmd FileType javascript,typescript,json setlocal tabstop=2 shiftwidth=2
-
-  " --- YAML ---
-  autocmd FileType yaml setlocal tabstop=2 shiftwidth=2
+  autocmd FileType javascript,typescript setlocal tabstop=2 shiftwidth=2
 
 augroup END
 

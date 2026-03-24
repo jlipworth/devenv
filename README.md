@@ -13,7 +13,7 @@ Automated setup for Emacs 30.1 with Spacemacs, plus opt-in Neovim support, langu
 
 - **Emacs 30.1** compiled from source with native compilation, tree-sitter, and Cairo
 - **Spacemacs** configuration with Evil mode
-- **Neovim** support as an opt-in install path via `make neovim`
+- **Neovim** support as an opt-in install path via `make neovim`, grounded in current Spacemacs conventions where practical
 - **Language servers**: Python, JavaScript/TypeScript, C/C++, SQL, Terraform, LaTeX, Docker, OCaml, and more
 - **Modern CLI tools**: eza, bat, ripgrep, fd, fzf, zoxide, lazygit
 - **Fonts**: Nerd Font versions of Meslo, DejaVu Sans Mono, Source Code Pro
