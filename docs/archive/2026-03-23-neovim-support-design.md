@@ -6,7 +6,7 @@
 
 ## Summary
 
-Add cross-platform Neovim support to the devenv repo using LazyVim as the distribution. Neovim is an opt-in, explicitly requested target — it is never part of `full-setup`, `noadmin-setup`, or `prereq-layers-all`. The existing Spacemacs workflow remains the default and is not modified.
+Add cross-platform Neovim support to the devenv repo using LazyVim as the distribution. Neovim is an opt-in, explicitly requested target — it is never part of `full-setup`, `noadmin-setup`, or `prereq-layers-all`. The existing Spacemacs workflow remains the default and is not modified. Where Neovim mirrors editor behavior, the source of truth should be current `.spacemacs` conventions or explicit repo-local choices, not the legacy Vim config.
 
 ## Motivation
 
@@ -21,7 +21,7 @@ Secondary benefit: cross-platform Neovim config available on Linux/Mac machines 
 - LazyVim-based Neovim config in `nvim/` directory
 - LSP/editor support: Python, JavaScript/TypeScript, YAML, JSON, TOML, Shell, SQL, Markdown, HTML/CSS, Tailwind, R, LaTeX, and PowerShell when `pwsh`/PowerShell is available
 - Core features: git integration (lazygit), fuzzy finding (Snacks picker), file explorer (Snacks explorer), session restore (persistence.nvim), optional Harpoon 2 working-set jumps, which-key, completion, treesitter syntax highlighting
-- Custom keybindings preserving Spacemacs muscle memory (`jk` escape, leader-key patterns)
+- Custom keybindings preserving current Spacemacs muscle memory (`jk` escape, `SPC` leader, `,` major-mode leader, which-key flow)
 - `make neovim` target in makefile (explicit opt-in only)
 - `install_neovim()` function in `prereq_packages.sh` (cross-platform)
 - Neovim step added to `setup-dev-tools.ps1` (Windows)
@@ -43,12 +43,12 @@ nvim/
 ├── init.lua                  # LazyVim bootstrap (~10 lines, clones lazy.nvim and calls config.lazy)
 └── lua/
     ├── config/
-    │   ├── options.lua       # Vim options (textwidth, tabs, colorscheme prefs)
+    │   ├── options.lua       # Editor defaults grounded in current Spacemacs habits and repo choices
     │   ├── keymaps.lua       # Custom keybindings (jk escape, Spacemacs-compatible leader maps)
     │   └── lazy.lua          # require("lazy").setup() call importing LazyVim + plugins dir
     └── plugins/
-        ├── colorscheme.lua   # Theme config (molokai or tokyonight)
-        ├── editor.lua        # Overrides for editor plugins (which-key tweaks, etc.)
+        ├── colorscheme.lua   # Theme config (tokyonight)
+        ├── editor.lua        # Overrides for editor plugins (picker/search behavior, etc.)
         ├── harpoon.lua       # Optional Harpoon 2 working-set keymaps
         └── lang.lua          # Language extras imports + shell/html/powershell manual config
 ```
@@ -123,14 +123,14 @@ require("lazy").setup({
 ### Key custom settings
 
 **options.lua:**
-- `textwidth=100`
-- `tabstop=4`, `shiftwidth=4`, `expandtab`
-- System clipboard integration (`clipboard = "unnamedplus"`)
-- Leader key = Space (LazyVim default, matches Spacemacs)
+- Relative line numbers enabled to match the current `.spacemacs` line-number preference
+- `timeoutlen=200` to match current Spacemacs `evil-escape-delay`
+- Any spacing/indent overrides should only exist when they can be traced to a current Spacemacs layer setting or explicit repo choice
 
 **keymaps.lua:**
-- `jk` mapped to Escape in insert mode (matching Spacemacs evil-escape)
-- Any additional Spacemacs-compatible leader mappings
+- `jk` mapped to Escape in insert mode (matching Spacemacs `evil-escape`)
+- Wrapped-line movement should follow the current Spacemacs `evil-respect-visual-line-mode` habit rather than unconditional `gj`/`gk` remaps
+- Major-mode-local additions should prefer `<localleader>` / `,` when mirroring current Spacemacs major-mode bindings
 
 ### Sessions / workspace story
 
@@ -243,7 +243,7 @@ Reference card mapping Spacemacs habits to LazyVim equivalents:
 
 - Neovim config must not require admin rights to use
 - Neovim target must never be included in `full-setup`, `noadmin-setup`, or `prereq-layers-all`
-- Existing `.vimrc` remains untouched and continues serving Vim/VSCode
+- Existing legacy Vim config remains untouched and continues serving Vim/VSCode
 - No modifications to any existing Spacemacs-related code
 - Config should work offline after first launch (all plugins cached locally)
 
