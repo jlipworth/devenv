@@ -1,3 +1,5 @@
+local has_powershell = vim.fn.executable("pwsh") == 1 or vim.fn.executable("powershell") == 1
+
 return {
   -- LazyVim language extras
   { import = "lazyvim.plugins.extras.lang.python" },
@@ -11,18 +13,29 @@ return {
   { import = "lazyvim.plugins.extras.lang.tex" },
   { import = "lazyvim.plugins.extras.lang.tailwind" },
 
-  -- Shell + HTML/CSS LSP (no built-in LazyVim extras — manual config)
+  -- Shell + HTML/CSS + PowerShell support
+  {
+    "nvim-treesitter/nvim-treesitter",
+    opts = {
+      ensure_installed = { "powershell" },
+    },
+  },
   {
     "neovim/nvim-lspconfig",
-    opts = {
-      servers = {
-        bashls = {},
-        -- HTML/CSS/SCSS LSP (matches Spacemacs html layer with css/scss/html lsp)
-        html = {},
-        cssls = {},
-        emmet_ls = {},
-      },
-    },
+    opts = function(_, opts)
+      opts.servers = opts.servers or {}
+      opts.servers.bashls = {}
+      -- HTML/CSS/SCSS LSP (matches Spacemacs html layer with css/scss/html lsp)
+      opts.servers.html = {}
+      opts.servers.cssls = {}
+      opts.servers.emmet_ls = {}
+
+      -- PowerShell / Windows scripts support (.ps1). Only enable when a
+      -- PowerShell executable is available, otherwise Mason/PSES install will fail.
+      if has_powershell then
+        opts.servers.powershell_es = {}
+      end
+    end,
   },
   {
     "mason-org/mason.nvim",
@@ -41,6 +54,9 @@ return {
         "texlab",
         "r-languageserver",
       })
+      if has_powershell then
+        table.insert(opts.ensure_installed, "powershell-editor-services")
+      end
     end,
   },
 

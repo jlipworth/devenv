@@ -19,8 +19,8 @@ Secondary benefit: cross-platform Neovim config available on Linux/Mac machines 
 ### In scope
 
 - LazyVim-based Neovim config in `nvim/` directory
-- LSP support: Python (Pyright), JavaScript/TypeScript, YAML, JSON, TOML, Shell, SQL, Markdown
-- Core features: git integration (lazygit), fuzzy finding (telescope), file explorer, which-key, completion, treesitter syntax highlighting
+- LSP/editor support: Python, JavaScript/TypeScript, YAML, JSON, TOML, Shell, SQL, Markdown, HTML/CSS, Tailwind, R, LaTeX, and PowerShell when `pwsh`/PowerShell is available
+- Core features: git integration (lazygit), fuzzy finding (Snacks picker), file explorer (Snacks explorer), session restore (persistence.nvim), optional Harpoon 2 working-set jumps, which-key, completion, treesitter syntax highlighting
 - Custom keybindings preserving Spacemacs muscle memory (`jk` escape, leader-key patterns)
 - `make neovim` target in makefile (explicit opt-in only)
 - `install_neovim()` function in `prereq_packages.sh` (cross-platform)
@@ -31,7 +31,7 @@ Secondary benefit: cross-platform Neovim config available on Linux/Mac machines 
 
 - Replacing or modifying the Spacemacs workflow
 - Org-mode, Whisper, DAP, Mermaid, or other Spacemacs-specific features
-- Languages not needed on temporary machines (C/C++, Rust, OCaml, Terraform, LaTeX, R)
+- Languages not yet carried over from the current Spacemacs setup (C/C++, Rust, OCaml, Terraform, Docker/Kubernetes, Ansible, Nginx, CSV, Vimscript layer parity)
 - Neovim GUI (neovide, etc.)
 
 ## Design
@@ -49,7 +49,8 @@ nvim/
     └── plugins/
         ├── colorscheme.lua   # Theme config (molokai or tokyonight)
         ├── editor.lua        # Overrides for editor plugins (which-key tweaks, etc.)
-        └── lang.lua          # Language extras imports + shell LSP manual config
+        ├── harpoon.lua       # Optional Harpoon 2 working-set keymaps
+        └── lang.lua          # Language extras imports + shell/html/powershell manual config
 ```
 
 This follows LazyVim's standard directory convention. Files in `lua/config/` and `lua/plugins/` are auto-discovered.
@@ -69,19 +70,31 @@ return {
   { import = "lazyvim.plugins.extras.lang.sql" },
   { import = "lazyvim.plugins.extras.lang.toml" },
 
-  -- Shell LSP (no built-in LazyVim extra — manual config)
+  -- Shell + HTML/CSS + PowerShell (manual config)
   {
     "neovim/nvim-lspconfig",
     opts = {
       servers = {
         bashls = {},
+        html = {},
+        cssls = {},
+        emmet_ls = {},
+        -- Enable only when pwsh/PowerShell is available on PATH
+        powershell_es = {},
       },
     },
   },
   {
-    "williamboman/mason.nvim",
+    "mason-org/mason.nvim",
     opts = {
-      ensure_installed = { "bash-language-server", "shellcheck" },
+      ensure_installed = {
+        "bash-language-server",
+        "shellcheck",
+        "html-lsp",
+        "css-lsp",
+        "emmet-ls",
+        "powershell-editor-services",
+      },
     },
   },
 }
@@ -118,6 +131,15 @@ require("lazy").setup({
 **keymaps.lua:**
 - `jk` mapped to Escape in insert mode (matching Spacemacs evil-escape)
 - Any additional Spacemacs-compatible leader mappings
+
+### Sessions / workspace story
+
+Neovim does not provide Spacemacs-style layouts out of the box, so the practical workflow here is:
+
+- **Snacks project picker** for switching repositories
+- **persistence.nvim** for restoring per-project sessions
+- **Harpoon 2** for an optional per-project working set / hot-file list
+- **tmux** as an extra option on Unix/WSL/remote setups, not a baseline requirement
 
 ### Symlink strategy
 
@@ -199,6 +221,8 @@ Reference card mapping Spacemacs habits to LazyVim equivalents:
 | Find file | `SPC f f` | `<leader>ff` |
 | Grep project | `SPC /` | `<leader>sg` |
 | File explorer | `SPC f t` | `<leader>e` |
+| Projects | `SPC p l` / `SPC p p` | `<leader>fp` |
+| Restore session | `SPC l l` / restart flows | `<leader>qs` / `<leader>ql` |
 | Git status | `SPC g s` | `<leader>gg` (lazygit) |
 | Buffer list | `SPC b b` | `<leader>fb` |
 | Save file | `SPC f s` | `<leader>w` or `:w` |
@@ -211,6 +235,9 @@ Reference card mapping Spacemacs habits to LazyVim equivalents:
 | LSP rename | `SPC l r` | `<leader>cr` |
 | LSP code action | `SPC l a` | `<leader>ca` |
 | Which-key help | `SPC` (wait) | `<leader>` (wait) |
+| Harpoon add file | n/a | `<leader>ha` |
+| Harpoon menu | n/a | `<leader>hh` |
+| Harpoon file 1-4 | n/a | `<leader>h1` ... `<leader>h4` |
 
 ## Constraints
 
@@ -232,13 +259,13 @@ To remove Neovim setup:
 - Fresh launch on Linux: `make neovim && nvim` — plugins and LSP servers auto-install
 - Fresh launch on Windows: run `setup-dev-tools.ps1`, open `nvim` — same behavior
 - Verify LSP works for each language: open a file of that type, run `:LspInfo`, confirm the correct server attaches, hover docs work (`K` on a symbol)
-  - Python: Pyright attaches
-  - TypeScript: ts_ls attaches
+  - Python: Pyright/Ruff attach
+  - TypeScript: vtsls attaches
   - YAML: yamlls attaches
   - JSON: jsonls attaches
   - Shell: bashls attaches
-  - SQL: sqlls attaches
-  - Markdown: markdownlint attaches
-- Verify keybindings: `jk` exits insert mode, `<leader>ff` opens telescope, `<leader>sg` greps project, `<leader>e` opens file explorer, `<leader>gg` opens lazygit
+  - Markdown: marksman attaches
+  - PowerShell: powershell_es attaches for `.ps1` when `pwsh`/PowerShell is available
+- Verify keybindings: `jk` exits insert mode, `<leader>ff` opens the Snacks picker, `<leader>sg` greps project, `<leader>e` opens Snacks explorer, `<leader>gg` opens lazygit, and `<leader>qs` restores the session
 - Verify no changes to `make full-setup` or `make noadmin-setup` behavior
 - Verify `make help` shows the `neovim` target

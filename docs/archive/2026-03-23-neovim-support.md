@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add opt-in, cross-platform Neovim + LazyVim support to devenv, with LSP for Python/JS/TS/YAML/JSON/TOML/Shell/SQL/Markdown, Spacemacs-compatible keybindings, and integration into the existing makefile/prereq_packages infrastructure.
+**Goal:** Add opt-in, cross-platform Neovim + LazyVim support to devenv, with support for Python/JS/TS/YAML/JSON/TOML/Shell/SQL/Markdown plus the branch's additional HTML/CSS, R, LaTeX, Tailwind, conditional PowerShell coverage when `pwsh`/PowerShell is available, optional Harpoon 2 working-set support, Spacemacs-compatible keybindings, and integration into the existing makefile/prereq_packages infrastructure.
 
 **Architecture:** LazyVim distribution bootstrapped via lazy.nvim in `nvim/` directory, symlinked to platform config locations. Mason.nvim auto-installs LSP servers on first launch. `install_neovim()` in `prereq_packages.sh` handles cross-platform binary installation. Windows setup via `setup-dev-tools.ps1`.
 
-**Tech Stack:** Neovim 0.11.6, LazyVim, lazy.nvim, mason.nvim, nvim-lspconfig, telescope.nvim, nvim-treesitter, which-key.nvim, lazygit
+**Tech Stack:** Neovim 0.11.6, LazyVim, lazy.nvim, mason.nvim, nvim-lspconfig, Snacks picker/explorer, persistence.nvim, Harpoon 2, nvim-treesitter, which-key.nvim, lazygit
 
 **Spec:** `docs/superpowers/specs/2026-03-23-neovim-support-design.md`
 
@@ -667,15 +667,15 @@ Leader key is Space (same as Spacemacs).
 | Action | Spacemacs | LazyVim | Notes |
 |--------|-----------|---------|-------|
 | Escape | `jk` | `jk` | Custom (config/keymaps.lua) |
-| Find file | `SPC f f` | `<leader>ff` | Telescope |
-| Recent files | `SPC f r` | `<leader>fr` | Telescope |
-| Grep project | `SPC /` | `<leader>sg` | Telescope live grep |
-| File explorer | `SPC f t` | `<leader>e` | Neo-tree |
-| Buffer list | `SPC b b` | `<leader>fb` | Telescope buffers |
+| Find file | `SPC f f` | `<leader>ff` | Snacks picker |
+| Recent files | `SPC f r` | `<leader>fr` | Snacks picker |
+| Grep project | `SPC /` | `<leader>sg` | Snacks live grep |
+| File explorer | `SPC f t` | `<leader>e` | Snacks explorer |
+| Buffer list | `SPC b b` | `<leader>fb` | Snacks buffers |
 | Switch buffer | `SPC b n/p` | `[b` / `]b` | Previous/next buffer |
 | Close buffer | `SPC b d` | `<leader>bd` | |
 | Save file | `SPC f s` | `<leader>w` or `:w` | |
-| Command palette | `SPC SPC` | `<leader>:` | Telescope commands |
+| Command history | `SPC SPC` | `<leader>:` | Commands live at `<leader>sC` |
 
 ## Windows and Splits
 
@@ -741,13 +741,34 @@ Key groups:
 |--------|-----------|-------|
 | Insert date | `<leader>id` | Inserts "Mon DD, YYYY" (matches Spacemacs `,oc`) |
 
+## Sessions / Workspace Story
+
+Neovim does not have Spacemacs layout parity out of the box. The practical workflow here is:
+
+- `<leader>fp` for project switching
+- `persistence.nvim` for saved sessions (`<leader>qs`, `<leader>ql`, `<leader>qS`, `<leader>qd`)
+- Harpoon 2 for an optional per-project working set (`<leader>ha`, `<leader>hh`, `<leader>h1` ... `<leader>h4`)
+- tmux as an extra option on Unix/WSL/remote setups, not a baseline requirement
+
+## Windows / PowerShell Note
+
+- `.ps1` / windows-scripts support is provided through `powershell_es` when `pwsh` or `powershell` is available on PATH.
+- Mason installs `powershell-editor-services` only when a PowerShell executable is detected, avoiding failed installs on machines without PowerShell.
+- This is intended to cover the practical Neovim equivalent of `windows-scripts`, not full Spacemacs parity.
+
+## Harpoon 2 Note
+
+- Installed from `ThePrimeagen/harpoon` on the `harpoon2` branch.
+- It is optional and safe to ignore if picker + buffers + sessions are enough for you.
+- Initial config only covers file marks / working-set navigation; terminal/command workflows can be added later if they prove useful.
+
 ## Tips for Spacemacs Users
 
 1. **Leader is the same** — Space key works identically as the leader
 2. **Evil mode is NOT installed** — LazyVim uses native Vim keybindings. If you used Spacemacs Evil mode, the motions (`hjkl`, `ciw`, `dd`, etc.) are identical
 3. **Which-key is your friend** — press Space and read the popup, just like Spacemacs
 4. **`:` commands still work** — `:w`, `:q`, `:wq`, `:%s` all work exactly as in Vim
-5. **Telescope replaces Helm** — fuzzy finding works similarly, just different keybindings
+5. **Snacks picker/explorer replace the older Telescope/Neo-tree assumption** in earlier drafts
 6. **Mason manages LSPs** — run `:Mason` to see/install/update language servers
 7. **Lazy manages plugins** — run `:Lazy` to see/update/install plugins
 ```
