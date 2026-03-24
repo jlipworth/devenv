@@ -1,6 +1,10 @@
-# Private directory for Yasnippets snippets
+# Repo-managed Yasnippet snippets
 
-The content of this directory is ignored by Git. This is the default place
-where to store your private yasnippets.
+This directory is the shared snippet source used by `create_snippet_symlink()`
+in `prereq_packages.sh`.
 
-This path will be loaded automatically and used whenever Yasnippets loads.
+- source path in this repo: `snippets/`
+- target path on the machine: `~/.emacs.d/private/snippets`
+
+Tracked snippets live here in Git. If you want machine-specific snippets, keep
+them in a different local path and symlink that separately.

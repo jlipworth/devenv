@@ -67,7 +67,7 @@ which poetry  # should return nothing
 
 ```bash
 mkdir -p ~/uv-test && cd ~/uv-test
-uv init
+uv init  # or use `uv venv` in an existing project
 uv add ipython numpy pandas
 
 # Use it
@@ -79,15 +79,16 @@ source .venv/bin/activate
 ## Spacemacs Notes
 
 - uv support is via `emacs-pet` (auto-detects `.venv` directories)
-- No special config needed - just use `uv init` in projects
+- No special config needed - use `uv init` for new projects or `uv venv`
+  for existing ones
 - The conda layer has been removed from `.spacemacs`
 
 ## Quick Reference
 
 | Old | New |
 |-----|-----|
-| `conda create -n myenv` | `uv init` (in project dir) |
-| `conda activate myenv` | `source .venv/bin/activate` |
+| `conda create -n myenv` | `uv venv` (or `uv init` for a new project) |
+| `conda activate myenv` | `source .venv/bin/activate` or `uv run cmd` |
 | `conda install pkg` | `uv add pkg` |
 | `poetry add pkg` | `uv add pkg` |
 | `poetry install` | `uv sync` |

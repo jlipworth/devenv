@@ -1,10 +1,12 @@
 # macOS CI Setup (TODO)
 
-Future work: Add macOS CI testing to the existing Woodpecker pipeline.
+Future work: add macOS CI testing alongside the existing Woodpecker pipelines.
 
 ## Why
 
-Currently only Linux CI exists. macOS Emacs builds are untested in CI.
+Currently Linux CI exists. macOS Emacs builds are still validated manually.
+Neovim already has a Linux headless smoke path in `ci/neovim-smoke.sh`; this
+doc is just about closing the macOS gap.
 
 ## Options
 
@@ -52,7 +54,7 @@ jobs:
 
       - name: Verify build
         run: |
-          /usr/local/bin/emacs --version
+          $HOME/.local/bin/emacs --version
 
   test-layers:
     runs-on: macos-14
@@ -101,7 +103,7 @@ Create `/Library/LaunchDaemons/com.woodpecker.agent.plist` and load with:
 sudo launchctl load /Library/LaunchDaemons/com.woodpecker.agent.plist
 ```
 
-### Add to .woodpecker.yml
+### Add to `.woodpecker/*.yml`
 
 ```yaml
 - name: build-emacs-macos

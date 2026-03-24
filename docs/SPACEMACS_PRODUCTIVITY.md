@@ -1,6 +1,8 @@
 # Spacemacs Productivity Tips
 
-A collection of Spacemacs-native productivity enhancements to review and implement.
+A historical collection of Spacemacs productivity notes and candidate tweaks.
+Some items are already reflected in `.spacemacs`; treat this as a reference,
+not a live checklist.
 
 ---
 
@@ -27,7 +29,8 @@ A collection of Spacemacs-native productivity enhancements to review and impleme
 
 ## Recommended `dotspacemacs/user-config` Additions
 
-Add these to your `.spacemacs` in the `dotspacemacs/user-config` function:
+Consider these for your `.spacemacs` in the `dotspacemacs/user-config`
+function:
 
 ### Paste Transient State
 
@@ -113,7 +116,7 @@ Add these to `dotspacemacs-configuration-layers` in `.spacemacs`:
 ```elisp
 (git :variables
      git-magit-status-fullscreen t
-     git-enable-github-support t)
+     git-enable-magit-forge-plugin t)
 ```
 
 ### Auto-Completion Layer
@@ -278,7 +281,3 @@ SPC f e R  Reload .spacemacs
 - [Configuring Spacemacs Tutorial](https://thume.ca/howto/2015/03/07/configuring-spacemacs-a-tutorial/)
 - [Spacemacs for Productivity](https://the-pi-guy.com/blog/spacemacs_for_productivity_tips_and_tricks_for_getting_the_most_out_of_emacs/)
 - [Practicalli Spacemacs](https://practical.li/spacemacs/)
-
----
-
-*Generated: December 2024*

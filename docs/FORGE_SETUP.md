@@ -1,6 +1,7 @@
 # Forge Setup for Spacemacs
 
 Forge integrates GitHub/GitLab issues and pull requests into Magit.
+This page is Spacemacs-specific; Neovim uses a different config path.
 
 ## Prerequisites
 
