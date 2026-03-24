@@ -9,6 +9,51 @@ This config currently uses:
 - **persistence.nvim** for session restore
 - **Harpoon 2** for optional working-set / hot-file jumps
 
+
+## Getting Started
+
+### First launch
+
+Open Neovim in a repo:
+
+```bash
+nvim
+```
+
+Useful first commands:
+- `:Lazy` — plugins
+- `:Mason` — LSP/tools
+- `:checkhealth` — sanity check
+
+### Core mental model
+
+Think of this setup as:
+- **Snacks picker** = find/search things
+- **buffers** = open files
+- **sessions** = restore a project state
+- **Harpoon 2** = optional shortlist of hot files
+- **which-key** = discover commands by pressing `Space`
+
+### 10 keys to learn first
+
+- `Space` — leader
+- `<leader>ff` — find file
+- `<leader>sg` — grep project
+- `<leader>fb` — buffers
+- `<leader>e` — explorer
+- `<leader>fp` — projects
+- `<leader>qs` — restore session
+- `<leader>gg` — lazygit
+- `gd` — go to definition
+- `<leader>ca` — code action
+- `jk` — escape insert mode
+
+### Sessions vs Harpoon
+
+Use **sessions** when you want your windows, buffers, and project state back.
+Use **Harpoon** when you keep bouncing between a small set of important files.
+
+
 ## Core Navigation
 
 | Action | Spacemacs | LazyVim | Notes |
