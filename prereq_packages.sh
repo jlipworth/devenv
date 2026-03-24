@@ -4,48 +4,39 @@ source common_utils.sh
 
 # =============================================================================
 # Arch Linux Package Mappings
-# Maps Debian package names to Arch equivalents
+# Maps Debian package names to Arch equivalents.
+# Keep this bash-3 compatible for macOS' system bash.
 # =============================================================================
-declare -A ARCH_PKG_MAP=(
-    # Dev libraries
-    ["libsecret-1-0"]="libsecret"
-    ["libsecret-1-dev"]="libsecret"
-    ["libcurl4-openssl-dev"]="curl"
-    ["libssl-dev"]="openssl"
-    ["libxml2-dev"]="libxml2"
-    # R language
-    ["r-base"]="r"
-    ["r-base-dev"]="r"
-    # LaTeX
-    ["texlive-latex-extra"]="texlive-latexextra"
-    # System tools
-    ["cups-client"]="cups"
-    ["lpr"]="" # Part of cups on Arch
-    ["libtool-bin"]="libtool"
-    ["python3-pip"]="python-pip"
-    # lldb
-    ["lldb"]="lldb"
-    # xclip
-    ["xclip"]="xclip"
-
-    # Audio (Whisper)
-    ["libasound2-plugins"]="alsa-plugins"
-)
+translate_arch_pkg() {
+    local pkg="$1"
+    case "$pkg" in
+        # Dev libraries
+        libsecret-1-0 | libsecret-1-dev) echo "libsecret" ;;
+        libcurl4-openssl-dev) echo "curl" ;;
+        libssl-dev) echo "openssl" ;;
+        libxml2-dev) echo "libxml2" ;;
+        # R language
+        r-base | r-base-dev) echo "r" ;;
+        # LaTeX
+        texlive-latex-extra) echo "texlive-latexextra" ;;
+        # System tools
+        cups-client) echo "cups" ;;
+        lpr) echo "" ;; # Part of cups on Arch
+        libtool-bin) echo "libtool" ;;
+        python3-pip) echo "python-pip" ;;
+        lldb) echo "lldb" ;;
+        xclip) echo "xclip" ;;
+        # Audio (Whisper)
+        libasound2-plugins) echo "alsa-plugins" ;;
+        *) echo "$pkg" ;;
+    esac
+}
 
 # Translate package name for current distro
 translate_pkg() {
     local pkg="$1"
     if [[ "$DISTRO" == "arch" ]]; then
-        local arch_pkg="${ARCH_PKG_MAP[$pkg]:-}"
-        if [[ -n "$arch_pkg" ]]; then
-            echo "$arch_pkg"
-        elif [[ "${ARCH_PKG_MAP[$pkg]+isset}" ]]; then
-            # Package maps to empty string (not needed on Arch)
-            echo ""
-        else
-            # No mapping, use original name
-            echo "$pkg"
-        fi
+        translate_arch_pkg "$pkg"
     else
         echo "$pkg"
     fi
