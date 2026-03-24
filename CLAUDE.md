@@ -33,7 +33,8 @@ GNU_files/
 ├── .shell_aliases           # CLI tool aliases
 ├── .blerc                   # Bash Line Editor config
 ├── .tmux.conf.local         # tmux local overrides (oh-my-tmux)
-├── alacritty.toml           # Alacritty terminal config
+├── alacritty.toml           # Alacritty terminal config (WSL-oriented)
+├── alacritty.windows.toml   # Alacritty terminal config for Windows
 ├── starship.toml            # Starship prompt config
 ├── .pre-commit-config.yaml  # Pre-commit hooks
 ├── .shellcheckrc            # ShellCheck settings

@@ -1,8 +1,8 @@
-# Alacritty Configuration - WSL-oriented variant
+# Alacritty Configuration - Windows variant
 
 [terminal.shell]
-program = "wsl.exe"
-args = ["-d", "Ubuntu-20.04", "--cd", "~"]
+program = "powershell.exe"
+args = ["-NoLogo"]
 
 [env]
 TERM = "xterm-256color"

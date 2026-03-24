@@ -1,5 +1,5 @@
 # setup-dev-tools.ps1
-# Installs Git, Node.js (via fnm), OpenAI Codex CLI, Claude Code, uv, Neovim, and GNU_files config — no admin required.
+# Installs Git, Node.js (via fnm), OpenAI Codex CLI, Claude Code, uv, Alacritty, Neovim, and GNU_files config — no admin required.
 # Safe to re-run on machines that reset regularly.
 #
 # Usage: powershell -ExecutionPolicy Bypass -File setup-dev-tools.ps1
@@ -61,6 +61,28 @@ function Ensure-ProfileLine {
     }
 }
 
+function Test-FontInstalled {
+    param([Parameter(Mandatory = $true)][string[]]$Names)
+
+    $fontRegistryPaths = @(
+        "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts",
+        "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+    )
+
+    foreach ($fontRegistryPath in $fontRegistryPaths) {
+        if (-not (Test-Path $fontRegistryPath)) { continue }
+
+        $fontProperties = (Get-ItemProperty -Path $fontRegistryPath).PSObject.Properties
+        foreach ($name in $Names) {
+            if ($fontProperties.Name -match [regex]::Escape($name)) {
+                return $true
+            }
+        }
+    }
+
+    return $false
+}
+
 Write-Host "=== Dev Tools Setup (no admin) ===" -ForegroundColor Cyan
 
 # --- Pre-flight: check winget ---
@@ -69,7 +91,7 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
 }
 
 # --- 1. Git ---
-Write-Host "`n[1/8] Installing Git..." -ForegroundColor Yellow
+Write-Host "`n[1/9] Installing Git..." -ForegroundColor Yellow
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     winget install --id Git.Git -e --scope user --accept-source-agreements --accept-package-agreements
@@ -85,7 +107,7 @@ $gitVersion = (git --version).Trim()
 Write-Host "Git $gitVersion" -ForegroundColor Green
 
 # --- 2. fnm + Node.js + npm ---
-Write-Host "`n[2/8] Installing fnm + Node.js..." -ForegroundColor Yellow
+Write-Host "`n[2/9] Installing fnm + Node.js..." -ForegroundColor Yellow
 
 if (-not (Get-Command fnm -ErrorAction SilentlyContinue)) {
     winget install --id Schniz.fnm -e --scope user --accept-source-agreements --accept-package-agreements
@@ -110,7 +132,7 @@ $npmVersion = (npm --version).Trim()
 Write-Host "Node $nodeVersion | npm $npmVersion" -ForegroundColor Green
 
 # --- 3. OpenAI Codex CLI ---
-Write-Host "`n[3/8] Installing OpenAI Codex CLI..." -ForegroundColor Yellow
+Write-Host "`n[3/9] Installing OpenAI Codex CLI..." -ForegroundColor Yellow
 
 if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
     npm install -g @openai/codex
@@ -132,7 +154,7 @@ try {
 Write-Host "Codex: $codexVersion" -ForegroundColor Green
 
 # --- 4. Claude Code ---
-Write-Host "`n[4/8] Installing Claude Code..." -ForegroundColor Yellow
+Write-Host "`n[4/9] Installing Claude Code..." -ForegroundColor Yellow
 
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
     npm install -g @anthropic-ai/claude-code
@@ -167,7 +189,7 @@ if ($gitBashPath) {
 Write-Host "Claude Code: $claudeVersion" -ForegroundColor Green
 
 # --- 5. uv (Python manager) ---
-Write-Host "`n[5/8] Installing uv..." -ForegroundColor Yellow
+Write-Host "`n[5/9] Installing uv..." -ForegroundColor Yellow
 
 if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
     $uvInstaller = irm https://astral.sh/uv/install.ps1
@@ -187,7 +209,7 @@ $uvVersion = (uv --version).Trim()
 Write-Host "uv $uvVersion" -ForegroundColor Green
 
 # --- 6. Clone GNU_files repo ---
-Write-Host "`n[6/8] Preparing GNU_files repo..." -ForegroundColor Yellow
+Write-Host "`n[6/9] Preparing GNU_files repo..." -ForegroundColor Yellow
 
 $gnuFilesPath = "$env:USERPROFILE\GNU_files"
 $scriptRepoPath = $PSScriptRoot
@@ -209,8 +231,93 @@ if ((Test-Path "$scriptRepoPath\.git") -and (Test-Path "$scriptRepoPath\nvim")) 
     throw "Path exists but is not a git repo: $gnuFilesPath"
 }
 
-# --- 7. Neovim ---
-Write-Host "`n[7/8] Installing Neovim..." -ForegroundColor Yellow
+# --- 7. Alacritty ---
+Write-Host "`n[7/9] Installing Alacritty..." -ForegroundColor Yellow
+
+if (-not (Get-Command alacritty -ErrorAction SilentlyContinue)) {
+    winget install --id Alacritty.Alacritty -e --scope user --accept-source-agreements --accept-package-agreements
+}
+
+Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+
+if (-not (Get-Command alacritty -ErrorAction SilentlyContinue)) {
+    Write-Warning "Alacritty was installed, but 'alacritty' is not on PATH in this session yet. Restart PowerShell if needed."
+}
+
+$alacrittyWindowsSourcePath = "$gnuFilesPath\alacritty.windows.toml"
+$alacrittyDefaultSourcePath = "$gnuFilesPath\alacritty.toml"
+$alacrittySourcePath = if (Test-Path $alacrittyWindowsSourcePath) {
+    $alacrittyWindowsSourcePath
+} else {
+    $alacrittyDefaultSourcePath
+}
+$alacrittyConfigDir = "$env:APPDATA\alacritty"
+$alacrittyConfigPath = "$alacrittyConfigDir\alacritty.toml"
+
+if (Test-Path $alacrittySourcePath) {
+    if (-not (Test-Path $alacrittyConfigDir)) {
+        New-Item -ItemType Directory -Path $alacrittyConfigDir -Force | Out-Null
+    }
+
+    $alacrittyConfig = Get-Content -Path $alacrittySourcePath -Raw
+    if ($alacrittySourcePath -eq $alacrittyDefaultSourcePath) {
+        $alacrittyConfig = $alacrittyConfig -replace 'program = "wsl\.exe"', 'program = "powershell.exe"'
+        $alacrittyConfig = $alacrittyConfig -replace 'args = \["-d", "Ubuntu-20\.04", "--cd", "~"\]', 'args = ["-NoLogo"]'
+    }
+
+    $mesloFontInstalled = Test-FontInstalled @("MesloLGM Nerd Font Mono")
+    $jetBrainsMonoNerdInstalled = Test-FontInstalled @("JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font")
+
+    if ((-not $mesloFontInstalled) -and (-not $jetBrainsMonoNerdInstalled)) {
+        Write-Host "MesloLGM Nerd Font Mono not found. Installing JetBrainsMono Nerd Font..." -ForegroundColor Yellow
+        winget install --id DEVCOM.JetBrainsMonoNerdFont -e --scope user --accept-source-agreements --accept-package-agreements
+
+        if ($LASTEXITCODE -eq 0) {
+            $jetBrainsMonoNerdInstalled = Test-FontInstalled @("JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font")
+        } else {
+            Write-Warning "JetBrainsMono Nerd Font install failed (exit code $LASTEXITCODE)."
+        }
+    }
+
+    if (-not $mesloFontInstalled) {
+        if ($jetBrainsMonoNerdInstalled) {
+            $alacrittyConfig = $alacrittyConfig -replace 'family = "MesloLGM Nerd Font Mono"', 'family = "JetBrainsMono Nerd Font Mono"'
+            Write-Host "Using JetBrainsMono Nerd Font Mono in Alacritty config." -ForegroundColor Green
+        } else {
+            $alacrittyConfig = $alacrittyConfig -replace 'family = "MesloLGM Nerd Font Mono"', 'family = "Cascadia Mono"'
+            Write-Warning "No preferred Nerd Font was found. Using Cascadia Mono in Alacritty config."
+        }
+    }
+
+    $alacrittySourceName = Split-Path -Leaf $alacrittySourcePath
+    $managedHeader = "# Managed by setup-dev-tools.ps1 from GNU_files/$alacrittySourceName`r`n"
+    $alacrittyConfig = $managedHeader + $alacrittyConfig
+
+    if (Test-Path $alacrittyConfigPath) {
+        $existingAlacrittyConfig = Get-Content -Path $alacrittyConfigPath -Raw -ErrorAction SilentlyContinue
+        if ($existingAlacrittyConfig -and -not $existingAlacrittyConfig.StartsWith("# Managed by setup-dev-tools.ps1")) {
+            $backupPath = "${alacrittyConfigPath}.backup_$(Get-Date -Format 'yyyyMMddHHmmss')"
+            Copy-Item -Path $alacrittyConfigPath -Destination $backupPath -Force
+            Write-Host "Existing Alacritty config backed up to $backupPath" -ForegroundColor Yellow
+        }
+    }
+
+    Set-Content -Path $alacrittyConfigPath -Value $alacrittyConfig -NoNewline
+    Write-Host "Alacritty config written: $alacrittyConfigPath" -ForegroundColor Green
+} else {
+    Write-Warning "Alacritty config source path not found: $alacrittySourcePath"
+}
+
+try {
+    $alacrittyVersion = (alacritty --version).Trim()
+} catch {
+    $alacrittyVersion = "installed"
+}
+
+Write-Host "Alacritty: $alacrittyVersion" -ForegroundColor Green
+
+# --- 8. Neovim ---
+Write-Host "`n[8/9] Installing Neovim..." -ForegroundColor Yellow
 
 $portableNvimBinPath = "$env:LOCALAPPDATA\nvim-bin\nvim-win64\bin"
 Add-UserPathOnce $portableNvimBinPath
@@ -246,8 +353,8 @@ if (-not (Get-Command nvim -ErrorAction SilentlyContinue)) {
 $nvimVersion = (nvim --version | Select-Object -First 1).Trim()
 Write-Host "Neovim: $nvimVersion" -ForegroundColor Green
 
-# --- 8. Neovim config junction ---
-Write-Host "`n[8/8] Linking Neovim config..." -ForegroundColor Yellow
+# --- 9. Neovim config junction ---
+Write-Host "`n[9/9] Linking Neovim config..." -ForegroundColor Yellow
 
 $nvimConfigPath = "$env:LOCALAPPDATA\nvim"
 $nvimSourcePath = "$gnuFilesPath\nvim"
@@ -293,10 +400,11 @@ Write-Host "  npm   : $npmVersion"
 Write-Host "  codex : $codexVersion"
 Write-Host "  claude: $claudeVersion"
 Write-Host "  uv    : $uvVersion"
+Write-Host "  alacritty: $alacrittyVersion"
 Write-Host "  nvim  : $nvimVersion"
 Write-Host "  GNU_files: $gnuFilesPath"
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan
 Write-Host "  1. Restart PowerShell so PATH/profile changes are fully picked up."
 Write-Host "  2. Run 'codex' and 'claude' once to complete sign-in/setup."
-Write-Host "  3. Run 'nvim' to verify the GNU_files config loads."
+Write-Host "  3. Run 'alacritty' and 'nvim' to verify the GNU_files config loads."
