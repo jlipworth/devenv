@@ -11,7 +11,7 @@ NO_ADMIN="${NO_ADMIN:-false}"
 # 3. CI current working directory fallback
 # 4. Historical default: $HOME/GNU_files
 if [[ -n "${GNU_DIR:-}" ]]; then
-    GNU_DIR="$GNU_DIR"
+    :
 else
     COMMON_UTILS_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
     if [[ -f "$COMMON_UTILS_DIR/versions.conf" ]]; then
