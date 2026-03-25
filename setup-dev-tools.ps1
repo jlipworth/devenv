@@ -156,6 +156,80 @@ function Find-WingetInstalledBinary {
     return $null
 }
 
+function Get-PsmuxManagedPluginNames {
+    param([Parameter(Mandatory = $true)][string]$ConfigPath)
+
+    if (-not (Test-Path $ConfigPath)) {
+        return @()
+    }
+
+    $configContent = Get-Content -Path $ConfigPath -Raw -ErrorAction SilentlyContinue
+    if (-not $configContent) {
+        return @()
+    }
+
+    $pluginNames = @()
+    $pluginMatches = [regex]::Matches($configContent, "set\s+-g\s+@plugin\s+'([^']+)'")
+    foreach ($pluginMatch in $pluginMatches) {
+        $pluginSpec = $pluginMatch.Groups[1].Value.Trim()
+        if (($pluginSpec -match '^psmux-plugins/(.+)$') -and ($pluginSpec -ne 'psmux-plugins/ppm')) {
+            $pluginNames += $Matches[1]
+        }
+    }
+
+    return $pluginNames | Select-Object -Unique
+}
+
+function Test-PsmuxPluginDirectoryValid {
+    param([Parameter(Mandatory = $true)][string]$PluginPath)
+
+    if (-not (Test-Path $PluginPath)) {
+        return $false
+    }
+
+    $pluginName = Split-Path -Leaf $PluginPath
+    $entrypoints = @(
+        (Join-Path $PluginPath 'plugin.conf'),
+        (Join-Path $PluginPath "$pluginName.ps1")
+    )
+
+    foreach ($entrypoint in $entrypoints) {
+        if (Test-Path $entrypoint) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Repair-PsmuxPluginsFromBootstrapRepo {
+    param(
+        [Parameter(Mandatory = $true)][string]$BootstrapRepoPath,
+        [Parameter(Mandatory = $true)][string]$PluginRoot,
+        [Parameter(Mandatory = $true)][string]$ConfigPath
+    )
+
+    $pluginNames = Get-PsmuxManagedPluginNames -ConfigPath $ConfigPath
+    foreach ($pluginName in $pluginNames) {
+        $sourcePath = Join-Path $BootstrapRepoPath $pluginName
+        if (-not (Test-Path $sourcePath)) {
+            continue
+        }
+
+        $targetPath = Join-Path $PluginRoot $pluginName
+        if (Test-PsmuxPluginDirectoryValid -PluginPath $targetPath) {
+            continue
+        }
+
+        if (Test-Path $targetPath) {
+            Remove-Item -Path $targetPath -Recurse -Force -ErrorAction SilentlyContinue
+        }
+
+        Copy-Item -Path $sourcePath -Destination $targetPath -Recurse -Force
+        Write-Host "Bootstrapped plugin from monorepo: $pluginName" -ForegroundColor Green
+    }
+}
+
 function Invoke-WingetInstall {
     param(
         [Parameter(Mandatory = $true)][string]$Id,
@@ -544,6 +618,8 @@ if (Test-Path $ppmTargetPath) {
 Copy-Item -Path (Join-Path $ppmBootstrapRepo 'ppm') -Destination $ppmTargetPath -Recurse -Force
 Write-Host "PPM bootstrapped to $ppmTargetPath" -ForegroundColor Green
 
+Repair-PsmuxPluginsFromBootstrapRepo -BootstrapRepoPath $ppmBootstrapRepo -PluginRoot $psmuxPluginRoot -ConfigPath $psmuxTargetPath
+
 $ppmInstallScript = Join-Path $ppmTargetPath 'scripts\install_plugins.ps1'
 if (Test-Path $ppmInstallScript) {
     & $pwshBinary.Source -NoProfile -File $ppmInstallScript
@@ -555,6 +631,8 @@ if (Test-Path $ppmInstallScript) {
 } else {
     Write-Warning "PPM install script not found at $ppmInstallScript"
 }
+
+Repair-PsmuxPluginsFromBootstrapRepo -BootstrapRepoPath $ppmBootstrapRepo -PluginRoot $psmuxPluginRoot -ConfigPath $psmuxTargetPath
 
 if (Test-Path $ppmBootstrapRepo) {
     Remove-Item -Path $ppmBootstrapRepo -Recurse -Force
