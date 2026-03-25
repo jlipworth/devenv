@@ -1,13 +1,14 @@
 # setup-dev-tools.ps1
-# Installs Git, Node.js (via fnm), OpenAI Codex CLI, Claude Code, uv, psmux, Alacritty, Neovim, and GNU_files config — no admin required.
-# Safe to re-run on machines that reset regularly.
+# Installs Git, Node.js (via fnm), OpenAI Codex CLI, Claude Code, uv,
+# psmux, Alacritty, Neovim, and GNU_files config with no admin requirement.
 #
 # Usage: powershell -ExecutionPolicy Bypass -File setup-dev-tools.ps1
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
-# Version pins — keep in sync with versions.conf
+# Version pins - keep in sync with versions.conf
+$AlacrittyVersion = "0.16.1"
 $NeovimVersion = "0.11.6"
 $psmuxVersion = $null
 
@@ -40,6 +41,35 @@ function Add-UserPathOnce {
 
     if ($pathEntries -notcontains $Dir) {
         $newUserPath = if ($userPath) { "$userPath;$Dir" } else { $Dir }
+        [Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
+    }
+}
+
+function Remove-UserPathMatches {
+    param([Parameter(Mandatory = $true)][string[]]$Patterns)
+
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    if (-not $userPath) { return }
+
+    $pathEntries = $userPath -split ';' | Where-Object { $_ }
+    $filteredEntries = @()
+
+    foreach ($entry in $pathEntries) {
+        $keepEntry = $true
+        foreach ($pattern in $Patterns) {
+            if ($entry -match $pattern) {
+                $keepEntry = $false
+                break
+            }
+        }
+
+        if ($keepEntry) {
+            $filteredEntries += $entry
+        }
+    }
+
+    $newUserPath = $filteredEntries -join ';'
+    if ($newUserPath -ne $userPath) {
         [Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
     }
 }
@@ -84,23 +114,144 @@ function Test-FontInstalled {
     return $false
 }
 
+function Test-CommandExists {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    return $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+function Invoke-WingetInstall {
+    param(
+        [Parameter(Mandatory = $true)][string]$Id,
+        [switch]$UserScope
+    )
+
+    $wingetArgs = @(
+        "install",
+        "--id", $Id,
+        "-e",
+        "--accept-source-agreements",
+        "--accept-package-agreements"
+    )
+
+    if ($UserScope) {
+        $wingetArgs += @("--scope", "user")
+    }
+
+    & winget @wingetArgs
+    return ($LASTEXITCODE -eq 0)
+}
+
+function Get-FnmInstalledVersionForAlias {
+    param([Parameter(Mandatory = $true)][string]$Alias)
+
+    $fnmList = fnm list
+    foreach ($line in $fnmList) {
+        if (($line -match [regex]::Escape($Alias)) -and ($line -match 'v\d+\.\d+\.\d+')) {
+            return $matches[0]
+        }
+    }
+
+    return $null
+}
+
+function Ensure-StableNpmPrefix {
+    $desiredPrefix = "$env:APPDATA\npm"
+
+    if (-not (Test-Path $desiredPrefix)) {
+        New-Item -ItemType Directory -Path $desiredPrefix -Force | Out-Null
+    }
+
+    $currentPrefix = (npm config get prefix).Trim()
+    if ($currentPrefix -ne $desiredPrefix) {
+        npm config set prefix $desiredPrefix | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to set npm global prefix to '$desiredPrefix'."
+        }
+    }
+
+    Remove-UserPathMatches @([regex]::Escape("$env:LOCALAPPDATA\fnm_multishells"))
+    Add-UserPathOnce $desiredPrefix
+
+    return $desiredPrefix
+}
+
+function Test-NpmGlobalBinary {
+    param(
+        [Parameter(Mandatory = $true)][string]$Prefix,
+        [Parameter(Mandatory = $true)][string]$CommandName
+    )
+
+    $candidatePaths = @(
+        (Join-Path $Prefix "$CommandName.cmd"),
+        (Join-Path $Prefix "$CommandName.ps1"),
+        (Join-Path $Prefix $CommandName)
+    )
+
+    foreach ($candidatePath in $candidatePaths) {
+        if (Test-Path $candidatePath) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Install-PortableAlacritty {
+    $portableDir = "$env:LOCALAPPDATA\alacritty"
+    $portableExe = Join-Path $portableDir "alacritty.exe"
+    $downloadUrl = "https://github.com/alacritty/alacritty/releases/download/v$AlacrittyVersion/Alacritty-v$AlacrittyVersion-portable.exe"
+
+    if (-not (Test-Path $portableDir)) {
+        New-Item -ItemType Directory -Path $portableDir -Force | Out-Null
+    }
+
+    if (-not (Test-Path $portableExe)) {
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $portableExe
+    }
+
+    Add-UserPathOnce $portableDir
+}
+
+function Install-PortableNeovim {
+    $portableDir = "$env:LOCALAPPDATA\nvim-bin"
+    $portableZip = "$env:TEMP\nvim-win64.zip"
+    $portableRoot = Join-Path $portableDir "nvim-win64"
+    $downloadUrl = "https://github.com/neovim/neovim/releases/download/v$NeovimVersion/nvim-win64.zip"
+
+    if (-not (Test-Path $portableDir)) {
+        New-Item -ItemType Directory -Path $portableDir -Force | Out-Null
+    }
+
+    if (Test-Path $portableRoot) {
+        Remove-Item $portableRoot -Recurse -Force
+    }
+
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $portableZip
+    Expand-Archive -Path $portableZip -DestinationPath $portableDir -Force
+    Remove-Item $portableZip -Force
+}
+
 Write-Host "=== Dev Tools Setup (no admin) ===" -ForegroundColor Cyan
 
 # --- Pre-flight: check winget ---
-if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+if (-not (Test-CommandExists "winget")) {
     throw "winget is not available. Install App Installer from the Microsoft Store."
 }
 
 # --- 1. Git ---
 Write-Host "`n[1/10] Installing Git..." -ForegroundColor Yellow
 
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    winget install --id Git.Git -e --scope user --accept-source-agreements --accept-package-agreements
+if (-not (Test-CommandExists "git")) {
+    $gitInstalled = Invoke-WingetInstall -Id "Git.Git" -UserScope
+    if (-not $gitInstalled) {
+        throw "Git install failed via winget."
+    }
 }
 
 Add-UserPathOnce "$env:LOCALAPPDATA\Programs\Git\cmd"
 
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+if (-not (Test-CommandExists "git")) {
     throw "Git was installed but is not on PATH. Check '$env:LOCALAPPDATA\Programs\Git\cmd'."
 }
 
@@ -110,13 +261,16 @@ Write-Host "Git $gitVersion" -ForegroundColor Green
 # --- 2. fnm + Node.js + npm ---
 Write-Host "`n[2/10] Installing fnm + Node.js..." -ForegroundColor Yellow
 
-if (-not (Get-Command fnm -ErrorAction SilentlyContinue)) {
-    winget install --id Schniz.fnm -e --scope user --accept-source-agreements --accept-package-agreements
+if (-not (Test-CommandExists "fnm")) {
+    $fnmInstalled = Invoke-WingetInstall -Id "Schniz.fnm" -UserScope
+    if (-not $fnmInstalled) {
+        throw "fnm install failed via winget."
+    }
 }
 
 Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
 
-if (-not (Get-Command fnm -ErrorAction SilentlyContinue)) {
+if (-not (Test-CommandExists "fnm")) {
     throw "fnm was installed but is not on PATH. Check '$env:LOCALAPPDATA\Microsoft\WinGet\Links'."
 }
 
@@ -125,24 +279,45 @@ Ensure-ProfileLine $fnmInit
 Invoke-Expression ((fnm env --use-on-cd --shell powershell) | Out-String)
 
 fnm install --lts
-fnm use lts
+if ($LASTEXITCODE -ne 0) {
+    throw "fnm failed to install the latest LTS Node.js release."
+}
+
+$ltsNodeVersion = Get-FnmInstalledVersionForAlias "lts-latest"
+if (-not $ltsNodeVersion) {
+    throw "fnm installed Node.js, but the latest LTS version could not be resolved from 'fnm list'."
+}
+
+fnm use $ltsNodeVersion
+if ($LASTEXITCODE -ne 0) {
+    throw "fnm failed to activate Node.js $ltsNodeVersion."
+}
+
 $nodeVersion = (node --version).Trim()
-fnm default $nodeVersion
+
+fnm default $ltsNodeVersion
+if ($LASTEXITCODE -ne 0) {
+    throw "fnm failed to set Node.js $ltsNodeVersion as the default."
+}
 
 $npmVersion = (npm --version).Trim()
 Write-Host "Node $nodeVersion | npm $npmVersion" -ForegroundColor Green
 
+$npmPrefix = Ensure-StableNpmPrefix
+
 # --- 3. OpenAI Codex CLI ---
 Write-Host "`n[3/10] Installing OpenAI Codex CLI..." -ForegroundColor Yellow
 
-if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
+if (-not (Test-NpmGlobalBinary -Prefix $npmPrefix -CommandName "codex")) {
     npm install -g @openai/codex
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to install OpenAI Codex CLI via npm."
+    }
 }
 
-$npmPrefix = (npm config get prefix).Trim()
 Add-UserPathOnce $npmPrefix
 
-if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
+if (-not (Test-CommandExists "codex")) {
     Write-Warning "Codex was installed, but 'codex' is not on PATH in this session yet. Restart PowerShell if needed."
 }
 
@@ -157,11 +332,14 @@ Write-Host "Codex: $codexVersion" -ForegroundColor Green
 # --- 4. Claude Code ---
 Write-Host "`n[4/10] Installing Claude Code..." -ForegroundColor Yellow
 
-if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+if (-not (Test-NpmGlobalBinary -Prefix $npmPrefix -CommandName "claude")) {
     npm install -g @anthropic-ai/claude-code
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to install Claude Code via npm."
+    }
 }
 
-if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+if (-not (Test-CommandExists "claude")) {
     Write-Warning "Claude Code was installed, but 'claude' is not on PATH in this session yet. Restart PowerShell if needed."
 }
 
@@ -192,7 +370,7 @@ Write-Host "Claude Code: $claudeVersion" -ForegroundColor Green
 # --- 5. uv (Python manager) ---
 Write-Host "`n[5/10] Installing uv..." -ForegroundColor Yellow
 
-if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+if (-not (Test-CommandExists "uv")) {
     $uvInstaller = irm https://astral.sh/uv/install.ps1
     if (-not $uvInstaller) {
         throw "Failed to download uv installer."
@@ -202,7 +380,7 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
 
 Add-UserPathOnce "$env:USERPROFILE\.local\bin"
 
-if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+if (-not (Test-CommandExists "uv")) {
     throw "uv was installed but is not on PATH. Check '$env:USERPROFILE\.local\bin'."
 }
 
@@ -235,12 +413,18 @@ if ((Test-Path "$scriptRepoPath\.git") -and (Test-Path "$scriptRepoPath\nvim")) 
 # --- 7. psmux + config + plugins ---
 Write-Host "`n[7/10] Installing psmux + config..." -ForegroundColor Yellow
 
-if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
-    winget install --id Microsoft.PowerShell -e --scope user --accept-source-agreements --accept-package-agreements
+if (-not (Test-CommandExists "pwsh")) {
+    $pwshInstalled = Invoke-WingetInstall -Id "Microsoft.PowerShell" -UserScope
+    if (-not $pwshInstalled) {
+        throw "PowerShell 7 (pwsh) install failed via winget."
+    }
 }
 
-if (-not (Get-Command psmux -ErrorAction SilentlyContinue) -and -not (Get-Command tmux -ErrorAction SilentlyContinue)) {
-    winget install psmux --scope user --accept-source-agreements --accept-package-agreements
+if ((-not (Test-CommandExists "psmux")) -and (-not (Test-CommandExists "tmux"))) {
+    & winget install psmux --scope user --accept-source-agreements --accept-package-agreements
+    if ($LASTEXITCODE -ne 0) {
+        throw "psmux install failed via winget."
+    }
 }
 
 Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
@@ -300,6 +484,9 @@ if (Test-Path $ppmBootstrapRepo) {
 }
 
 git clone https://github.com/psmux/psmux-plugins.git $ppmBootstrapRepo
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to clone psmux plugin bootstrap repository."
+}
 
 if (Test-Path $ppmTargetPath) {
     Remove-Item -Path $ppmTargetPath -Recurse -Force
@@ -326,14 +513,28 @@ if (Test-Path $ppmBootstrapRepo) {
 # --- 8. Alacritty ---
 Write-Host "`n[8/10] Installing Alacritty..." -ForegroundColor Yellow
 
-if (-not (Get-Command alacritty -ErrorAction SilentlyContinue)) {
-    winget install --id Alacritty.Alacritty -e --scope user --accept-source-agreements --accept-package-agreements
+Add-UserPathOnce "$env:LOCALAPPDATA\alacritty"
+
+if (-not (Test-CommandExists "alacritty")) {
+    $alacrittyInstalled = Invoke-WingetInstall -Id "Alacritty.Alacritty" -UserScope
+    $alacrittyWingetExitCode = $LASTEXITCODE
+    Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+
+    if (-not (Test-CommandExists "alacritty")) {
+        if ($alacrittyInstalled) {
+            Write-Host "winget did not leave an 'alacritty' command available, falling back to portable Alacritty..." -ForegroundColor Yellow
+        } else {
+            Write-Host "winget install failed (exit code $alacrittyWingetExitCode), falling back to portable Alacritty..." -ForegroundColor Yellow
+        }
+        Install-PortableAlacritty
+    }
 }
 
 Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+Add-UserPathOnce "$env:LOCALAPPDATA\alacritty"
 
-if (-not (Get-Command alacritty -ErrorAction SilentlyContinue)) {
-    Write-Warning "Alacritty was installed, but 'alacritty' is not on PATH in this session yet. Restart PowerShell if needed."
+if (-not (Test-CommandExists "alacritty")) {
+    throw "Alacritty install failed. Neither winget nor the portable fallback produced an 'alacritty' command."
 }
 
 $alacrittyWindowsSourcePath = "$gnuFilesPath\alacritty.windows.toml"
@@ -362,12 +563,12 @@ if (Test-Path $alacrittySourcePath) {
 
     if ((-not $mesloFontInstalled) -and (-not $jetBrainsMonoNerdInstalled)) {
         Write-Host "MesloLGM Nerd Font Mono not found. Installing JetBrainsMono Nerd Font..." -ForegroundColor Yellow
-        winget install --id DEVCOM.JetBrainsMonoNerdFont -e --scope user --accept-source-agreements --accept-package-agreements
+        $fontInstalled = Invoke-WingetInstall -Id "DEVCOM.JetBrainsMonoNerdFont" -UserScope
 
-        if ($LASTEXITCODE -eq 0) {
+        if ($fontInstalled) {
             $jetBrainsMonoNerdInstalled = Test-FontInstalled @("JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font")
         } else {
-            Write-Warning "JetBrainsMono Nerd Font install failed (exit code $LASTEXITCODE)."
+            Write-Warning "JetBrainsMono Nerd Font install failed via winget."
         }
     }
 
@@ -414,32 +615,25 @@ Write-Host "`n[9/10] Installing Neovim..." -ForegroundColor Yellow
 $portableNvimBinPath = "$env:LOCALAPPDATA\nvim-bin\nvim-win64\bin"
 Add-UserPathOnce $portableNvimBinPath
 
-if (-not (Get-Command nvim -ErrorAction SilentlyContinue)) {
-    # Try winget first (try/catch does NOT catch native exe failures in PS 5.1,
-    # so we must check $LASTEXITCODE)
-    $wingetSuccess = $false
-    winget install --id Neovim.Neovim -e --scope user --accept-source-agreements --accept-package-agreements
-    if ($LASTEXITCODE -eq 0) {
-        $wingetSuccess = $true
-    } else {
-        Write-Host "winget install failed (exit code $LASTEXITCODE), falling back to portable zip..." -ForegroundColor Yellow
-    }
+if (-not (Test-CommandExists "nvim")) {
+    $wingetSuccess = Invoke-WingetInstall -Id "Neovim.Neovim" -UserScope
+    $nvimWingetExitCode = $LASTEXITCODE
 
     Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
 
-    if (-not $wingetSuccess) {
-        # Fallback: download portable zip
-        $nvimDir = "$env:LOCALAPPDATA\nvim-bin"
-        $nvimZip = "$env:TEMP\nvim-win64.zip"
-        $nvimExtractedDir = "$nvimDir\nvim-win64"
-        if (Test-Path $nvimExtractedDir) {
-            Remove-Item $nvimExtractedDir -Recurse -Force
+    if (-not (Test-CommandExists "nvim")) {
+        if ($wingetSuccess) {
+            Write-Host "winget did not leave an 'nvim' command available, falling back to portable zip..." -ForegroundColor Yellow
+        } else {
+            Write-Host "winget install failed (exit code $nvimWingetExitCode), falling back to portable zip..." -ForegroundColor Yellow
         }
-        Invoke-WebRequest -Uri "https://github.com/neovim/neovim/releases/download/v$NeovimVersion/nvim-win64.zip" -OutFile $nvimZip
-        Expand-Archive -Path $nvimZip -DestinationPath $nvimDir -Force
-        Remove-Item $nvimZip -Force
+        Install-PortableNeovim
         Add-UserPathOnce $portableNvimBinPath
     }
+}
+
+if (-not (Test-CommandExists "nvim")) {
+    throw "Neovim install failed. Neither winget nor the portable zip fallback produced an 'nvim' command."
 }
 
 $nvimVersion = (nvim --version | Select-Object -First 1).Trim()
@@ -477,8 +671,8 @@ if (-not $skipNvimRelink) {
         New-Item -ItemType Junction -Path $nvimConfigPath -Target $nvimSourcePath -ErrorAction Stop | Out-Null
         Write-Host "Neovim config linked: $nvimConfigPath -> $nvimSourcePath" -ForegroundColor Green
     } catch {
-        # Junction fails on network shares — fall back to copy
-        Write-Host "Junction failed (network share?), copying config instead..." -ForegroundColor Yellow
+        # Junctions can fail on network-backed home directories.
+        Write-Host "Junction failed, copying config instead..." -ForegroundColor Yellow
         Copy-Item -Path $nvimSourcePath -Destination $nvimConfigPath -Recurse
         Write-Host "Neovim config copied to $nvimConfigPath (manual sync needed after repo updates)" -ForegroundColor Yellow
     }
