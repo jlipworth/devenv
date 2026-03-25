@@ -120,6 +120,42 @@ function Test-CommandExists {
     return $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
 }
 
+function Test-WingetPackageInstalled {
+    param([Parameter(Mandatory = $true)][string]$Id)
+
+    $wingetOutput = (& winget list --id $Id -e --accept-source-agreements | Out-String)
+    return ($wingetOutput -match [regex]::Escape($Id))
+}
+
+function Find-WingetInstalledBinary {
+    param(
+        [Parameter(Mandatory = $true)][string]$PackagePrefix,
+        [Parameter(Mandatory = $true)][string[]]$BinaryNames
+    )
+
+    $packagesRoot = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages"
+    if (-not (Test-Path $packagesRoot)) {
+        return $null
+    }
+
+    $packageDir = Get-ChildItem -Path $packagesRoot -Directory -Filter "$PackagePrefix*" -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1
+
+    if (-not $packageDir) {
+        return $null
+    }
+
+    foreach ($binaryName in $BinaryNames) {
+        $candidatePath = Join-Path $packageDir.FullName "$binaryName.exe"
+        if (Test-Path $candidatePath) {
+            return $candidatePath
+        }
+    }
+
+    return $null
+}
+
 function Invoke-WingetInstall {
     param(
         [Parameter(Mandatory = $true)][string]$Id,
@@ -413,6 +449,8 @@ if ((Test-Path "$scriptRepoPath\.git") -and (Test-Path "$scriptRepoPath\nvim")) 
 # --- 7. psmux + config + plugins ---
 Write-Host "`n[7/10] Installing psmux + config..." -ForegroundColor Yellow
 
+$psmuxWingetId = "marlocarlo.psmux"
+
 if (-not (Test-CommandExists "pwsh")) {
     $pwshInstalled = Invoke-WingetInstall -Id "Microsoft.PowerShell" -UserScope
     if (-not $pwshInstalled) {
@@ -421,14 +459,23 @@ if (-not (Test-CommandExists "pwsh")) {
 }
 
 if ((-not (Test-CommandExists "psmux")) -and (-not (Test-CommandExists "tmux"))) {
-    & winget install psmux --scope user --accept-source-agreements --accept-package-agreements
+    & winget install --id $psmuxWingetId -e --scope user --accept-source-agreements --accept-package-agreements
     if ($LASTEXITCODE -ne 0) {
-        throw "psmux install failed via winget."
+        if (-not (Test-WingetPackageInstalled $psmuxWingetId)) {
+            throw "psmux install failed via winget."
+        }
+
+        Write-Host "psmux is already installed via winget; continuing." -ForegroundColor Yellow
     }
 }
 
 Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
 Add-UserPathOnce "$env:USERPROFILE\.cargo\bin"
+
+$psmuxInstalledBinary = Find-WingetInstalledBinary -PackagePrefix $psmuxWingetId -BinaryNames @("psmux", "tmux")
+if ($psmuxInstalledBinary) {
+    Add-UserPathOnce (Split-Path -Parent $psmuxInstalledBinary)
+}
 
 $pwshBinary = Get-Command pwsh -ErrorAction SilentlyContinue
 if (-not $pwshBinary) {
@@ -438,6 +485,9 @@ if (-not $pwshBinary) {
 $psmuxBinary = Get-Command psmux -ErrorAction SilentlyContinue
 if (-not $psmuxBinary) {
     $psmuxBinary = Get-Command tmux -ErrorAction SilentlyContinue
+}
+if ((-not $psmuxBinary) -and $psmuxInstalledBinary) {
+    $psmuxBinary = Get-Command $psmuxInstalledBinary -ErrorAction SilentlyContinue
 }
 
 if (-not $psmuxBinary) {
