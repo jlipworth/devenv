@@ -1,5 +1,5 @@
 # setup-dev-tools.ps1
-# Installs Git, Node.js (via fnm), OpenAI Codex CLI, Claude Code, uv, Alacritty, Neovim, and GNU_files config — no admin required.
+# Installs Git, Node.js (via fnm), OpenAI Codex CLI, Claude Code, uv, psmux, Alacritty, Neovim, and GNU_files config — no admin required.
 # Safe to re-run on machines that reset regularly.
 #
 # Usage: powershell -ExecutionPolicy Bypass -File setup-dev-tools.ps1
@@ -9,6 +9,7 @@ $ProgressPreference = "SilentlyContinue"
 
 # Version pins — keep in sync with versions.conf
 $NeovimVersion = "0.11.6"
+$psmuxVersion = $null
 
 function Add-PathOnce {
     param([Parameter(Mandatory = $true)][string]$Dir)
@@ -91,7 +92,7 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
 }
 
 # --- 1. Git ---
-Write-Host "`n[1/9] Installing Git..." -ForegroundColor Yellow
+Write-Host "`n[1/10] Installing Git..." -ForegroundColor Yellow
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     winget install --id Git.Git -e --scope user --accept-source-agreements --accept-package-agreements
@@ -107,7 +108,7 @@ $gitVersion = (git --version).Trim()
 Write-Host "Git $gitVersion" -ForegroundColor Green
 
 # --- 2. fnm + Node.js + npm ---
-Write-Host "`n[2/9] Installing fnm + Node.js..." -ForegroundColor Yellow
+Write-Host "`n[2/10] Installing fnm + Node.js..." -ForegroundColor Yellow
 
 if (-not (Get-Command fnm -ErrorAction SilentlyContinue)) {
     winget install --id Schniz.fnm -e --scope user --accept-source-agreements --accept-package-agreements
@@ -132,7 +133,7 @@ $npmVersion = (npm --version).Trim()
 Write-Host "Node $nodeVersion | npm $npmVersion" -ForegroundColor Green
 
 # --- 3. OpenAI Codex CLI ---
-Write-Host "`n[3/9] Installing OpenAI Codex CLI..." -ForegroundColor Yellow
+Write-Host "`n[3/10] Installing OpenAI Codex CLI..." -ForegroundColor Yellow
 
 if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
     npm install -g @openai/codex
@@ -154,7 +155,7 @@ try {
 Write-Host "Codex: $codexVersion" -ForegroundColor Green
 
 # --- 4. Claude Code ---
-Write-Host "`n[4/9] Installing Claude Code..." -ForegroundColor Yellow
+Write-Host "`n[4/10] Installing Claude Code..." -ForegroundColor Yellow
 
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
     npm install -g @anthropic-ai/claude-code
@@ -189,7 +190,7 @@ if ($gitBashPath) {
 Write-Host "Claude Code: $claudeVersion" -ForegroundColor Green
 
 # --- 5. uv (Python manager) ---
-Write-Host "`n[5/9] Installing uv..." -ForegroundColor Yellow
+Write-Host "`n[5/10] Installing uv..." -ForegroundColor Yellow
 
 if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
     $uvInstaller = irm https://astral.sh/uv/install.ps1
@@ -209,7 +210,7 @@ $uvVersion = (uv --version).Trim()
 Write-Host "uv $uvVersion" -ForegroundColor Green
 
 # --- 6. Clone GNU_files repo ---
-Write-Host "`n[6/9] Preparing GNU_files repo..." -ForegroundColor Yellow
+Write-Host "`n[6/10] Preparing GNU_files repo..." -ForegroundColor Yellow
 
 $gnuFilesPath = "$env:USERPROFILE\GNU_files"
 $scriptRepoPath = $PSScriptRoot
@@ -231,8 +232,99 @@ if ((Test-Path "$scriptRepoPath\.git") -and (Test-Path "$scriptRepoPath\nvim")) 
     throw "Path exists but is not a git repo: $gnuFilesPath"
 }
 
-# --- 7. Alacritty ---
-Write-Host "`n[7/9] Installing Alacritty..." -ForegroundColor Yellow
+# --- 7. psmux + config + plugins ---
+Write-Host "`n[7/10] Installing psmux + config..." -ForegroundColor Yellow
+
+if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
+    winget install --id Microsoft.PowerShell -e --scope user --accept-source-agreements --accept-package-agreements
+}
+
+if (-not (Get-Command psmux -ErrorAction SilentlyContinue) -and -not (Get-Command tmux -ErrorAction SilentlyContinue)) {
+    winget install psmux --scope user --accept-source-agreements --accept-package-agreements
+}
+
+Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+Add-UserPathOnce "$env:USERPROFILE\.cargo\bin"
+
+$pwshBinary = Get-Command pwsh -ErrorAction SilentlyContinue
+if (-not $pwshBinary) {
+    throw "PowerShell 7 (pwsh) is required for the psmux config/bootstrap, but it is not on PATH."
+}
+
+$psmuxBinary = Get-Command psmux -ErrorAction SilentlyContinue
+if (-not $psmuxBinary) {
+    $psmuxBinary = Get-Command tmux -ErrorAction SilentlyContinue
+}
+
+if (-not $psmuxBinary) {
+    Write-Warning "psmux was installed, but neither 'psmux' nor its tmux alias is on PATH in this session yet. Restart PowerShell if needed."
+} else {
+    try {
+        $psmuxVersion = (& $psmuxBinary.Source --version | Select-Object -First 1).Trim()
+    } catch {
+        $psmuxVersion = "installed"
+    }
+    Write-Host "psmux: $psmuxVersion" -ForegroundColor Green
+}
+
+$psmuxSourcePath = "$gnuFilesPath\.psmux.conf"
+$psmuxTargetPath = "$env:USERPROFILE\.psmux.conf"
+$psmuxPluginRoot = "$env:USERPROFILE\.psmux\plugins"
+$ppmTargetPath = Join-Path $psmuxPluginRoot 'ppm'
+
+if (Test-Path $psmuxSourcePath) {
+    if (Test-Path $psmuxTargetPath) {
+        $existingPsmuxConfig = Get-Content -Path $psmuxTargetPath -Raw -ErrorAction SilentlyContinue
+        if ($existingPsmuxConfig -and -not $existingPsmuxConfig.StartsWith("# Managed by setup-dev-tools.ps1")) {
+            $backupPath = "${psmuxTargetPath}.backup_$(Get-Date -Format 'yyyyMMddHHmmss')"
+            Copy-Item -Path $psmuxTargetPath -Destination $backupPath -Force
+            Write-Host "Existing psmux config backed up to $backupPath" -ForegroundColor Yellow
+        }
+    }
+
+    $managedHeader = "# Managed by setup-dev-tools.ps1 from GNU_files/.psmux.conf`r`n"
+    $psmuxConfig = $managedHeader + (Get-Content -Path $psmuxSourcePath -Raw)
+    Set-Content -Path $psmuxTargetPath -Value $psmuxConfig -NoNewline
+    Write-Host "psmux config written: $psmuxTargetPath" -ForegroundColor Green
+} else {
+    Write-Warning "psmux config source path not found: $psmuxSourcePath"
+}
+
+if (-not (Test-Path $psmuxPluginRoot)) {
+    New-Item -ItemType Directory -Path $psmuxPluginRoot -Force | Out-Null
+}
+
+$ppmBootstrapRepo = Join-Path $env:TEMP "psmux-plugins-bootstrap"
+if (Test-Path $ppmBootstrapRepo) {
+    Remove-Item -Path $ppmBootstrapRepo -Recurse -Force
+}
+
+git clone https://github.com/psmux/psmux-plugins.git $ppmBootstrapRepo
+
+if (Test-Path $ppmTargetPath) {
+    Remove-Item -Path $ppmTargetPath -Recurse -Force
+}
+Copy-Item -Path (Join-Path $ppmBootstrapRepo 'ppm') -Destination $ppmTargetPath -Recurse -Force
+Write-Host "PPM bootstrapped to $ppmTargetPath" -ForegroundColor Green
+
+$ppmInstallScript = Join-Path $ppmTargetPath 'scripts\install_plugins.ps1'
+if (Test-Path $ppmInstallScript) {
+    & $pwshBinary.Source -NoProfile -File $ppmInstallScript
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "PPM plugin install reported exit code $LASTEXITCODE. You can retry inside psmux with Prefix + I."
+    } else {
+        Write-Host "psmux plugins installed from .psmux.conf" -ForegroundColor Green
+    }
+} else {
+    Write-Warning "PPM install script not found at $ppmInstallScript"
+}
+
+if (Test-Path $ppmBootstrapRepo) {
+    Remove-Item -Path $ppmBootstrapRepo -Recurse -Force
+}
+
+# --- 8. Alacritty ---
+Write-Host "`n[8/10] Installing Alacritty..." -ForegroundColor Yellow
 
 if (-not (Get-Command alacritty -ErrorAction SilentlyContinue)) {
     winget install --id Alacritty.Alacritty -e --scope user --accept-source-agreements --accept-package-agreements
@@ -316,8 +408,8 @@ try {
 
 Write-Host "Alacritty: $alacrittyVersion" -ForegroundColor Green
 
-# --- 8. Neovim ---
-Write-Host "`n[8/9] Installing Neovim..." -ForegroundColor Yellow
+# --- 9. Neovim ---
+Write-Host "`n[9/10] Installing Neovim..." -ForegroundColor Yellow
 
 $portableNvimBinPath = "$env:LOCALAPPDATA\nvim-bin\nvim-win64\bin"
 Add-UserPathOnce $portableNvimBinPath
@@ -353,8 +445,8 @@ if (-not (Get-Command nvim -ErrorAction SilentlyContinue)) {
 $nvimVersion = (nvim --version | Select-Object -First 1).Trim()
 Write-Host "Neovim: $nvimVersion" -ForegroundColor Green
 
-# --- 9. Neovim config junction ---
-Write-Host "`n[9/9] Linking Neovim config..." -ForegroundColor Yellow
+# --- 10. Neovim config junction ---
+Write-Host "`n[10/10] Linking Neovim config..." -ForegroundColor Yellow
 
 $nvimConfigPath = "$env:LOCALAPPDATA\nvim"
 $nvimSourcePath = "$gnuFilesPath\nvim"
@@ -400,6 +492,7 @@ Write-Host "  npm   : $npmVersion"
 Write-Host "  codex : $codexVersion"
 Write-Host "  claude: $claudeVersion"
 Write-Host "  uv    : $uvVersion"
+if ($psmuxVersion) { Write-Host "  psmux : $psmuxVersion" }
 Write-Host "  alacritty: $alacrittyVersion"
 Write-Host "  nvim  : $nvimVersion"
 Write-Host "  GNU_files: $gnuFilesPath"
@@ -407,4 +500,4 @@ Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan
 Write-Host "  1. Restart PowerShell so PATH/profile changes are fully picked up."
 Write-Host "  2. Run 'codex' and 'claude' once to complete sign-in/setup."
-Write-Host "  3. Run 'alacritty' and 'nvim' to verify the GNU_files config loads."
+Write-Host "  3. Run 'psmux' (or 'tmux') once, then verify Alacritty and Neovim load correctly."
