@@ -270,13 +270,64 @@ function Find-WingetInstalledBinary {
     }
 
     foreach ($binaryName in $BinaryNames) {
-        $candidatePath = Join-Path $packageDir.FullName "$binaryName.exe"
-        if (Test-Path $candidatePath) {
-            return $candidatePath
+        $candidatePaths = Get-ChildItem -Path $packageDir.FullName -Recurse -File -Filter "$binaryName.exe" -ErrorAction SilentlyContinue |
+            Sort-Object FullName
+        if ($candidatePaths) {
+            return $candidatePaths[0].FullName
         }
     }
 
     return $null
+}
+
+function Get-CommandInfoAny {
+    param([Parameter(Mandatory = $true)][string[]]$Names)
+
+    foreach ($name in $Names) {
+        $commandInfo = Get-Command $name -ErrorAction SilentlyContinue
+        if ($commandInfo) {
+            return $commandInfo
+        }
+    }
+
+    return $null
+}
+
+function Ensure-WingetBinaryInstalled {
+    param(
+        [Parameter(Mandatory = $true)][string]$Id,
+        [Parameter(Mandatory = $true)][string]$PackagePrefix,
+        [Parameter(Mandatory = $true)][string[]]$BinaryNames,
+        [Parameter(Mandatory = $true)][string]$DisplayName
+    )
+
+    $commandInfo = Get-CommandInfoAny -Names $BinaryNames
+    if ($commandInfo) {
+        return $commandInfo
+    }
+
+    $installSucceeded = Invoke-WingetInstall -Id $Id -UserScope
+    if ((-not $installSucceeded) -and (-not (Test-WingetPackageInstalled $Id))) {
+        throw "$DisplayName install failed via winget."
+    }
+
+    Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+
+    $installedBinary = Find-WingetInstalledBinary -PackagePrefix $PackagePrefix -BinaryNames $BinaryNames
+    if ($installedBinary) {
+        Add-UserPathOnce (Split-Path -Parent $installedBinary)
+    }
+
+    $commandInfo = Get-CommandInfoAny -Names $BinaryNames
+    if ((-not $commandInfo) -and $installedBinary) {
+        $commandInfo = Get-Command $installedBinary -ErrorAction SilentlyContinue
+    }
+
+    if (-not $commandInfo) {
+        throw "$DisplayName was installed but no command was found. Check WinGet package '$Id'."
+    }
+
+    return $commandInfo
 }
 
 function Get-PsmuxManagedPluginNames {
@@ -876,6 +927,15 @@ Write-Host "Alacritty: $alacrittyVersion" -ForegroundColor Green
 
 # --- 9. Neovim ---
 Write-Host "`n[9/10] Installing Neovim..." -ForegroundColor Yellow
+
+$fdBinary = Ensure-WingetBinaryInstalled -Id "sharkdp.fd" -PackagePrefix "sharkdp.fd" -BinaryNames @("fd") -DisplayName "fd"
+$gccBinary = Ensure-WingetBinaryInstalled -Id "BrechtSanders.WinLibs.POSIX.UCRT" -PackagePrefix "BrechtSanders.WinLibs.POSIX.UCRT" -BinaryNames @("gcc") -DisplayName "WinLibs GCC"
+$treeSitterBinary = Ensure-WingetBinaryInstalled -Id "tree-sitter.tree-sitter-cli" -PackagePrefix "tree-sitter.tree-sitter-cli" -BinaryNames @("tree-sitter") -DisplayName "tree-sitter-cli"
+
+$fdVersion = (& $fdBinary.Source --version | Select-Object -First 1).Trim()
+$gccVersion = (& $gccBinary.Source --version | Select-Object -First 1).Trim()
+$treeSitterVersion = (& $treeSitterBinary.Source --version | Select-Object -First 1).Trim()
+Write-Host "fd: $fdVersion | gcc: $gccVersion | tree-sitter: $treeSitterVersion" -ForegroundColor Green
 
 $portableNvimBinPath = "$env:LOCALAPPDATA\nvim-bin\nvim-win64\bin"
 Add-UserPathOnce $portableNvimBinPath
