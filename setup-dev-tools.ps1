@@ -114,6 +114,129 @@ function Test-FontInstalled {
     return $false
 }
 
+function Get-FontRegistryDisplayName {
+    param(
+        [Parameter(Mandatory = $true)][string]$FileName,
+        [Parameter(Mandatory = $true)][string]$FamilyName,
+        [Parameter(Mandatory = $true)][string]$FileNamePrefix
+    )
+
+    $style = [IO.Path]::GetFileNameWithoutExtension($FileName)
+    if ($style.StartsWith($FileNamePrefix)) {
+        $style = $style.Substring($FileNamePrefix.Length)
+    }
+
+    if (($style -eq '') -or ($style -eq 'Regular')) {
+        return "$FamilyName (TrueType)"
+    }
+
+    $styleParts = [regex]::Matches($style, '[A-Z][a-z]*') | ForEach-Object { $_.Value }
+    if ($styleParts.Count -gt 0) {
+        $style = $styleParts -join ' '
+    }
+    return "$FamilyName $style (TrueType)"
+}
+
+function Notify-FontChanged {
+    Add-Type -Namespace Win32 -Name NativeMethods -MemberDefinition @"
+[System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+public static extern System.IntPtr SendMessageTimeout(
+    System.IntPtr hWnd,
+    uint Msg,
+    System.IntPtr wParam,
+    string lParam,
+    uint fuFlags,
+    uint uTimeout,
+    out System.IntPtr lpdwResult);
+"@ -ErrorAction SilentlyContinue
+
+    $HWND_BROADCAST = [IntPtr]0xffff
+    $WM_FONTCHANGE = 0x001D
+    $SMTO_ABORTIFHUNG = 0x0002
+    $result = [IntPtr]::Zero
+    [Win32.NativeMethods]::SendMessageTimeout(
+        $HWND_BROADCAST,
+        $WM_FONTCHANGE,
+        [IntPtr]::Zero,
+        $null,
+        $SMTO_ABORTIFHUNG,
+        1000,
+        [ref]$result
+    ) | Out-Null
+}
+
+function Install-UserFontsFromDirectory {
+    param(
+        [Parameter(Mandatory = $true)][string]$SourceDir,
+        [Parameter(Mandatory = $true)][string[]]$Patterns,
+        [Parameter(Mandatory = $true)][string]$FamilyName,
+        [Parameter(Mandatory = $true)][string]$FileNamePrefix
+    )
+
+    if (-not (Test-Path $SourceDir)) {
+        throw "Font source directory not found: $SourceDir"
+    }
+
+    $targetDir = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
+    $fontRegistryPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+
+    if (-not (Test-Path $targetDir)) {
+        New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+    }
+    if (-not (Test-Path $fontRegistryPath)) {
+        New-Item -Path $fontRegistryPath -Force | Out-Null
+    }
+
+    $existingFontEntries = (reg query "HKCU\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts" 2>$null) |
+        Where-Object { $_ -match [regex]::Escape($FamilyName) }
+    foreach ($existingFontEntry in $existingFontEntries) {
+        if ($existingFontEntry -match '^\s+(.+?)\s+REG_SZ\s+') {
+            & reg delete "HKCU\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts" /v $Matches[1] /f | Out-Null
+        }
+    }
+
+    $fontFiles = Get-ChildItem -Path $SourceDir -File | Where-Object {
+        $fileName = $_.Name
+        $Patterns | Where-Object { $fileName -like $_ }
+    }
+
+    if (-not $fontFiles) {
+        throw "No font files matched in $SourceDir"
+    }
+
+    foreach ($fontFile in $fontFiles) {
+        $targetPath = Join-Path $targetDir $fontFile.Name
+        Copy-Item -Path $fontFile.FullName -Destination $targetPath -Force
+
+        $displayName = Get-FontRegistryDisplayName -FileName $fontFile.Name -FamilyName $FamilyName -FileNamePrefix $FileNamePrefix
+        & reg add "HKCU\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts" /v $displayName /t REG_SZ /d $fontFile.Name /f | Out-Null
+    }
+
+    Notify-FontChanged
+}
+
+function Install-JetBrainsMonoNerdFont {
+    $downloadUrl = "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip"
+    $archivePath = Join-Path $env:TEMP "JetBrainsMono.zip"
+    $extractDir = Join-Path $env:TEMP "JetBrainsMono-font"
+
+    if (Test-Path $extractDir) {
+        Remove-Item -Path $extractDir -Recurse -Force
+    }
+
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
+    Expand-Archive -Path $archivePath -DestinationPath $extractDir -Force
+
+    Install-UserFontsFromDirectory `
+        -SourceDir $extractDir `
+        -Patterns @("JetBrainsMonoNerdFontMono-*.ttf") `
+        -FamilyName "JetBrainsMono NFM" `
+        -FileNamePrefix "JetBrainsMonoNerdFontMono-"
+
+    Remove-Item -Path $archivePath -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 function Test-CommandExists {
     param([Parameter(Mandatory = $true)][string]$Name)
 
@@ -687,23 +810,37 @@ if (Test-Path $alacrittySourcePath) {
     }
 
     $mesloFontInstalled = Test-FontInstalled @("MesloLGM Nerd Font Mono")
-    $jetBrainsMonoNerdInstalled = Test-FontInstalled @("JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font")
+    $jetBrainsMonoNerdInstalled = Test-FontInstalled @("JetBrainsMono NFM", "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font")
 
     if ((-not $mesloFontInstalled) -and (-not $jetBrainsMonoNerdInstalled)) {
         Write-Host "MesloLGM Nerd Font Mono not found. Installing JetBrainsMono Nerd Font..." -ForegroundColor Yellow
         $fontInstalled = Invoke-WingetInstall -Id "DEVCOM.JetBrainsMonoNerdFont" -UserScope
 
         if ($fontInstalled) {
-            $jetBrainsMonoNerdInstalled = Test-FontInstalled @("JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font")
-        } else {
-            Write-Warning "JetBrainsMono Nerd Font install failed via winget."
+            $jetBrainsMonoNerdInstalled = Test-FontInstalled @("JetBrainsMono NFM", "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font")
         }
+
+        if (-not $jetBrainsMonoNerdInstalled) {
+            if (-not $fontInstalled) {
+                Write-Warning "JetBrainsMono Nerd Font install failed via winget. Falling back to direct user-font install."
+            } else {
+                Write-Warning "JetBrainsMono Nerd Font was not detected after winget install. Falling back to direct user-font install."
+            }
+
+            try {
+                Install-JetBrainsMonoNerdFont
+                $jetBrainsMonoNerdInstalled = Test-FontInstalled @("JetBrainsMono NFM", "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font")
+            } catch {
+                Write-Warning "Direct JetBrainsMono Nerd Font install failed: $($_.Exception.Message)"
+            }
+        }
+
     }
 
     if (-not $mesloFontInstalled) {
         if ($jetBrainsMonoNerdInstalled) {
-            $alacrittyConfig = $alacrittyConfig -replace 'family = "MesloLGM Nerd Font Mono"', 'family = "JetBrainsMono Nerd Font Mono"'
-            Write-Host "Using JetBrainsMono Nerd Font Mono in Alacritty config." -ForegroundColor Green
+            $alacrittyConfig = $alacrittyConfig -replace 'family = "MesloLGM Nerd Font Mono"', 'family = "JetBrainsMono NFM"'
+            Write-Host "Using JetBrainsMono NFM in Alacritty config." -ForegroundColor Green
         } else {
             $alacrittyConfig = $alacrittyConfig -replace 'family = "MesloLGM Nerd Font Mono"', 'family = "Cascadia Mono"'
             Write-Warning "No preferred Nerd Font was found. Using Cascadia Mono in Alacritty config."
