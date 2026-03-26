@@ -933,13 +933,15 @@ $rgBinary = Ensure-WingetBinaryInstalled -Id "BurntSushi.ripgrep.MSVC" -PackageP
 $gccBinary = Ensure-WingetBinaryInstalled -Id "BrechtSanders.WinLibs.POSIX.UCRT" -PackagePrefix "BrechtSanders.WinLibs.POSIX.UCRT" -BinaryNames @("gcc") -DisplayName "WinLibs GCC"
 $treeSitterBinary = Ensure-WingetBinaryInstalled -Id "tree-sitter.tree-sitter-cli" -PackagePrefix "tree-sitter.tree-sitter-cli" -BinaryNames @("tree-sitter") -DisplayName "tree-sitter-cli"
 $lazygitBinary = Ensure-WingetBinaryInstalled -Id "JesseDuffield.lazygit" -PackagePrefix "JesseDuffield.lazygit" -BinaryNames @("lazygit") -DisplayName "lazygit"
+$cmakeBinary = Ensure-WingetBinaryInstalled -Id "Kitware.CMake" -PackagePrefix "Kitware.CMake" -BinaryNames @("cmake") -DisplayName "CMake"
 
 $fdVersion = (& $fdBinary.Source --version | Select-Object -First 1).Trim()
 $rgVersion = (& $rgBinary.Source --version | Select-Object -First 1).Trim()
 $gccVersion = (& $gccBinary.Source --version | Select-Object -First 1).Trim()
 $treeSitterVersion = (& $treeSitterBinary.Source --version | Select-Object -First 1).Trim()
 $lazygitVersion = (& $lazygitBinary.Source --version | Select-Object -First 1).Trim()
-Write-Host "fd: $fdVersion | rg: $rgVersion | gcc: $gccVersion | tree-sitter: $treeSitterVersion | lazygit: $lazygitVersion" -ForegroundColor Green
+$cmakeVersion = (& $cmakeBinary.Source --version | Select-Object -First 1).Trim()
+Write-Host "fd: $fdVersion | rg: $rgVersion | gcc: $gccVersion | tree-sitter: $treeSitterVersion | lazygit: $lazygitVersion | cmake: $cmakeVersion" -ForegroundColor Green
 
 $portableNvimBinPath = "$env:LOCALAPPDATA\nvim-bin\nvim-win64\bin"
 Add-UserPathOnce $portableNvimBinPath
@@ -1005,6 +1007,26 @@ if (-not $skipNvimRelink) {
         Copy-Item -Path $nvimSourcePath -Destination $nvimConfigPath -Recurse
         Write-Host "Neovim config copied to $nvimConfigPath (manual sync needed after repo updates)" -ForegroundColor Yellow
     }
+}
+
+# --- Optional: LLVM/Clang toolchain ---
+$installLlvm = Read-Host "Install LLVM/Clang toolchain for C++ development? (y/N)"
+if ($installLlvm -eq 'y' -or $installLlvm -eq 'Y') {
+    Write-Host "Installing LLVM..." -ForegroundColor Yellow
+    $llvmInstalled = Invoke-WingetInstall -Id "LLVM.LLVM" -UserScope
+    if ($llvmInstalled) {
+        Add-UserPathOnce "$env:ProgramFiles\LLVM\bin"
+        if (Test-CommandExists "clang") {
+            $llvmVersion = (clang --version | Select-Object -First 1).Trim()
+            Write-Host "LLVM: $llvmVersion" -ForegroundColor Green
+        } else {
+            Write-Host "LLVM installed — restart PowerShell for clang/clang++ to appear on PATH." -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "LLVM install failed (exit code $LASTEXITCODE). You can install manually: winget install LLVM.LLVM" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "Skipping LLVM (clangd LSP is still available via Mason in Neovim)." -ForegroundColor DarkGray
 }
 
 # --- Done ---
