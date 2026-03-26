@@ -1061,7 +1061,13 @@ if (-not $skipNvimRelink) {
 }
 
 # --- Optional: LLVM/Clang toolchain ---
-$installLlvm = Read-Host "Install LLVM/Clang toolchain for C++ development? (y/N)"
+$isInteractive = [Environment]::UserInteractive -and -not ([Environment]::GetCommandLineArgs() -match '-NonInteractive')
+if ($isInteractive) {
+    $installLlvm = Read-Host "Install LLVM/Clang toolchain for C++ development? (y/N)"
+} else {
+    Write-Host "Non-interactive session — skipping LLVM prompt (default: N)." -ForegroundColor DarkGray
+    $installLlvm = 'N'
+}
 if ($installLlvm -eq 'y' -or $installLlvm -eq 'Y') {
     Write-Host "Installing LLVM..." -ForegroundColor Yellow
     $llvmInstalled = Invoke-WingetInstall -Id "LLVM.LLVM" -UserScope
