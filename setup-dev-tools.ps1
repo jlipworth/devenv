@@ -932,12 +932,14 @@ $fdBinary = Ensure-WingetBinaryInstalled -Id "sharkdp.fd" -PackagePrefix "sharkd
 $rgBinary = Ensure-WingetBinaryInstalled -Id "BurntSushi.ripgrep.MSVC" -PackagePrefix "BurntSushi.ripgrep.MSVC" -BinaryNames @("rg") -DisplayName "ripgrep"
 $gccBinary = Ensure-WingetBinaryInstalled -Id "BrechtSanders.WinLibs.POSIX.UCRT" -PackagePrefix "BrechtSanders.WinLibs.POSIX.UCRT" -BinaryNames @("gcc") -DisplayName "WinLibs GCC"
 $treeSitterBinary = Ensure-WingetBinaryInstalled -Id "tree-sitter.tree-sitter-cli" -PackagePrefix "tree-sitter.tree-sitter-cli" -BinaryNames @("tree-sitter") -DisplayName "tree-sitter-cli"
+$lazygitBinary = Ensure-WingetBinaryInstalled -Id "JesseDuffield.lazygit" -PackagePrefix "JesseDuffield.lazygit" -BinaryNames @("lazygit") -DisplayName "lazygit"
 
 $fdVersion = (& $fdBinary.Source --version | Select-Object -First 1).Trim()
 $rgVersion = (& $rgBinary.Source --version | Select-Object -First 1).Trim()
 $gccVersion = (& $gccBinary.Source --version | Select-Object -First 1).Trim()
 $treeSitterVersion = (& $treeSitterBinary.Source --version | Select-Object -First 1).Trim()
-Write-Host "fd: $fdVersion | rg: $rgVersion | gcc: $gccVersion | tree-sitter: $treeSitterVersion" -ForegroundColor Green
+$lazygitVersion = (& $lazygitBinary.Source --version | Select-Object -First 1).Trim()
+Write-Host "fd: $fdVersion | rg: $rgVersion | gcc: $gccVersion | tree-sitter: $treeSitterVersion | lazygit: $lazygitVersion" -ForegroundColor Green
 
 $portableNvimBinPath = "$env:LOCALAPPDATA\nvim-bin\nvim-win64\bin"
 Add-UserPathOnce $portableNvimBinPath
