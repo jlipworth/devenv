@@ -14,6 +14,8 @@ return {
   { import = "lazyvim.plugins.extras.lang.r" },
   { import = "lazyvim.plugins.extras.lang.tex" },
   { import = "lazyvim.plugins.extras.lang.tailwind" },
+  { import = "lazyvim.plugins.extras.lang.clangd" },
+  { import = "lazyvim.plugins.extras.lang.cmake" },
 
   -- Shell + HTML/CSS + PowerShell support
   {
