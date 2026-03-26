@@ -188,5 +188,4 @@ steps:
       DEBIAN_FRONTEND: noninteractive
       HOMEBREW_NO_AUTO_UPDATE: "1"
     commands:
-      - chmod +x ci/neovim-smoke.sh
       - ./ci/neovim-smoke.sh
