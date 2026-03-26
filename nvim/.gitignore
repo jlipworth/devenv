@@ -1,2 +1,4 @@
 # LazyVim auto-managed extras tracker (we use import statements instead)
 lazyvim.json
+# Plugin lockfile — auto-updated on every sync, generates noisy diffs
+lazy-lock.json
