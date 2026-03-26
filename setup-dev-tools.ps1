@@ -78,18 +78,35 @@ function Remove-UserPathMatches {
 function Ensure-ProfileLine {
     param([Parameter(Mandatory = $true)][string]$Line)
 
-    $profileDir = Split-Path -Parent $PROFILE
+    $profilePath = $PROFILE
+    if ([string]::IsNullOrWhiteSpace($profilePath)) {
+        $documentsDir = [Environment]::GetFolderPath("MyDocuments")
+        if ([string]::IsNullOrWhiteSpace($documentsDir)) {
+            $documentsDir = Join-Path $env:USERPROFILE "Documents"
+        }
+
+        $profileRoot = if ($PSVersionTable.PSEdition -eq "Core") { "PowerShell" } else { "WindowsPowerShell" }
+        $profilePath = Join-Path $documentsDir "$profileRoot\Microsoft.PowerShell_profile.ps1"
+        Write-Warning "`$PROFILE was empty. Falling back to '$profilePath'."
+    }
+
+    $profileDir = Split-Path -Parent $profilePath
+    if ([string]::IsNullOrWhiteSpace($profileDir)) {
+        Write-Warning "PowerShell profile directory could not be determined. Skipping profile update."
+        return
+    }
+
     if (-not (Test-Path $profileDir)) {
         New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
     }
 
-    if (-not (Test-Path $PROFILE)) {
-        New-Item -ItemType File -Path $PROFILE -Force | Out-Null
+    if (-not (Test-Path $profilePath)) {
+        New-Item -ItemType File -Path $profilePath -Force | Out-Null
     }
 
-    $content = Get-Content -Path $PROFILE -Raw -ErrorAction SilentlyContinue
+    $content = Get-Content -Path $profilePath -Raw -ErrorAction SilentlyContinue
     if ($content -notmatch [regex]::Escape($Line)) {
-        Add-Content -Path $PROFILE -Value "`r`n$Line`r`n"
+        Add-Content -Path $profilePath -Value "`r`n$Line`r`n"
     }
 }
 
@@ -394,6 +411,29 @@ function Get-PsmuxManagedPluginNames {
     return $pluginNames | Select-Object -Unique
 }
 
+function Test-GnuFilesCheckoutValid {
+    param([Parameter(Mandatory = $true)][string]$RepoPath)
+
+    if (-not (Test-Path $RepoPath)) {
+        return $false
+    }
+
+    $requiredPaths = @(
+        ".git",
+        ".psmux.conf",
+        "alacritty.toml",
+        "nvim"
+    )
+
+    foreach ($requiredPath in $requiredPaths) {
+        if (-not (Test-Path (Join-Path $RepoPath $requiredPath))) {
+            return $false
+        }
+    }
+
+    return $true
+}
+
 function Test-PsmuxPluginDirectoryValid {
     param([Parameter(Mandatory = $true)][string]$PluginPath)
 
@@ -467,9 +507,12 @@ function Invoke-WingetInstall {
 }
 
 function Get-FnmInstalledVersionForAlias {
-    param([Parameter(Mandatory = $true)][string]$Alias)
+    param(
+        [Parameter(Mandatory = $true)][string]$Alias,
+        [string]$CommandPath = "fnm"
+    )
 
-    $fnmList = fnm list
+    $fnmList = & $CommandPath list
     foreach ($line in $fnmList) {
         if (($line -match [regex]::Escape($Alias)) -and ($line -match 'v\d+\.\d+\.\d+')) {
             return $matches[0]
@@ -587,41 +630,31 @@ Write-Host "Git $gitVersion" -ForegroundColor Green
 # --- 2. fnm + Node.js + npm ---
 Write-Host "`n[2/10] Installing fnm + Node.js..." -ForegroundColor Yellow
 
-if (-not (Test-CommandExists "fnm")) {
-    $fnmInstalled = Invoke-WingetInstall -Id "Schniz.fnm" -UserScope
-    if (-not $fnmInstalled) {
-        throw "fnm install failed via winget."
-    }
-}
-
-Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
-
-if (-not (Test-CommandExists "fnm")) {
-    throw "fnm was installed but is not on PATH. Check '$env:LOCALAPPDATA\Microsoft\WinGet\Links'."
-}
+$fnmBinary = Ensure-WingetBinaryInstalled -Id "Schniz.fnm" -PackagePrefix "Schniz.fnm" -BinaryNames @("fnm") -DisplayName "fnm"
+$fnmExe = $fnmBinary.Source
 
 $fnmInit = 'fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression'
 Ensure-ProfileLine $fnmInit
-Invoke-Expression ((fnm env --use-on-cd --shell powershell) | Out-String)
+Invoke-Expression ((& $fnmExe env --use-on-cd --shell powershell) | Out-String)
 
-fnm install --lts
+& $fnmExe install --lts
 if ($LASTEXITCODE -ne 0) {
     throw "fnm failed to install the latest LTS Node.js release."
 }
 
-$ltsNodeVersion = Get-FnmInstalledVersionForAlias "lts-latest"
+$ltsNodeVersion = Get-FnmInstalledVersionForAlias -Alias "lts-latest" -CommandPath $fnmExe
 if (-not $ltsNodeVersion) {
     throw "fnm installed Node.js, but the latest LTS version could not be resolved from 'fnm list'."
 }
 
-fnm use $ltsNodeVersion
+& $fnmExe use $ltsNodeVersion
 if ($LASTEXITCODE -ne 0) {
     throw "fnm failed to activate Node.js $ltsNodeVersion."
 }
 
 $nodeVersion = (node --version).Trim()
 
-fnm default $ltsNodeVersion
+& $fnmExe default $ltsNodeVersion
 if ($LASTEXITCODE -ne 0) {
     throw "fnm failed to set Node.js $ltsNodeVersion as the default."
 }
@@ -716,24 +749,53 @@ Write-Host "uv $uvVersion" -ForegroundColor Green
 # --- 6. Clone GNU_files repo ---
 Write-Host "`n[6/10] Preparing GNU_files repo..." -ForegroundColor Yellow
 
-$gnuFilesPath = "$env:USERPROFILE\GNU_files"
+$defaultGnuFilesPath = Join-Path $env:USERPROFILE "GNU_files"
 $scriptRepoPath = $PSScriptRoot
+$currentWorkingPath = (Get-Location).Path
+$gnuFilesPath = $null
 
-if ((Test-Path "$scriptRepoPath\.git") -and (Test-Path "$scriptRepoPath\nvim")) {
-    $gnuFilesPath = $scriptRepoPath
-    Write-Host "Using GNU_files from script directory: $gnuFilesPath" -ForegroundColor Green
-} elseif (-not (Test-Path $gnuFilesPath)) {
-    git clone https://github.com/jlipworth/devenv.git $gnuFilesPath
-    Write-Host "GNU_files cloned to $gnuFilesPath" -ForegroundColor Green
-} elseif (Test-Path "$gnuFilesPath\.git") {
-    git -C $gnuFilesPath pull --ff-only
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warning "git pull failed (local changes?). Continuing with existing checkout."
+$gnuFilesCandidates = @($scriptRepoPath, $currentWorkingPath, $defaultGnuFilesPath) |
+    Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+    Select-Object -Unique
+
+foreach ($candidatePath in $gnuFilesCandidates) {
+    if (Test-GnuFilesCheckoutValid -RepoPath $candidatePath) {
+        $gnuFilesPath = $candidatePath
+        break
+    }
+}
+
+if ($gnuFilesPath) {
+    if ($gnuFilesPath -eq $scriptRepoPath) {
+        Write-Host "Using GNU_files from script directory: $gnuFilesPath" -ForegroundColor Green
+    } elseif ($gnuFilesPath -eq $currentWorkingPath) {
+        Write-Host "Using GNU_files from current directory: $gnuFilesPath" -ForegroundColor Green
     } else {
-        Write-Host "GNU_files updated at $gnuFilesPath" -ForegroundColor Green
+        git -C $gnuFilesPath pull --ff-only
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "git pull failed (local changes?). Continuing with existing checkout."
+        } else {
+            Write-Host "GNU_files updated at $gnuFilesPath" -ForegroundColor Green
+        }
     }
 } else {
-    throw "Path exists but is not a git repo: $gnuFilesPath"
+    if (Test-Path $defaultGnuFilesPath) {
+        $backupPath = "${defaultGnuFilesPath}_backup_$(Get-Date -Format 'yyyyMMddHHmmss')"
+        Move-Item -Path $defaultGnuFilesPath -Destination $backupPath
+        Write-Warning "Existing GNU_files path was incomplete. Backed it up to $backupPath"
+    }
+
+    git clone https://github.com/jlipworth/devenv.git $defaultGnuFilesPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "GNU_files clone failed."
+    }
+
+    $gnuFilesPath = $defaultGnuFilesPath
+    if (-not (Test-GnuFilesCheckoutValid -RepoPath $gnuFilesPath)) {
+        throw "GNU_files clone completed, but the checkout is missing required files."
+    }
+
+    Write-Host "GNU_files cloned to $gnuFilesPath" -ForegroundColor Green
 }
 
 # --- 7. psmux + config + plugins ---
@@ -791,7 +853,7 @@ if (-not $psmuxBinary) {
     Write-Host "psmux: $psmuxVersion" -ForegroundColor Green
 }
 
-$psmuxSourcePath = "$gnuFilesPath\.psmux.conf"
+$psmuxSourcePath = Join-Path $gnuFilesPath ".psmux.conf"
 $psmuxTargetPath = "$env:USERPROFILE\.psmux.conf"
 $psmuxPluginRoot = "$env:USERPROFILE\.psmux\plugins"
 $ppmTargetPath = Join-Path $psmuxPluginRoot 'ppm'
@@ -881,8 +943,8 @@ if (-not (Test-CommandExists "alacritty")) {
     throw "Alacritty install failed. Neither winget nor the portable fallback produced an 'alacritty' command."
 }
 
-$alacrittyWindowsSourcePath = "$gnuFilesPath\alacritty.windows.toml"
-$alacrittyDefaultSourcePath = "$gnuFilesPath\alacritty.toml"
+$alacrittyWindowsSourcePath = Join-Path $gnuFilesPath "alacritty.windows.toml"
+$alacrittyDefaultSourcePath = Join-Path $gnuFilesPath "alacritty.toml"
 $alacrittySourcePath = if (Test-Path $alacrittyWindowsSourcePath) {
     $alacrittyWindowsSourcePath
 } else {
@@ -1025,7 +1087,7 @@ Write-Host "Neovim: $nvimVersion" -ForegroundColor Green
 Write-Host "`n[10/10] Linking Neovim config..." -ForegroundColor Yellow
 
 $nvimConfigPath = "$env:LOCALAPPDATA\nvim"
-$nvimSourcePath = "$gnuFilesPath\nvim"
+$nvimSourcePath = Join-Path $gnuFilesPath "nvim"
 $skipNvimRelink = $false
 
 if (-not (Test-Path $nvimSourcePath)) {
@@ -1077,7 +1139,7 @@ if ($installLlvm -eq 'y' -or $installLlvm -eq 'Y') {
             $llvmVersion = (clang --version | Select-Object -First 1).Trim()
             Write-Host "LLVM: $llvmVersion" -ForegroundColor Green
         } else {
-            Write-Host "LLVM installed — restart PowerShell for clang/clang++ to appear on PATH." -ForegroundColor Yellow
+            Write-Host "LLVM installed - restart PowerShell for clang/clang++ to appear on PATH." -ForegroundColor Yellow
         }
     } else {
         Write-Host "LLVM install failed (exit code $LASTEXITCODE). You can install manually: winget install LLVM.LLVM" -ForegroundColor Yellow
