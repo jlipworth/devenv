@@ -6,7 +6,7 @@
 
 **Architecture:** LazyVim distribution bootstrapped via lazy.nvim in `nvim/` directory, symlinked to platform config locations. Mason.nvim auto-installs LSP servers on first launch. `install_neovim()` in `prereq_packages.sh` handles cross-platform binary installation. Windows setup via `setup-dev-tools.ps1`.
 
-**Tech Stack:** Neovim 0.11.6, LazyVim, lazy.nvim, mason.nvim, nvim-lspconfig, Snacks picker/explorer, persistence.nvim, Harpoon 2, nvim-treesitter, which-key.nvim, lazygit
+**Tech Stack:** Neovim 0.11.6 baseline / latest official Windows portable release at install time, LazyVim, lazy.nvim, mason.nvim, nvim-lspconfig, Snacks picker/explorer, persistence.nvim, Harpoon 2, nvim-treesitter, which-key.nvim, lazygit
 
 **Spec:** `docs/superpowers/specs/2026-03-23-neovim-support-design.md`
 
@@ -539,29 +539,26 @@ if (-not (Test-Path "$devenvPath\.git")) {
 Write-Host "`n[6/7] Installing Neovim..." -ForegroundColor Yellow
 
 if (-not (Get-Command nvim -ErrorAction SilentlyContinue)) {
-    # Try winget first
-    $wingetSuccess = $false
-    try {
-        winget install Neovim.Neovim --scope user --accept-source-agreements --accept-package-agreements
-        $wingetSuccess = $true
-    } catch {
-        Write-Host "winget install failed, falling back to portable zip..." -ForegroundColor Yellow
+    # Query latest official release and install the portable zip directly
+    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/neovim/neovim/releases/latest"
+    $tag = $release.tag_name
+    $version = $tag.TrimStart("v")
+    $nvimDir = "$env:LOCALAPPDATA\nvim-bin"
+    $nvimZip = "$env:TEMP\nvim-win64.zip"
+    Invoke-WebRequest -Uri "https://github.com/neovim/neovim/releases/download/$tag/nvim-win64.zip" -OutFile $nvimZip
+    Expand-Archive -Path $nvimZip -DestinationPath $nvimDir -Force
+    Remove-Item $nvimZip
+    $nvimBinPath = "$nvimDir\nvim-win64\bin"
+    if ($env:Path -notlike "*$nvimBinPath*") {
+        $env:Path += ";$nvimBinPath"
     }
+    [Environment]::SetEnvironmentVariable("Path", "$([Environment]::GetEnvironmentVariable('Path', 'User'));$nvimBinPath", "User")
 
-    if (-not $wingetSuccess) {
-        # Fallback: download portable zip
-        $nvimDir = "$env:LOCALAPPDATA\nvim-bin"
-        $nvimZip = "$env:TEMP\nvim-win64.zip"
-        # Version pinned here — keep in sync with versions.conf NEOVIM_VERSION
-        Invoke-WebRequest -Uri "https://github.com/neovim/neovim/releases/download/v0.11.6/nvim-win64.zip" -OutFile $nvimZip
-        Expand-Archive -Path $nvimZip -DestinationPath $nvimDir -Force
-        Remove-Item $nvimZip
-        # Add to session and user PATH
-        $nvimBinPath = "$nvimDir\nvim-win64\bin"
-        if ($env:Path -notlike "*$nvimBinPath*") {
-            $env:Path += ";$nvimBinPath"
-        }
-        [Environment]::SetEnvironmentVariable("Path", "$([Environment]::GetEnvironmentVariable('Path', 'User'));$nvimBinPath", "User")
+    # Enforce LazyVim minimum
+    $minimumNeovimVersion = [version]"0.11.2"
+    $installedVersion = [version]((nvim --version | Select-Object -First 1) -replace '^NVIM v', '')
+    if ($installedVersion -lt $minimumNeovimVersion) {
+        throw "Neovim $installedVersion is too old for LazyVim. Require >= $minimumNeovimVersion."
     }
 }
 
@@ -619,7 +616,7 @@ git add setup-dev-tools.ps1
 git commit -m "feat(neovim): add Neovim + devenv clone to Windows setup script
 
 Moves setup-dev-tools.ps1 into repo.
-Installs Neovim via winget (fallback: portable zip).
+Installs the latest official Neovim portable build and enforces the LazyVim minimum version.
 Clones devenv repo and creates config junction (fallback: copy for network shares)."
 ```
 

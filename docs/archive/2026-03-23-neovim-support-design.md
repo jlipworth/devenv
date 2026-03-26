@@ -207,8 +207,9 @@ New function `install_neovim()`:
 
 This file already exists at the repo root (created earlier in this session at `~/setup-dev-tools.ps1`; will be moved into the repo). New step added:
 
-- `winget install Neovim.Neovim --scope user` (preferred path)
-- Fallback: download `nvim-win64.zip` from GitHub releases, extract to `$env:LOCALAPPDATA\nvim-bin`, add to PATH
+- Query the latest official Neovim release from GitHub
+- Download the matching `nvim-win64.zip`, extract to `$env:LOCALAPPDATA\nvim-bin`, add to PATH
+- Verify the installed Neovim version is at least the LazyVim minimum (`0.11.2`), and fail if not
 - Clone devenv repo: `git clone https://github.com/jlipworth/devenv.git $env:USERPROFILE\GNU_files`
 - Create junction: `New-Item -ItemType Junction -Path "$env:LOCALAPPDATA\nvim" -Target "$env:USERPROFILE\GNU_files\nvim"`
 

@@ -7,9 +7,10 @@
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
-# Version pins - keep in sync with versions.conf
+# Version pins / minimums - keep in sync with versions.conf where applicable
 $AlacrittyVersion = "0.16.1"
-$NeovimVersion = "0.11.6"
+$FallbackNeovimVersion = "0.11.6"
+$MinimumNeovimVersion = [version]"0.11.2"
 $psmuxVersion = $null
 
 function Add-PathOnce {
@@ -241,6 +242,45 @@ function Test-CommandExists {
     param([Parameter(Mandatory = $true)][string]$Name)
 
     return $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+function Get-NeovimCommandVersion {
+    param([string]$CommandName = "nvim")
+
+    if (-not (Test-CommandExists $CommandName)) {
+        return $null
+    }
+
+    try {
+        $versionLine = (& $CommandName --version | Select-Object -First 1).Trim()
+        if ($versionLine -match 'NVIM v(\d+\.\d+\.\d+)') {
+            return [version]$Matches[1]
+        }
+    } catch {
+        return $null
+    }
+
+    return $null
+}
+
+function Get-LatestNeovimVersion {
+    $releaseApiUrl = "https://api.github.com/repos/neovim/neovim/releases/latest"
+
+    try {
+        $release = Invoke-RestMethod -Uri $releaseApiUrl -Headers @{
+            "User-Agent" = "GNU_files setup-dev-tools.ps1"
+        }
+
+        if ($release.tag_name -match '^v?(\d+\.\d+\.\d+)$') {
+            return $Matches[1]
+        }
+
+        Write-Warning "Unexpected Neovim release tag '$($release.tag_name)'. Falling back to pinned version $FallbackNeovimVersion."
+    } catch {
+        Write-Warning "Failed to query the latest Neovim release. Falling back to pinned version $FallbackNeovimVersion. Error: $($_.Exception.Message)"
+    }
+
+    return $FallbackNeovimVersion
 }
 
 function Test-WingetPackageInstalled {
@@ -498,10 +538,12 @@ function Install-PortableAlacritty {
 }
 
 function Install-PortableNeovim {
+    param([Parameter(Mandatory = $true)][string]$Version)
+
     $portableDir = "$env:LOCALAPPDATA\nvim-bin"
     $portableZip = "$env:TEMP\nvim-win64.zip"
     $portableRoot = Join-Path $portableDir "nvim-win64"
-    $downloadUrl = "https://github.com/neovim/neovim/releases/download/v$NeovimVersion/nvim-win64.zip"
+    $downloadUrl = "https://github.com/neovim/neovim/releases/download/v$Version/nvim-win64.zip"
 
     if (-not (Test-Path $portableDir)) {
         New-Item -ItemType Directory -Path $portableDir -Force | Out-Null
@@ -943,28 +985,37 @@ $lazygitVersion = (& $lazygitBinary.Source --version | Select-Object -First 1).T
 $cmakeVersion = (& $cmakeBinary.Source --version | Select-Object -First 1).Trim()
 Write-Host "fd: $fdVersion | rg: $rgVersion | gcc: $gccVersion | tree-sitter: $treeSitterVersion | lazygit: $lazygitVersion | cmake: $cmakeVersion" -ForegroundColor Green
 
+$targetNeovimVersion = Get-LatestNeovimVersion
+$targetNeovimVersionObject = [version]$targetNeovimVersion
+Write-Host "Target Neovim version: $targetNeovimVersion (LazyVim minimum: $MinimumNeovimVersion)" -ForegroundColor Green
+
 $portableNvimBinPath = "$env:LOCALAPPDATA\nvim-bin\nvim-win64\bin"
 Add-UserPathOnce $portableNvimBinPath
 
-if (-not (Test-CommandExists "nvim")) {
-    $wingetSuccess = Invoke-WingetInstall -Id "Neovim.Neovim" -UserScope
-    $nvimWingetExitCode = $LASTEXITCODE
+$installedNvimVersion = Get-NeovimCommandVersion
 
-    Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
-
-    if (-not (Test-CommandExists "nvim")) {
-        if ($wingetSuccess) {
-            Write-Host "winget did not leave an 'nvim' command available, falling back to portable zip..." -ForegroundColor Yellow
-        } else {
-            Write-Host "winget install failed (exit code $nvimWingetExitCode), falling back to portable zip..." -ForegroundColor Yellow
-        }
-        Install-PortableNeovim
-        Add-UserPathOnce $portableNvimBinPath
+if (($null -eq $installedNvimVersion) -or ($installedNvimVersion -lt $targetNeovimVersionObject)) {
+    if ($null -eq $installedNvimVersion) {
+        Write-Host "No usable Neovim found on PATH; installing latest portable build..." -ForegroundColor Yellow
+    } else {
+        Write-Host "Existing Neovim $installedNvimVersion is older than target $targetNeovimVersion; installing latest portable build..." -ForegroundColor Yellow
     }
+
+    Install-PortableNeovim -Version $targetNeovimVersion
+    Add-UserPathOnce $portableNvimBinPath
 }
 
 if (-not (Test-CommandExists "nvim")) {
-    throw "Neovim install failed. Neither winget nor the portable zip fallback produced an 'nvim' command."
+    throw "Neovim install failed. The portable latest-release install did not produce an 'nvim' command."
+}
+
+$installedNvimVersion = Get-NeovimCommandVersion
+if ($null -eq $installedNvimVersion) {
+    throw "Neovim install completed, but the version could not be determined from 'nvim --version'."
+}
+
+if ($installedNvimVersion -lt $MinimumNeovimVersion) {
+    throw "Neovim $installedNvimVersion is too old for LazyVim. Require >= $MinimumNeovimVersion."
 }
 
 $nvimVersion = (nvim --version | Select-Object -First 1).Trim()
