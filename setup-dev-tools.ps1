@@ -12,7 +12,7 @@ $AlacrittyVersion = "0.16.1"
 $FallbackNeovimVersion = "0.11.6"
 $MinimumNeovimVersion = [version]"0.11.2"
 $GnuFilesRepoUrl = "https://github.com/jlipworth/devenv.git"
-$GnuFilesBootstrapBranch = "feature/neovim-support"
+$GnuFilesBootstrapBranch = "master"
 $psmuxVersion = $null
 
 function Add-PathOnce {
