@@ -341,6 +341,40 @@ function Install-JetBrainsMonoNerdFont {
     Remove-Item -Path $extractDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+function Install-PortableGit {
+    $portableDir = Join-Path $env:LOCALAPPDATA "Git\mingit"
+    $portableZip = Join-Path $env:TEMP "mingit.zip"
+    $releaseApiUrl = "https://api.github.com/repos/git-for-windows/git/releases/latest"
+
+    $release = Invoke-RestMethod -Uri $releaseApiUrl -Headers @{
+        "User-Agent" = "GNU_files setup-dev-tools.ps1"
+    }
+
+    $asset = $release.assets | Where-Object { $_.name -match '^MinGit-.*-busybox-64-bit\.zip$' } | Select-Object -First 1
+    if (-not $asset) {
+        throw "Could not find a MinGit portable asset in the latest Git for Windows release."
+    }
+
+    if (Test-Path $portableDir) {
+        Remove-Item -Path $portableDir -Recurse -Force
+    }
+
+    New-Item -ItemType Directory -Path $portableDir -Force | Out-Null
+    Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $portableZip
+    Expand-Archive -Path $portableZip -DestinationPath $portableDir -Force
+    Remove-Item -Path $portableZip -Force -ErrorAction SilentlyContinue
+
+    $portableCmdDir = Join-Path $portableDir "cmd"
+    if (-not (Test-Path (Join-Path $portableCmdDir "git.exe"))) {
+        throw "Portable Git install failed: git.exe was not found under $portableCmdDir"
+    }
+
+    Add-UserPathOnce $portableCmdDir
+    Add-PathOnce $portableCmdDir
+
+    return (Join-Path $portableCmdDir "git.exe")
+}
+
 function Test-CommandExists {
     param([Parameter(Mandatory = $true)][string]$Name)
 
@@ -699,18 +733,31 @@ if (-not (Test-CommandExists "winget")) {
 # --- 1. Git ---
 Write-Host "`n[1/10] Installing Git..." -ForegroundColor Yellow
 
+$portableGitExe = $null
+
 if (-not (Test-CommandExists "git")) {
-    $gitInstalled = Invoke-WingetInstall -Id "Git.Git" -UserScope
-    if (-not $gitInstalled) {
-        throw "Git install failed via winget."
-    }
+    Write-Host "Git not found. Installing portable MinGit (no admin)..." -ForegroundColor Yellow
+    $portableGitExe = Install-PortableGit
 }
 
 Add-UserPathOnce "$env:LOCALAPPDATA\Programs\Git\cmd"
 
-$gitCommand = Wait-ForCommandInfo -Names @("git") -TimeoutSeconds 10
+$gitCandidatePaths = @(
+    $portableGitExe,
+    (Join-Path "$env:LOCALAPPDATA\Programs\Git\cmd" "git.exe"),
+    (Join-Path "$env:ProgramFiles\Git\cmd" "git.exe"),
+    (Join-Path "$env:LOCALAPPDATA\Git\mingit\cmd" "git.exe")
+) | Where-Object { $_ }
+
+$gitCommand = Wait-ForCommandInfo -Names @("git") -CandidatePaths $gitCandidatePaths -TimeoutSeconds 15
 if (-not $gitCommand) {
-    throw "Git was installed but is not on PATH. Check '$env:LOCALAPPDATA\Programs\Git\cmd'."
+    Write-Warning "Git was not usable from the default locations. Falling back to portable MinGit."
+    $portableGitExe = Install-PortableGit
+    $gitCommand = Wait-ForCommandInfo -Names @("git") -CandidatePaths @($portableGitExe) -TimeoutSeconds 15
+}
+
+if (-not $gitCommand) {
+    throw "Git install failed. Neither winget nor the portable MinGit fallback produced a usable 'git' command."
 }
 
 $gitVersion = (& $gitCommand.Source --version).Trim()
