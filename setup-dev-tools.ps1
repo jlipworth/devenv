@@ -46,6 +46,67 @@ function Add-UserPathOnce {
     }
 }
 
+function Refresh-SessionPath {
+    $pathEntries = @()
+
+    foreach ($pathValue in @(
+        $env:Path,
+        [Environment]::GetEnvironmentVariable("Path", "User"),
+        [Environment]::GetEnvironmentVariable("Path", "Machine")
+    )) {
+        if (-not $pathValue) { continue }
+
+        foreach ($entry in ($pathValue -split ';' | Where-Object { $_ })) {
+            if ($pathEntries -notcontains $entry) {
+                $pathEntries += $entry
+            }
+        }
+    }
+
+    if ($pathEntries.Count -gt 0) {
+        $env:Path = $pathEntries -join ';'
+    }
+}
+
+function Wait-ForCommandInfo {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Names,
+        [string[]]$CandidatePaths = @(),
+        [int]$TimeoutSeconds = 15,
+        [int]$PollMilliseconds = 500
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+
+    do {
+        Refresh-SessionPath
+
+        foreach ($candidatePath in ($CandidatePaths | Where-Object { $_ })) {
+            if (Test-Path $candidatePath) {
+                Add-PathOnce (Split-Path -Parent $candidatePath)
+            }
+        }
+
+        $commandInfo = Get-CommandInfoAny -Names $Names
+        if ($commandInfo) {
+            return $commandInfo
+        }
+
+        foreach ($candidatePath in ($CandidatePaths | Where-Object { $_ })) {
+            if (-not (Test-Path $candidatePath)) { continue }
+
+            $commandInfo = Get-Command $candidatePath -ErrorAction SilentlyContinue
+            if ($commandInfo) {
+                return $commandInfo
+            }
+        }
+
+        Start-Sleep -Milliseconds $PollMilliseconds
+    } while ((Get-Date) -lt $deadline)
+
+    return $null
+}
+
 function Remove-UserPathMatches {
     param([Parameter(Mandatory = $true)][string[]]$Patterns)
 
@@ -130,6 +191,31 @@ function Test-FontInstalled {
     }
 
     return $false
+}
+
+function Wait-ForFontInstalled {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Names,
+        [int]$TimeoutSeconds = 15,
+        [int]$PollMilliseconds = 500
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+
+    do {
+        if (Test-FontInstalled $Names) {
+            return $true
+        }
+
+        Start-Sleep -Milliseconds $PollMilliseconds
+    } while ((Get-Date) -lt $deadline)
+
+    return (Test-FontInstalled $Names)
+}
+
+function Test-JetBrainsMonoNerdFontInstalled {
+    $fontNames = @("JetBrainsMono NFM", "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font")
+    return (Test-FontInstalled $fontNames)
 }
 
 function Get-FontRegistryDisplayName {
@@ -358,7 +444,7 @@ function Ensure-WingetBinaryInstalled {
         [Parameter(Mandatory = $true)][string]$DisplayName
     )
 
-    $commandInfo = Get-CommandInfoAny -Names $BinaryNames
+    $commandInfo = Wait-ForCommandInfo -Names $BinaryNames -TimeoutSeconds 2
     if ($commandInfo) {
         return $commandInfo
     }
@@ -375,10 +461,12 @@ function Ensure-WingetBinaryInstalled {
         Add-UserPathOnce (Split-Path -Parent $installedBinary)
     }
 
-    $commandInfo = Get-CommandInfoAny -Names $BinaryNames
-    if ((-not $commandInfo) -and $installedBinary) {
-        $commandInfo = Get-Command $installedBinary -ErrorAction SilentlyContinue
+    $candidatePaths = @()
+    if ($installedBinary) {
+        $candidatePaths += $installedBinary
     }
+
+    $commandInfo = Wait-ForCommandInfo -Names $BinaryNames -CandidatePaths $candidatePaths -TimeoutSeconds 20
 
     if (-not $commandInfo) {
         throw "$DisplayName was installed but no command was found. Check WinGet package '$Id'."
@@ -620,11 +708,12 @@ if (-not (Test-CommandExists "git")) {
 
 Add-UserPathOnce "$env:LOCALAPPDATA\Programs\Git\cmd"
 
-if (-not (Test-CommandExists "git")) {
+$gitCommand = Wait-ForCommandInfo -Names @("git") -TimeoutSeconds 10
+if (-not $gitCommand) {
     throw "Git was installed but is not on PATH. Check '$env:LOCALAPPDATA\Programs\Git\cmd'."
 }
 
-$gitVersion = (git --version).Trim()
+$gitVersion = (& $gitCommand.Source --version).Trim()
 Write-Host "Git $gitVersion" -ForegroundColor Green
 
 # --- 2. fnm + Node.js + npm ---
@@ -652,14 +741,20 @@ if ($LASTEXITCODE -ne 0) {
     throw "fnm failed to activate Node.js $ltsNodeVersion."
 }
 
-$nodeVersion = (node --version).Trim()
+$nodeCommand = Wait-ForCommandInfo -Names @("node") -TimeoutSeconds 10
+$npmCommand = Wait-ForCommandInfo -Names @("npm") -TimeoutSeconds 10
+if ((-not $nodeCommand) -or (-not $npmCommand)) {
+    throw "fnm activated Node.js, but 'node' and/or 'npm' were not available in this session yet. Restart PowerShell and rerun if needed."
+}
+
+$nodeVersion = (& $nodeCommand.Source --version).Trim()
 
 & $fnmExe default $ltsNodeVersion
 if ($LASTEXITCODE -ne 0) {
     throw "fnm failed to set Node.js $ltsNodeVersion as the default."
 }
 
-$npmVersion = (npm --version).Trim()
+$npmVersion = (& $npmCommand.Source --version).Trim()
 Write-Host "Node $nodeVersion | npm $npmVersion" -ForegroundColor Green
 
 $npmPrefix = Ensure-StableNpmPrefix
@@ -676,12 +771,20 @@ if (-not (Test-NpmGlobalBinary -Prefix $npmPrefix -CommandName "codex")) {
 
 Add-UserPathOnce $npmPrefix
 
-if (-not (Test-CommandExists "codex")) {
+$codexCommand = Wait-ForCommandInfo -Names @("codex") -CandidatePaths @(
+    (Join-Path $npmPrefix "codex.cmd"),
+    (Join-Path $npmPrefix "codex.ps1")
+) -TimeoutSeconds 10
+if (-not $codexCommand) {
     Write-Warning "Codex was installed, but 'codex' is not on PATH in this session yet. Restart PowerShell if needed."
 }
 
 try {
-    $codexVersion = (codex --version).Trim()
+    if ($codexCommand) {
+        $codexVersion = (& $codexCommand.Source --version).Trim()
+    } else {
+        $codexVersion = (codex --version).Trim()
+    }
 } catch {
     $codexVersion = "installed"
 }
@@ -698,12 +801,22 @@ if (-not (Test-NpmGlobalBinary -Prefix $npmPrefix -CommandName "claude")) {
     }
 }
 
-if (-not (Test-CommandExists "claude")) {
+Add-UserPathOnce $npmPrefix
+
+$claudeCommand = Wait-ForCommandInfo -Names @("claude") -CandidatePaths @(
+    (Join-Path $npmPrefix "claude.cmd"),
+    (Join-Path $npmPrefix "claude.ps1")
+) -TimeoutSeconds 10
+if (-not $claudeCommand) {
     Write-Warning "Claude Code was installed, but 'claude' is not on PATH in this session yet. Restart PowerShell if needed."
 }
 
 try {
-    $claudeVersion = (claude --version).Trim()
+    if ($claudeCommand) {
+        $claudeVersion = (& $claudeCommand.Source --version).Trim()
+    } else {
+        $claudeVersion = (claude --version).Trim()
+    }
 } catch {
     $claudeVersion = "installed"
 }
@@ -739,11 +852,15 @@ if (-not (Test-CommandExists "uv")) {
 
 Add-UserPathOnce "$env:USERPROFILE\.local\bin"
 
-if (-not (Test-CommandExists "uv")) {
+$uvCommand = Wait-ForCommandInfo -Names @("uv") -CandidatePaths @(
+    (Join-Path "$env:USERPROFILE\.local\bin" "uv.exe"),
+    (Join-Path "$env:USERPROFILE\.local\bin" "uv")
+) -TimeoutSeconds 15
+if (-not $uvCommand) {
     throw "uv was installed but is not on PATH. Check '$env:USERPROFILE\.local\bin'."
 }
 
-$uvVersion = (uv --version).Trim()
+$uvVersion = (& $uvCommand.Source --version).Trim()
 Write-Host "uv $uvVersion" -ForegroundColor Green
 
 # --- 6. Clone GNU_files repo ---
@@ -829,7 +946,7 @@ if ($psmuxInstalledBinary) {
     Add-UserPathOnce (Split-Path -Parent $psmuxInstalledBinary)
 }
 
-$pwshBinary = Get-Command pwsh -ErrorAction SilentlyContinue
+$pwshBinary = Wait-ForCommandInfo -Names @("pwsh") -TimeoutSeconds 20
 if (-not $pwshBinary) {
     throw "PowerShell 7 (pwsh) is required for the psmux config/bootstrap, but it is not on PATH."
 }
@@ -926,7 +1043,11 @@ if (-not (Test-CommandExists "alacritty")) {
     $alacrittyWingetExitCode = $LASTEXITCODE
     Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
 
-    if (-not (Test-CommandExists "alacritty")) {
+    $alacrittyCommand = Wait-ForCommandInfo -Names @("alacritty") -CandidatePaths @(
+        (Join-Path "$env:LOCALAPPDATA\alacritty" "alacritty.exe")
+    ) -TimeoutSeconds 10
+
+    if (-not $alacrittyCommand) {
         if ($alacrittyInstalled) {
             Write-Host "winget did not leave an 'alacritty' command available, falling back to portable Alacritty..." -ForegroundColor Yellow
         } else {
@@ -939,7 +1060,10 @@ if (-not (Test-CommandExists "alacritty")) {
 Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
 Add-UserPathOnce "$env:LOCALAPPDATA\alacritty"
 
-if (-not (Test-CommandExists "alacritty")) {
+$alacrittyCommand = Wait-ForCommandInfo -Names @("alacritty") -CandidatePaths @(
+    (Join-Path "$env:LOCALAPPDATA\alacritty" "alacritty.exe")
+) -TimeoutSeconds 15
+if (-not $alacrittyCommand) {
     throw "Alacritty install failed. Neither winget nor the portable fallback produced an 'alacritty' command."
 }
 
@@ -965,14 +1089,14 @@ if (Test-Path $alacrittySourcePath) {
     }
 
     $mesloFontInstalled = Test-FontInstalled @("MesloLGM Nerd Font Mono")
-    $jetBrainsMonoNerdInstalled = Test-FontInstalled @("JetBrainsMono NFM", "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font")
+    $jetBrainsMonoNerdInstalled = Test-JetBrainsMonoNerdFontInstalled
 
     if ((-not $mesloFontInstalled) -and (-not $jetBrainsMonoNerdInstalled)) {
         Write-Host "MesloLGM Nerd Font Mono not found. Installing JetBrainsMono Nerd Font..." -ForegroundColor Yellow
         $fontInstalled = Invoke-WingetInstall -Id "DEVCOM.JetBrainsMonoNerdFont" -UserScope
 
         if ($fontInstalled) {
-            $jetBrainsMonoNerdInstalled = Test-FontInstalled @("JetBrainsMono NFM", "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font")
+            $jetBrainsMonoNerdInstalled = Wait-ForFontInstalled @("JetBrainsMono NFM", "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font") -TimeoutSeconds 20
         }
 
         if (-not $jetBrainsMonoNerdInstalled) {
@@ -984,9 +1108,16 @@ if (Test-Path $alacrittySourcePath) {
 
             try {
                 Install-JetBrainsMonoNerdFont
-                $jetBrainsMonoNerdInstalled = Test-FontInstalled @("JetBrainsMono NFM", "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font")
+                $jetBrainsMonoNerdInstalled = Wait-ForFontInstalled @("JetBrainsMono NFM", "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font") -TimeoutSeconds 20
             } catch {
                 Write-Warning "Direct JetBrainsMono Nerd Font install failed: $($_.Exception.Message)"
+            }
+
+            if (-not $jetBrainsMonoNerdInstalled) {
+                $jetBrainsMonoFontFiles = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts") -Filter "JetBrainsMonoNerdFontMono-*.ttf" -ErrorAction SilentlyContinue
+                if ($jetBrainsMonoFontFiles) {
+                    Write-Warning "JetBrainsMono Nerd Font files were copied, but Windows has not reported the font as installed yet. A sign-out or reboot may be required before Alacritty can use it."
+                }
             }
         }
 
@@ -1022,7 +1153,7 @@ if (Test-Path $alacrittySourcePath) {
 }
 
 try {
-    $alacrittyVersion = (alacritty --version).Trim()
+    $alacrittyVersion = (& $alacrittyCommand.Source --version).Trim()
 } catch {
     $alacrittyVersion = "installed"
 }
@@ -1054,6 +1185,9 @@ Write-Host "Target Neovim version: $targetNeovimVersion (LazyVim minimum: $Minim
 $portableNvimBinPath = "$env:LOCALAPPDATA\nvim-bin\nvim-win64\bin"
 Add-UserPathOnce $portableNvimBinPath
 
+$nvimCommand = Wait-ForCommandInfo -Names @("nvim") -CandidatePaths @(
+    (Join-Path $portableNvimBinPath "nvim.exe")
+) -TimeoutSeconds 5
 $installedNvimVersion = Get-NeovimCommandVersion
 
 if (($null -eq $installedNvimVersion) -or ($installedNvimVersion -lt $targetNeovimVersionObject)) {
@@ -1065,9 +1199,12 @@ if (($null -eq $installedNvimVersion) -or ($installedNvimVersion -lt $targetNeov
 
     Install-PortableNeovim -Version $targetNeovimVersion
     Add-UserPathOnce $portableNvimBinPath
+    $nvimCommand = Wait-ForCommandInfo -Names @("nvim") -CandidatePaths @(
+        (Join-Path $portableNvimBinPath "nvim.exe")
+    ) -TimeoutSeconds 20
 }
 
-if (-not (Test-CommandExists "nvim")) {
+if (-not $nvimCommand) {
     throw "Neovim install failed. The portable latest-release install did not produce an 'nvim' command."
 }
 
@@ -1080,7 +1217,7 @@ if ($installedNvimVersion -lt $MinimumNeovimVersion) {
     throw "Neovim $installedNvimVersion is too old for LazyVim. Require >= $MinimumNeovimVersion."
 }
 
-$nvimVersion = (nvim --version | Select-Object -First 1).Trim()
+$nvimVersion = (& $nvimCommand.Source --version | Select-Object -First 1).Trim()
 Write-Host "Neovim: $nvimVersion" -ForegroundColor Green
 
 # --- 10. Neovim config junction ---
