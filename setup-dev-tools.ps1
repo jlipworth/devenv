@@ -506,6 +506,15 @@ function Get-FnmMultishellCandidatePaths {
     return Get-DirectoryCommandCandidatePaths -Directories @($env:FNM_MULTISHELL_PATH) -BinaryNames $BinaryNames -IncludeExtensionless
 }
 
+function Get-PowerShellCandidatePaths {
+    return @(
+        (Join-Path $env:ProgramFiles "PowerShell\7\pwsh.exe"),
+        (Join-Path ${env:ProgramFiles(x86)} "PowerShell\7\pwsh.exe"),
+        (Join-Path $env:LOCALAPPDATA "Programs\PowerShell\7\pwsh.exe"),
+        (Join-Path $env:LOCALAPPDATA "powershell\7\pwsh.exe")
+    ) | Where-Object { $_ }
+}
+
 function Get-CommandInfoAny {
     param([Parameter(Mandatory = $true)][string[]]$Names)
 
@@ -821,6 +830,39 @@ function Install-PortableFnm {
     return $portableExe.FullName
 }
 
+function Install-PortablePowerShell {
+    $portableDir = Join-Path $env:LOCALAPPDATA "powershell\7"
+    $portableZip = Join-Path $env:TEMP "powershell-win-x64.zip"
+    $releaseApiUrl = "https://api.github.com/repos/PowerShell/PowerShell/releases/latest"
+
+    $release = Invoke-RestMethod -Uri $releaseApiUrl -Headers @{
+        "User-Agent" = "GNU_files setup-dev-tools.ps1"
+    }
+
+    $asset = $release.assets | Where-Object { $_.name -match '^PowerShell-.*-win-x64\.zip$' } | Select-Object -First 1
+    if (-not $asset) {
+        throw "Could not find a Windows x64 PowerShell asset in the latest PowerShell release."
+    }
+
+    if (Test-Path $portableDir) {
+        Remove-Item -Path $portableDir -Recurse -Force
+    }
+
+    New-Item -ItemType Directory -Path $portableDir -Force | Out-Null
+    Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $portableZip
+    Expand-Archive -Path $portableZip -DestinationPath $portableDir -Force
+    Remove-Item -Path $portableZip -Force -ErrorAction SilentlyContinue
+
+    $portableExe = Join-Path $portableDir "pwsh.exe"
+    if (-not (Test-Path $portableExe)) {
+        throw "Portable PowerShell install failed: pwsh.exe was not found under $portableDir"
+    }
+
+    Add-UserPathOnce $portableDir
+
+    return $portableExe
+}
+
 Write-Host "=== Dev Tools Setup (no admin) ===" -ForegroundColor Cyan
 
 # --- Pre-flight: check winget ---
@@ -1087,7 +1129,18 @@ $psmuxWingetId = "marlocarlo.psmux"
 Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
 Add-UserPathOnce "$env:USERPROFILE\.cargo\bin"
 
-$pwshBinary = Ensure-WingetBinaryInstalled -Id "Microsoft.PowerShell" -PackagePrefix "Microsoft.PowerShell" -BinaryNames @("pwsh") -DisplayName "PowerShell 7"
+$pwshBinary = $null
+
+try {
+    $pwshBinary = Ensure-WingetBinaryInstalled -Id "Microsoft.PowerShell" -PackagePrefix "Microsoft.PowerShell" -BinaryNames @("pwsh") -DisplayName "PowerShell 7" -ExtraCandidatePaths (Get-PowerShellCandidatePaths)
+} catch {
+    Write-Warning "WinGet did not expose a usable 'pwsh' command in this session. Falling back to portable PowerShell. Error: $($_.Exception.Message)"
+    $portablePwshExe = Install-PortablePowerShell
+    $pwshBinary = Wait-ForCommandInfo -Names @("pwsh") -CandidatePaths @($portablePwshExe) -TimeoutSeconds 20
+    if (-not $pwshBinary) {
+        throw "PowerShell 7 install failed. Neither winget nor the portable fallback produced a usable 'pwsh' command."
+    }
+}
 
 $psmuxCandidatePaths = @(
     @(Get-WingetLinkCandidatePaths -BinaryNames @("psmux", "tmux"))
