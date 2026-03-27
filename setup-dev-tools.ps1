@@ -488,8 +488,12 @@ function Find-WingetInstalledBinary {
 function Get-WingetLinkCandidatePaths {
     param([Parameter(Mandatory = $true)][string[]]$BinaryNames)
 
-    $wingetLinksDir = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links"
-    return Get-DirectoryCommandCandidatePaths -Directories @($wingetLinksDir) -BinaryNames $BinaryNames
+    $candidateDirs = @(
+        (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links"),
+        (Join-Path $env:LOCALAPPDATA "Microsoft\WindowsApps")
+    )
+
+    return Get-DirectoryCommandCandidatePaths -Directories $candidateDirs -BinaryNames $BinaryNames
 }
 
 function Get-FnmMultishellCandidatePaths {
@@ -781,6 +785,42 @@ function Install-PortableNeovim {
     Remove-Item $portableZip -Force
 }
 
+function Install-PortableFnm {
+    $portableDir = Join-Path $env:LOCALAPPDATA "fnm"
+    $portableZip = Join-Path $env:TEMP "fnm-windows.zip"
+    $releaseApiUrl = "https://api.github.com/repos/Schniz/fnm/releases/latest"
+
+    $release = Invoke-RestMethod -Uri $releaseApiUrl -Headers @{
+        "User-Agent" = "GNU_files setup-dev-tools.ps1"
+    }
+
+    $asset = $release.assets | Where-Object { $_.name -eq 'fnm-windows.zip' } | Select-Object -First 1
+    if (-not $asset) {
+        throw "Could not find a Windows fnm asset in the latest fnm release."
+    }
+
+    if (Test-Path $portableDir) {
+        Remove-Item -Path $portableDir -Recurse -Force
+    }
+
+    New-Item -ItemType Directory -Path $portableDir -Force | Out-Null
+    Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $portableZip
+    Expand-Archive -Path $portableZip -DestinationPath $portableDir -Force
+    Remove-Item -Path $portableZip -Force -ErrorAction SilentlyContinue
+
+    $portableExe = Get-ChildItem -Path $portableDir -Recurse -File -Filter "fnm.exe" -ErrorAction SilentlyContinue |
+        Sort-Object FullName |
+        Select-Object -First 1
+
+    if (-not $portableExe) {
+        throw "Portable fnm install failed: fnm.exe was not found under $portableDir"
+    }
+
+    Add-UserPathOnce (Split-Path -Parent $portableExe.FullName)
+
+    return $portableExe.FullName
+}
+
 Write-Host "=== Dev Tools Setup (no admin) ===" -ForegroundColor Cyan
 
 # --- Pre-flight: check winget ---
@@ -824,7 +864,19 @@ Write-Host "Git $gitVersion" -ForegroundColor Green
 # --- 2. fnm + Node.js + npm ---
 Write-Host "`n[2/10] Installing fnm + Node.js..." -ForegroundColor Yellow
 
-$fnmBinary = Ensure-WingetBinaryInstalled -Id "Schniz.fnm" -PackagePrefix "Schniz.fnm" -BinaryNames @("fnm") -DisplayName "fnm"
+$fnmBinary = $null
+
+try {
+    $fnmBinary = Ensure-WingetBinaryInstalled -Id "Schniz.fnm" -PackagePrefix "Schniz.fnm" -BinaryNames @("fnm") -DisplayName "fnm"
+} catch {
+    Write-Warning "WinGet did not expose a usable 'fnm' command in this session. Falling back to portable fnm. Error: $($_.Exception.Message)"
+    $portableFnmExe = Install-PortableFnm
+    $fnmBinary = Wait-ForCommandInfo -Names @("fnm") -CandidatePaths @($portableFnmExe) -TimeoutSeconds 20
+    if (-not $fnmBinary) {
+        throw "fnm install failed. Neither winget nor the portable fallback produced a usable 'fnm' command."
+    }
+}
+
 $fnmExe = $fnmBinary.Source
 
 $fnmInit = 'fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression'
