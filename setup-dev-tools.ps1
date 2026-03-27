@@ -451,7 +451,7 @@ function Get-LatestNeovimVersion {
 function Test-WingetPackageInstalled {
     param([Parameter(Mandatory = $true)][string]$Id)
 
-    $wingetOutput = (& winget list --id $Id -e --accept-source-agreements | Out-String)
+    $wingetOutput = (& winget list --id $Id -e --source winget --accept-source-agreements | Out-String)
     return ($wingetOutput -match [regex]::Escape($Id))
 }
 
@@ -685,6 +685,7 @@ function Invoke-WingetInstall {
         "install",
         "--id", $Id,
         "-e",
+        "--source", "winget",
         "--accept-source-agreements",
         "--accept-package-agreements"
     )
@@ -1155,8 +1156,8 @@ if ($psmuxInstalledBinary) {
 $psmuxBinary = Wait-ForCommandInfo -Names @("psmux", "tmux") -CandidatePaths $psmuxCandidatePaths -TimeoutSeconds 2
 
 if (-not $psmuxBinary) {
-    & winget install --id $psmuxWingetId -e --scope user --accept-source-agreements --accept-package-agreements
-    if ($LASTEXITCODE -ne 0) {
+    $psmuxInstalled = Invoke-WingetInstall -Id $psmuxWingetId -UserScope
+    if (-not $psmuxInstalled) {
         if (-not (Test-WingetPackageInstalled $psmuxWingetId)) {
             throw "psmux install failed via winget."
         }
