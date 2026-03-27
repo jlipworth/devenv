@@ -11,6 +11,8 @@ $ProgressPreference = "SilentlyContinue"
 $AlacrittyVersion = "0.16.1"
 $FallbackNeovimVersion = "0.11.6"
 $MinimumNeovimVersion = [version]"0.11.2"
+$GnuFilesRepoUrl = "https://github.com/jlipworth/devenv.git"
+$GnuFilesBootstrapBranch = "feature/neovim-support"
 $psmuxVersion = $null
 
 function Add-PathOnce {
@@ -949,17 +951,17 @@ if ($gnuFilesPath) {
         Write-Warning "Existing GNU_files path was incomplete. Backed it up to $backupPath"
     }
 
-    git clone https://github.com/jlipworth/devenv.git $defaultGnuFilesPath
+    git clone --branch $GnuFilesBootstrapBranch --single-branch $GnuFilesRepoUrl $defaultGnuFilesPath
     if ($LASTEXITCODE -ne 0) {
-        throw "GNU_files clone failed."
+        throw "GNU_files clone failed for branch '$GnuFilesBootstrapBranch'."
     }
 
     $gnuFilesPath = $defaultGnuFilesPath
     if (-not (Test-GnuFilesCheckoutValid -RepoPath $gnuFilesPath)) {
-        throw "GNU_files clone completed, but the checkout is missing required files."
+        throw "GNU_files clone completed, but the checkout from branch '$GnuFilesBootstrapBranch' is missing required files."
     }
 
-    Write-Host "GNU_files cloned to $gnuFilesPath" -ForegroundColor Green
+    Write-Host "GNU_files cloned to $gnuFilesPath from branch '$GnuFilesBootstrapBranch'" -ForegroundColor Green
 }
 
 # --- 7. psmux + config + plugins ---
