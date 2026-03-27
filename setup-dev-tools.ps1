@@ -48,6 +48,32 @@ function Add-UserPathOnce {
     }
 }
 
+function Get-DirectoryCommandCandidatePaths {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Directories,
+        [Parameter(Mandatory = $true)][string[]]$BinaryNames,
+        [switch]$IncludeExtensionless
+    )
+
+    $candidatePaths = @()
+
+    foreach ($directory in ($Directories | Where-Object { $_ })) {
+        foreach ($binaryName in $BinaryNames) {
+            $candidatePaths += @(
+                (Join-Path $directory "$binaryName.exe"),
+                (Join-Path $directory "$binaryName.cmd"),
+                (Join-Path $directory "$binaryName.ps1")
+            )
+
+            if ($IncludeExtensionless) {
+                $candidatePaths += (Join-Path $directory $binaryName)
+            }
+        }
+    }
+
+    return $candidatePaths | Select-Object -Unique
+}
+
 function Refresh-SessionPath {
     $pathEntries = @()
 
@@ -459,6 +485,23 @@ function Find-WingetInstalledBinary {
     return $null
 }
 
+function Get-WingetLinkCandidatePaths {
+    param([Parameter(Mandatory = $true)][string[]]$BinaryNames)
+
+    $wingetLinksDir = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links"
+    return Get-DirectoryCommandCandidatePaths -Directories @($wingetLinksDir) -BinaryNames $BinaryNames
+}
+
+function Get-FnmMultishellCandidatePaths {
+    param([Parameter(Mandatory = $true)][string[]]$BinaryNames)
+
+    if (-not $env:FNM_MULTISHELL_PATH) {
+        return @()
+    }
+
+    return Get-DirectoryCommandCandidatePaths -Directories @($env:FNM_MULTISHELL_PATH) -BinaryNames $BinaryNames -IncludeExtensionless
+}
+
 function Get-CommandInfoAny {
     param([Parameter(Mandatory = $true)][string[]]$Names)
 
@@ -477,10 +520,16 @@ function Ensure-WingetBinaryInstalled {
         [Parameter(Mandatory = $true)][string]$Id,
         [Parameter(Mandatory = $true)][string]$PackagePrefix,
         [Parameter(Mandatory = $true)][string[]]$BinaryNames,
-        [Parameter(Mandatory = $true)][string]$DisplayName
+        [Parameter(Mandatory = $true)][string]$DisplayName,
+        [string[]]$ExtraCandidatePaths = @()
     )
 
-    $commandInfo = Wait-ForCommandInfo -Names $BinaryNames -TimeoutSeconds 2
+    $candidatePaths = @(
+        @(Get-WingetLinkCandidatePaths -BinaryNames $BinaryNames)
+        @($ExtraCandidatePaths | Where-Object { $_ })
+    )
+
+    $commandInfo = Wait-ForCommandInfo -Names $BinaryNames -CandidatePaths $candidatePaths -TimeoutSeconds 2
     if ($commandInfo) {
         return $commandInfo
     }
@@ -495,14 +544,19 @@ function Ensure-WingetBinaryInstalled {
     $installedBinary = Find-WingetInstalledBinary -PackagePrefix $PackagePrefix -BinaryNames $BinaryNames
     if ($installedBinary) {
         Add-UserPathOnce (Split-Path -Parent $installedBinary)
-    }
-
-    $candidatePaths = @()
-    if ($installedBinary) {
         $candidatePaths += $installedBinary
     }
 
     $commandInfo = Wait-ForCommandInfo -Names $BinaryNames -CandidatePaths $candidatePaths -TimeoutSeconds 20
+
+    if ((-not $commandInfo) -and (-not $installedBinary)) {
+        $installedBinary = Find-WingetInstalledBinary -PackagePrefix $PackagePrefix -BinaryNames $BinaryNames
+        if ($installedBinary) {
+            Add-UserPathOnce (Split-Path -Parent $installedBinary)
+            $candidatePaths += $installedBinary
+            $commandInfo = Wait-ForCommandInfo -Names $BinaryNames -CandidatePaths $candidatePaths -TimeoutSeconds 10
+        }
+    }
 
     if (-not $commandInfo) {
         throw "$DisplayName was installed but no command was found. Check WinGet package '$Id'."
@@ -647,15 +701,17 @@ function Get-FnmInstalledVersionForAlias {
 }
 
 function Ensure-StableNpmPrefix {
+    param([string]$CommandPath = "npm")
+
     $desiredPrefix = "$env:APPDATA\npm"
 
     if (-not (Test-Path $desiredPrefix)) {
         New-Item -ItemType Directory -Path $desiredPrefix -Force | Out-Null
     }
 
-    $currentPrefix = (npm config get prefix).Trim()
+    $currentPrefix = (& $CommandPath config get prefix).Trim()
     if ($currentPrefix -ne $desiredPrefix) {
-        npm config set prefix $desiredPrefix | Out-Null
+        & $CommandPath config set prefix $desiredPrefix | Out-Null
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to set npm global prefix to '$desiredPrefix'."
         }
@@ -774,6 +830,7 @@ $fnmExe = $fnmBinary.Source
 $fnmInit = 'fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression'
 Ensure-ProfileLine $fnmInit
 Invoke-Expression ((& $fnmExe env --use-on-cd --shell powershell) | Out-String)
+Refresh-SessionPath
 
 & $fnmExe install --lts
 if ($LASTEXITCODE -ne 0) {
@@ -790,13 +847,15 @@ if ($LASTEXITCODE -ne 0) {
     throw "fnm failed to activate Node.js $ltsNodeVersion."
 }
 
-$nodeCommand = Wait-ForCommandInfo -Names @("node") -TimeoutSeconds 10
-$npmCommand = Wait-ForCommandInfo -Names @("npm") -TimeoutSeconds 10
+$fnmActivationCandidatePaths = Get-FnmMultishellCandidatePaths -BinaryNames @("node", "npm")
+$nodeCommand = Wait-ForCommandInfo -Names @("node") -CandidatePaths $fnmActivationCandidatePaths -TimeoutSeconds 15
+$npmCommand = Wait-ForCommandInfo -Names @("npm") -CandidatePaths $fnmActivationCandidatePaths -TimeoutSeconds 15
 if ((-not $nodeCommand) -or (-not $npmCommand)) {
     throw "fnm activated Node.js, but 'node' and/or 'npm' were not available in this session yet. Restart PowerShell and rerun if needed."
 }
 
 $nodeVersion = (& $nodeCommand.Source --version).Trim()
+$npmExe = $npmCommand.Source
 
 & $fnmExe default $ltsNodeVersion
 if ($LASTEXITCODE -ne 0) {
@@ -806,13 +865,13 @@ if ($LASTEXITCODE -ne 0) {
 $npmVersion = (& $npmCommand.Source --version).Trim()
 Write-Host "Node $nodeVersion | npm $npmVersion" -ForegroundColor Green
 
-$npmPrefix = Ensure-StableNpmPrefix
+$npmPrefix = Ensure-StableNpmPrefix -CommandPath $npmExe
 
 # --- 3. OpenAI Codex CLI ---
 Write-Host "`n[3/10] Installing OpenAI Codex CLI..." -ForegroundColor Yellow
 
 if (-not (Test-NpmGlobalBinary -Prefix $npmPrefix -CommandName "codex")) {
-    npm install -g @openai/codex
+    & $npmExe install -g @openai/codex
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to install OpenAI Codex CLI via npm."
     }
@@ -844,7 +903,7 @@ Write-Host "Codex: $codexVersion" -ForegroundColor Green
 Write-Host "`n[4/10] Installing Claude Code..." -ForegroundColor Yellow
 
 if (-not (Test-NpmGlobalBinary -Prefix $npmPrefix -CommandName "claude")) {
-    npm install -g @anthropic-ai/claude-code
+    & $npmExe install -g @anthropic-ai/claude-code
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to install Claude Code via npm."
     }
@@ -897,13 +956,17 @@ if (-not (Test-CommandExists "uv")) {
         throw "Failed to download uv installer."
     }
     Invoke-Expression $uvInstaller
+    Refresh-SessionPath
 }
 
 Add-UserPathOnce "$env:USERPROFILE\.local\bin"
+Add-UserPathOnce "$env:USERPROFILE\.cargo\bin"
 
-$uvCommand = Wait-ForCommandInfo -Names @("uv") -CandidatePaths @(
-    (Join-Path "$env:USERPROFILE\.local\bin" "uv.exe"),
-    (Join-Path "$env:USERPROFILE\.local\bin" "uv")
+$uvCommand = Wait-ForCommandInfo -Names @("uv") -CandidatePaths (
+    Get-DirectoryCommandCandidatePaths -Directories @(
+        "$env:USERPROFILE\.local\bin",
+        "$env:USERPROFILE\.cargo\bin"
+    ) -BinaryNames @("uv") -IncludeExtensionless
 ) -TimeoutSeconds 15
 if (-not $uvCommand) {
     throw "uv was installed but is not on PATH. Check '$env:USERPROFILE\.local\bin'."
@@ -969,14 +1032,24 @@ Write-Host "`n[7/10] Installing psmux + config..." -ForegroundColor Yellow
 
 $psmuxWingetId = "marlocarlo.psmux"
 
-if (-not (Test-CommandExists "pwsh")) {
-    $pwshInstalled = Invoke-WingetInstall -Id "Microsoft.PowerShell" -UserScope
-    if (-not $pwshInstalled) {
-        throw "PowerShell 7 (pwsh) install failed via winget."
-    }
+Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+Add-UserPathOnce "$env:USERPROFILE\.cargo\bin"
+
+$pwshBinary = Ensure-WingetBinaryInstalled -Id "Microsoft.PowerShell" -PackagePrefix "Microsoft.PowerShell" -BinaryNames @("pwsh") -DisplayName "PowerShell 7"
+
+$psmuxCandidatePaths = @(
+    @(Get-WingetLinkCandidatePaths -BinaryNames @("psmux", "tmux"))
+    @(Get-DirectoryCommandCandidatePaths -Directories @("$env:USERPROFILE\.cargo\bin") -BinaryNames @("psmux", "tmux") -IncludeExtensionless)
+)
+$psmuxInstalledBinary = Find-WingetInstalledBinary -PackagePrefix $psmuxWingetId -BinaryNames @("psmux", "tmux")
+if ($psmuxInstalledBinary) {
+    Add-UserPathOnce (Split-Path -Parent $psmuxInstalledBinary)
+    $psmuxCandidatePaths += $psmuxInstalledBinary
 }
 
-if ((-not (Test-CommandExists "psmux")) -and (-not (Test-CommandExists "tmux"))) {
+$psmuxBinary = Wait-ForCommandInfo -Names @("psmux", "tmux") -CandidatePaths $psmuxCandidatePaths -TimeoutSeconds 2
+
+if (-not $psmuxBinary) {
     & winget install --id $psmuxWingetId -e --scope user --accept-source-agreements --accept-package-agreements
     if ($LASTEXITCODE -ne 0) {
         if (-not (Test-WingetPackageInstalled $psmuxWingetId)) {
@@ -985,27 +1058,14 @@ if ((-not (Test-CommandExists "psmux")) -and (-not (Test-CommandExists "tmux")))
 
         Write-Host "psmux is already installed via winget; continuing." -ForegroundColor Yellow
     }
-}
 
-Add-UserPathOnce "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
-Add-UserPathOnce "$env:USERPROFILE\.cargo\bin"
+    $psmuxInstalledBinary = Find-WingetInstalledBinary -PackagePrefix $psmuxWingetId -BinaryNames @("psmux", "tmux")
+    if ($psmuxInstalledBinary) {
+        Add-UserPathOnce (Split-Path -Parent $psmuxInstalledBinary)
+        $psmuxCandidatePaths += $psmuxInstalledBinary
+    }
 
-$psmuxInstalledBinary = Find-WingetInstalledBinary -PackagePrefix $psmuxWingetId -BinaryNames @("psmux", "tmux")
-if ($psmuxInstalledBinary) {
-    Add-UserPathOnce (Split-Path -Parent $psmuxInstalledBinary)
-}
-
-$pwshBinary = Wait-ForCommandInfo -Names @("pwsh") -TimeoutSeconds 20
-if (-not $pwshBinary) {
-    throw "PowerShell 7 (pwsh) is required for the psmux config/bootstrap, but it is not on PATH."
-}
-
-$psmuxBinary = Get-Command psmux -ErrorAction SilentlyContinue
-if (-not $psmuxBinary) {
-    $psmuxBinary = Get-Command tmux -ErrorAction SilentlyContinue
-}
-if ((-not $psmuxBinary) -and $psmuxInstalledBinary) {
-    $psmuxBinary = Get-Command $psmuxInstalledBinary -ErrorAction SilentlyContinue
+    $psmuxBinary = Wait-ForCommandInfo -Names @("psmux", "tmux") -CandidatePaths $psmuxCandidatePaths -TimeoutSeconds 25
 }
 
 if (-not $psmuxBinary) {
@@ -1321,8 +1381,11 @@ if ($installLlvm -eq 'y' -or $installLlvm -eq 'Y') {
     $llvmInstalled = Invoke-WingetInstall -Id "LLVM.LLVM" -UserScope
     if ($llvmInstalled) {
         Add-UserPathOnce "$env:ProgramFiles\LLVM\bin"
-        if (Test-CommandExists "clang") {
-            $llvmVersion = (clang --version | Select-Object -First 1).Trim()
+        $clangCommand = Wait-ForCommandInfo -Names @("clang") -CandidatePaths (
+            Get-DirectoryCommandCandidatePaths -Directories @("$env:ProgramFiles\LLVM\bin") -BinaryNames @("clang")
+        ) -TimeoutSeconds 15
+        if ($clangCommand) {
+            $llvmVersion = (& $clangCommand.Source --version | Select-Object -First 1).Trim()
             Write-Host "LLVM: $llvmVersion" -ForegroundColor Green
         } else {
             Write-Host "LLVM installed - restart PowerShell for clang/clang++ to appear on PATH." -ForegroundColor Yellow
