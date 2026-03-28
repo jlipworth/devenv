@@ -1,0 +1,7 @@
+brew "ccache"
+brew "cmake"
+brew "curl"
+brew "gettext"
+brew "git"
+brew "ninja"
+brew "pkg-config"

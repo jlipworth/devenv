@@ -5,7 +5,7 @@
         latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools \
         whisper whisper_toolchain whisper_audio latex_tooling latex_distribution \
         cli_tools cli_tools_core cli_tools_system starship syntax-highlighting update-deps \
-        full-setup noadmin-setup help neovim
+        full-setup noadmin-setup help neovim neovim-source neovim-package
 
 # Default target to install all prerequisite layers
 prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools
@@ -164,8 +164,16 @@ ai-tools:
 	@./prereq_packages.sh install_ai_tools
 
 neovim:
-	@echo "Installing Neovim and configuring LazyVim..."
+	@echo "Installing Neovim and configuring LazyVim (source-build default on Unix)..."
 	@./prereq_packages.sh install_neovim
+
+neovim-source:
+	@echo "Building Neovim from source and configuring LazyVim..."
+	@./prereq_packages.sh install_neovim_source
+
+neovim-package:
+	@echo "Installing Neovim and configuring LazyVim via package/download path..."
+	@NEOVIM_INSTALL_MODE=package ./prereq_packages.sh install_neovim
 
 # Update dependencies after Renovate MRs
 update-deps:
@@ -228,4 +236,6 @@ help:
 	@echo "  starship        - Install Starship prompt with Ayu Mirage config"
 	@echo "  syntax-highlighting - Install shell syntax highlighting (blesh/zsh-syntax-highlighting)"
 	@echo "  update-deps     - Update dependencies after Renovate PRs"
-	@echo "  neovim          - Install Neovim + LazyVim (opt-in, not part of full-setup)"
+	@echo "  neovim          - Build pinned Neovim from source + LazyVim (default Unix path)"
+	@echo "  neovim-source   - Explicit source-build alias for pinned Neovim + LazyVim"
+	@echo "  neovim-package  - Legacy package/download Neovim + LazyVim path"
