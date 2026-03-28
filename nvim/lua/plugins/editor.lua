@@ -1,9 +1,16 @@
 return {
   {
-    "nvim-telescope/telescope.nvim",
+    "folke/snacks.nvim",
     opts = {
-      defaults = {
-        file_ignore_patterns = { ".git/", "node_modules/", "__pycache__/" },
+      picker = {
+        sources = {
+          files = {
+            exclude = { "node_modules", "__pycache__" },
+          },
+          grep = {
+            exclude = { "**/node_modules/**", "**/__pycache__/**" },
+          },
+        },
       },
     },
   },
