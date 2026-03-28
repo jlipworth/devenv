@@ -1688,12 +1688,62 @@ install_ai_tools() {
     fi
 }
 
+install_neovim_source() {
+    log "Delegating to build_neovim.sh..."
+    "$GNU_DIR/build_neovim.sh"
+}
+
 install_neovim() {
+    local install_mode="${NEOVIM_INSTALL_MODE:-source}"
+
+    if [[ "$install_mode" == "package" ]]; then
+        install_neovim_package
+        return $?
+    fi
+
+    install_neovim_source
+}
+
+install_neovim_package() {
     log "Installing Neovim and configuring LazyVim..."
 
     # Source versions.conf for NEOVIM_VERSION
     source "$GNU_DIR/versions.conf"
     local neovim_version="${NEOVIM_VERSION:-0.11.6}"
+    local minimum_neovim_version="0.11.2"
+
+    neovim_version_lt() {
+        local IFS=.
+        local lhs=($1)
+        local rhs=($2)
+        local i
+
+        for ((i = ${#lhs[@]}; i < ${#rhs[@]}; i++)); do
+            lhs[i]=0
+        done
+        for ((i = ${#rhs[@]}; i < ${#lhs[@]}; i++)); do
+            rhs[i]=0
+        done
+
+        for ((i = 0; i < ${#lhs[@]}; i++)); do
+            if ((10#${lhs[i]} < 10#${rhs[i]})); then
+                return 0
+            fi
+            if ((10#${lhs[i]} > 10#${rhs[i]})); then
+                return 1
+            fi
+        done
+
+        return 1
+    }
+
+    get_installed_neovim_version() {
+        if ! command -v nvim &> /dev/null; then
+            return 1
+        fi
+
+        nvim --version 2> /dev/null | head -1 | sed -E 's/^NVIM v([0-9]+(\.[0-9]+){1,2}).*/\1/'
+    }
 
     # LazyVim bootstraps itself via git on first launch, so fail fast if git is
     # not available instead of leaving the user with a broken nvim startup.
@@ -1712,8 +1762,32 @@ install_neovim() {
     fi
 
     # --- Install Neovim binary ---
-    if is_installed "nvim"; then
+    local installed_neovim_version=""
+    installed_neovim_version="$(get_installed_neovim_version || true)"
+
+    if [[ -n "$installed_neovim_version" ]] && ! neovim_version_lt "$installed_neovim_version" "$neovim_version"; then
         log "Neovim is already installed: $(nvim --version | head -1)"
+    elif is_installed "nvim"; then
+        if [[ -n "$installed_neovim_version" ]]; then
+            log "Existing Neovim $installed_neovim_version is older than target $neovim_version; upgrading..." "WARNING"
+        else
+            log "Neovim is installed, but its version could not be detected reliably. Reinstalling target $neovim_version..." "WARNING"
+        fi
+
+        if is_installed "brew"; then
+            brew upgrade neovim || brew install neovim || log "Error upgrading Neovim via Homebrew." "WARNING"
+        elif [[ "$DISTRO" == "arch" ]] && ! no_admin_mode; then
+            install_packages "neovim"
+        else
+            log "Package-managed Neovim cannot be trusted to meet target $neovim_version here; installing pinned user-local build instead." "WARNING"
+            installed_neovim_version=""
+        fi
+    fi
+
+    installed_neovim_version="$(get_installed_neovim_version || true)"
+
+    if [[ -n "$installed_neovim_version" ]] && ! neovim_version_lt "$installed_neovim_version" "$neovim_version"; then
+        :
     elif is_installed "brew"; then
         log "Installing Neovim via Homebrew..."
         brew install neovim || log "Error installing Neovim via Homebrew." "WARNING"
@@ -1779,6 +1853,21 @@ install_neovim() {
         log "Neovim installed to $nvim_dest" "SUCCESS"
     fi
 
+    installed_neovim_version="$(get_installed_neovim_version || true)"
+    if [[ -z "$installed_neovim_version" ]]; then
+        log "Neovim install completed, but the version could not be determined from 'nvim --version'." "ERROR"
+        return 1
+    fi
+    if neovim_version_lt "$installed_neovim_version" "$minimum_neovim_version"; then
+        log "Neovim $installed_neovim_version is too old for LazyVim. Require >= $minimum_neovim_version." "ERROR"
+        return 1
+    fi
+    if neovim_version_lt "$installed_neovim_version" "$neovim_version"; then
+        log "Neovim $installed_neovim_version is older than the repo target $neovim_version." "ERROR"
+        return 1
+    fi
+    log "Neovim version verified: $installed_neovim_version"
+
     # --- Install lazygit (required for LazyVim git integration) ---
     if ! is_installed "lazygit"; then
         log "Installing lazygit..."
@@ -1841,6 +1930,9 @@ install_neovim() {
         rm "$nvim_config_dir"
     elif [ -d "$nvim_config_dir" ]; then
         log "A directory exists at $nvim_config_dir. Backing it up."
+        mv "$nvim_config_dir" "${nvim_config_dir}_backup_$(date +%Y%m%d%H%M%S)"
+    elif [ -e "$nvim_config_dir" ]; then
+        log "A non-directory file exists at $nvim_config_dir. Backing it up."
         mv "$nvim_config_dir" "${nvim_config_dir}_backup_$(date +%Y%m%d%H%M%S)"
     fi
 
@@ -1918,6 +2010,8 @@ main() {
         "install_cli_tools_core"
         "install_cli_tools_system"
         "install_cli_tools"
+        "install_neovim_source"
+        "install_neovim_package"
         "install_neovim"
         "install_all"
     )
