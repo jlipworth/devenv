@@ -1714,9 +1714,10 @@ install_neovim_package() {
 
     neovim_version_lt() {
         local IFS=.
-        local lhs=($1)
-        local rhs=($2)
+        local lhs rhs
         local i
+        read -r -a lhs <<< "$1"
+        read -r -a rhs <<< "$2"
 
         for ((i = ${#lhs[@]}; i < ${#rhs[@]}; i++)); do
             lhs[i]=0

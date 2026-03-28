@@ -20,14 +20,15 @@ CI_INSTALL="${CI_INSTALL:-false}"
 DRY_RUN="false"
 if [[ "${1:-}" == "--verify" || "${1:-}" == "--check" || "${1:-}" == "--dry-run" ]]; then
     DRY_RUN="true"
-    log "Running in verification/dry-run mode. Will check dependencies and configure only." "INFO"
+    log "Running in verification/dry-run mode. Will prepare bundled dependencies and configure only." "INFO"
 fi
 
 neovim_version_lt() {
     local IFS=.
-    local lhs=($1)
-    local rhs=($2)
+    local lhs rhs
     local i
+    read -r -a lhs <<< "$1"
+    read -r -a rhs <<< "$2"
 
     for ((i = ${#lhs[@]}; i < ${#rhs[@]}; i++)); do
         lhs[i]=0
@@ -287,6 +288,42 @@ run_nvim_make() {
     "${make_cmd[@]}"
 }
 
+run_nvim_make_with_retry() {
+    local target="${1:-}"
+    local attempt max_attempts
+    max_attempts=2
+
+    for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+        if run_nvim_make "$target"; then
+            return 0
+        fi
+
+        if ((attempt < max_attempts)); then
+            log "Neovim build command failed (attempt ${attempt}/${max_attempts}); retrying once after a short delay..." "WARNING"
+            sleep 5
+        fi
+    done
+
+    return 1
+}
+
+build_configured_neovim() {
+    local nproc
+
+    if command -v ninja &> /dev/null; then
+        cmake --build build
+        return 0
+    fi
+
+    if [[ "$OS" == "Darwin" ]]; then
+        nproc=$(sysctl -n hw.ncpu)
+    else
+        nproc=$(nproc)
+    fi
+
+    cmake --build build --parallel "$nproc"
+}
+
 link_nvim_config() {
     local nvim_config_dir="$HOME/.config/nvim"
     local nvim_source="$GNU_DIR/nvim"
@@ -370,18 +407,22 @@ fi
 
 cd "$NEOVIM_DIR"
 
+log "Preparing bundled Neovim dependencies..."
+run_nvim_make_with_retry deps
+log "Dependency preparation finished." "SUCCESS"
+
 log "Configuring Neovim build (build type: $NEOVIM_BUILD_TYPE)..."
 configure_neovim_build
 log "Configure completed." "SUCCESS"
 
 if [[ "$DRY_RUN" == "true" ]]; then
-    log "Verification mode completed successfully. Configure passed. Skipping compilation and installation." "SUCCESS"
+    log "Verification mode completed successfully. Dependency prep and configure passed. Skipping Neovim compilation and installation." "SUCCESS"
     exit 0
 fi
 
 log "Compiling Neovim (build type: $NEOVIM_BUILD_TYPE)..."
 log "Started compilation at: $(date)"
-run_nvim_make
+build_configured_neovim
 log "Compilation finished at: $(date)" "SUCCESS"
 
 if [[ "$CI" == "true" && "$CI_INSTALL" != "true" ]]; then
@@ -393,7 +434,7 @@ fi
 
 log "Installing Neovim to $NEOVIM_PREFIX..."
 mkdir -p "$NEOVIM_PREFIX" "$HOME/.local/bin"
-run_nvim_make install
+cmake --install build
 
 if [[ ! -x "$NEOVIM_PREFIX/bin/nvim" ]]; then
     log "Installation completed, but no Neovim binary was found at $NEOVIM_PREFIX/bin/nvim." "ERROR"
