@@ -30,9 +30,20 @@ export XDG_CACHE_HOME="$HOME/.cache"
 mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
 
 echo "=== Neovim smoke: isolated HOME is $TEST_HOME ==="
+NVIM_INSTALL_MODE="${NVIM_INSTALL_MODE:-source}"
+if [[ "$NVIM_INSTALL_MODE" == "source" ]]; then
+    export CI_INSTALL="${CI_INSTALL:-true}"
+fi
 
 echo "=== Step 1: install/configure Neovim ==="
-make neovim
+if [[ "$NVIM_INSTALL_MODE" == "source" ]]; then
+    make neovim
+elif [[ "$NVIM_INSTALL_MODE" == "package" ]]; then
+    make neovim-package
+else
+    echo "Unsupported NVIM_INSTALL_MODE=$NVIM_INSTALL_MODE" >&2
+    exit 1
+fi
 hash -r
 if [[ -d /home/linuxbrew/.linuxbrew/bin ]]; then
     export PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:$PATH"
@@ -83,4 +94,4 @@ COLOR_FILE="$TEST_HOME/colors_name.txt"
 nvim --headless "+lua vim.fn.writefile({vim.g.colors_name or 'nil'}, '$COLOR_FILE')" +qa > /dev/null 2>&1
 test "$(cat "$COLOR_FILE")" = "tokyonight-night"
 
-echo "=== Neovim smoke passed ==="
+echo "=== Neovim smoke passed (${NVIM_INSTALL_MODE}) ==="
