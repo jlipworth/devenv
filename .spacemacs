@@ -87,6 +87,7 @@ This function should only modify configuration layer settings."
           org-todo-dependencies-strategy 'naive-auto
           org-enable-github-support t
           org-enable-sticky-header t
+          org-enable-valign t
           )
 
      (markdown :variables
