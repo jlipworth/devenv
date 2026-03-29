@@ -83,7 +83,7 @@ set_brew_toolchain_env() {
 
     local gcc_prefix latest_gcc_executable gcc_major
     gcc_prefix="$(brew --prefix gcc 2> /dev/null || true)"
-    latest_gcc_executable="$(ls -1 "${brew_prefix}"/bin/gcc-[0-9]* 2> /dev/null | sort -V | tail -n 1)"
+    latest_gcc_executable="$(ls -1 "${brew_prefix}"/bin/gcc-[0-9]* 2> /dev/null | sort -V | tail -n 1 || true)"
     if [[ -n "$latest_gcc_executable" ]]; then
         gcc_major="$("$latest_gcc_executable" -dumpversion | cut -d. -f1)"
         export CC="gcc-${gcc_major}"
