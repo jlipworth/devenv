@@ -5,3 +5,4 @@ publicssh
 emacs-*.tar.gz
 emacs-*/
 *.elc
+.worktrees/
