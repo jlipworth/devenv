@@ -9,7 +9,7 @@ $ProgressPreference = "SilentlyContinue"
 
 # Version pins / minimums - keep in sync with versions.conf where applicable
 $AlacrittyVersion = "0.16.1"
-$FallbackNeovimVersion = "0.11.6"
+$FallbackNeovimVersion = "0.12.0"
 $MinimumNeovimVersion = [version]"0.11.2"
 $GnuFilesRepoUrl = "https://github.com/jlipworth/devenv.git"
 $GnuFilesBootstrapBranch = "master"

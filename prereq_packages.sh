@@ -1709,7 +1709,7 @@ install_neovim_package() {
 
     # Source versions.conf for NEOVIM_VERSION
     source "$GNU_DIR/versions.conf"
-    local neovim_version="${NEOVIM_VERSION:-0.11.6}"
+    local neovim_version="${NEOVIM_VERSION:-0.12.0}"
     local minimum_neovim_version="0.11.2"
 
     neovim_version_lt() {
