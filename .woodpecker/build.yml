@@ -26,7 +26,7 @@ steps:
           test -x "$HOME/.local/bin/emacs"
           "$HOME/.local/bin/emacs" --version
       - echo "=== Testing Spacemacs compatibility ==="
-      - git clone --depth 1 --branch develop https://github.com/syl20bnr/spacemacs ~/.emacs.d
+      - git clone --depth 1 --branch develop https://github.com/jlipworth/spacemacs ~/.emacs.d
       - |
           "$HOME/.local/bin/emacs" --batch --eval "(progn
               (require 'package)

@@ -498,7 +498,7 @@ if [ -d "$HOME/.emacs.d" ]; then
 fi
 
 log "Cloning Spacemacs repository (develop branch)..."
-git clone --depth 100 --branch develop https://github.com/syl20bnr/spacemacs "$HOME/.emacs.d" &&
+git clone --depth 100 --branch develop https://github.com/jlipworth/spacemacs "$HOME/.emacs.d" &&
     log "Spacemacs installed." "SUCCESS" ||
     {
         log "Failed to clone Spacemacs." "ERROR"

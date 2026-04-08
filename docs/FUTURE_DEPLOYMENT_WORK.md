@@ -214,7 +214,7 @@ nix/
   # Spacemacs
   home.file.".emacs.d" = {
     source = pkgs.fetchFromGitHub {
-      owner = "syl20bnr";
+      owner = "jlipworth";
       repo = "spacemacs";
       rev = "develop";  # Or pin to specific commit
       sha256 = ""; # Will error first time, Nix will tell you the correct hash
@@ -469,7 +469,7 @@ RUN mkdir -p /usr/share/fonts/truetype/custom && \
 
 # Install Spacemacs
 RUN git clone --depth 1 --branch develop \
-    https://github.com/syl20bnr/spacemacs /root/.emacs.d
+    https://github.com/jlipworth/spacemacs /root/.emacs.d
 
 # Copy user config
 COPY .spacemacs /root/.spacemacs
