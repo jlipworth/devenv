@@ -47,4 +47,28 @@ return {
       return opts
     end,
   },
+
+  -- mini.ai textobjects for cells. `aj` includes the `# %%` marker, `ij` excludes it.
+  {
+    "nvim-mini/mini.ai",
+    optional = true,
+    opts = function(_, opts)
+      opts.custom_textobjects = opts.custom_textobjects or {}
+      opts.custom_textobjects.j = function(ai_type)
+        return require("jupyter.keymaps").mini_ai_spec(ai_type)
+      end
+      return opts
+    end,
+  },
+
+  -- which-key group label for <localleader>j
+  {
+    "folke/which-key.nvim",
+    optional = true,
+    opts = {
+      spec = {
+        { "<localleader>j", group = "jupyter", mode = { "n", "x" } },
+      },
+    },
+  },
 }
