@@ -70,7 +70,14 @@ function M.send_visual()
 end
 
 function M.toggle_repl()
-  require("iron.core").toggle_repl("python")
+  local core = require("iron.core")
+  local ll   = require("iron.lowlevel")
+  local meta = ll.get("python")
+  if meta and ll.repl_exists(meta) then
+    core.hide_repl("python")
+  else
+    core.repl_for("python")
+  end
 end
 
 function M.focus_repl()
@@ -86,13 +93,13 @@ end
 -- job channel. Going through iron.core.send would wrap it in bracketed-paste
 -- and produce garbage instead of an interrupt.
 function M.interrupt_repl()
-  local memory = require("iron.memory")
-  local repl = memory.get(0, "python") or memory.get_repl_for("python")
-  if not repl or not repl.job then
+  local ll = require("iron.lowlevel")
+  local meta = ll.get("python")
+  if not meta or not meta.job then
     vim.notify("jupyter: no python REPL to interrupt", vim.log.levels.WARN)
     return
   end
-  vim.fn.chansend(repl.job, string.char(3))
+  vim.fn.chansend(meta.job, string.char(3))
 end
 
 return M
