@@ -476,15 +476,19 @@ NVIM_APPNAME=nvim_parity_git nvim --headless \
 
 Expected: `OK`. Sub-spec 2 should be undisturbed.
 
-- [ ] **Step 6: Hunks still work (gitsigns regression guard)**
+- [ ] **Step 6: gitsigns still loads (regression guard)**
 
 ```bash
 NVIM_APPNAME=nvim_parity_git nvim --headless \
-  -c 'lua require("gitsigns"); print(vim.fn.maparg(" ghs", "n") ~= "" and "GHS OK" or "GHS MISSING")' \
+  -c 'lua require("gitsigns"); print("OK")' \
   -c 'qall' 2>&1 | tail -3
 ```
 
-Expected: `GHS OK`. If `GHS MISSING`, our spec accidentally shadowed gitsigns — investigate.
+Expected: `OK`. Note that `<leader>gh*` hunk bindings are installed by
+gitsigns' `on_attach` callback and only appear once a git-tracked buffer
+is loaded, so a `maparg` check in a bare headless session would be a
+false negative — checking the module load is the meaningful regression
+guard here.
 
 - [ ] **Step 7: `checkhealth` smoke**
 

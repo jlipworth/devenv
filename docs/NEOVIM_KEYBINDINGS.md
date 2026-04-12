@@ -119,11 +119,9 @@ Harpoon 2 is installed as an optional helper for the files you revisit constantl
 
 ## Git
 
-| Action | Spacemacs | LazyVim | Notes |
-|--------|-----------|---------|-------|
-| Git status | `SPC g s` | `<leader>gg` | Opens lazygit |
-| Git blame | `SPC g b` | `<leader>gb` | Inline blame |
-| Git diff | `SPC g d` | `<leader>gd` | Hunk diff picker |
+See the **Git (Neogit / Diffview / Octo)** section near the end of this
+file for the full current set of Git bindings. The old three-row summary
+that used to live here is now superseded by that section.
 
 ## LSP
 
