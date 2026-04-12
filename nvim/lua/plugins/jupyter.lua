@@ -24,9 +24,10 @@ return {
           },
           repl_open_cmd = view.split.vertical.botright("40%"),
         },
-        -- Disable iron's default keymaps entirely; ours are installed per-buffer
-        -- by jupyter.keymaps (Task 6) and must not collide with iron defaults.
-        keymaps = false,
+        -- Disable iron's default keymaps entirely. iron.core.setup iterates
+        -- `opts.keymaps` with `pairs()` whenever it is non-nil, so `false`
+        -- would crash; an empty table iterates zero times and installs nothing.
+        keymaps = {},
         highlight = { italic = true },
         ignore_blank_lines = true,
       })
