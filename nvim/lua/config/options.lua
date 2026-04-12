@@ -2,6 +2,11 @@
 -- Default options that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/options.lua
 -- Keep this file limited to settings grounded in the current `.spacemacs`.
 
+-- Re-assert the Spacemacs-style leader choices after LazyVim's default
+-- options module resets `maplocalleader` to "\".
+vim.g.mapleader = " "
+vim.g.maplocalleader = ","
+
 local opt = vim.opt
 
 -- Match the current `.spacemacs` line-number preference.
