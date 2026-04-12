@@ -50,9 +50,10 @@ native Windows via the existing install scripts.
 1. After `lazy sync`, `<leader>gg` opens the Neogit status buffer.
 2. `<leader>gd` opens a Diffview for the working tree against `HEAD`,
    and `<leader>gD` (or similar) for any arbitrary ref pair.
-3. `<leader>gi` / `<leader>gI` list open / all GitHub issues for the
-   current repo via Octo; `<leader>gp` / `<leader>gP` list open / all
-   PRs. These match the upstream LazyVim octo-extra bindings.
+3. `<leader>gi` lists open GitHub issues and `<leader>gI` opens an Octo
+   issue search prompt; `<leader>gp` lists open PRs and `<leader>gP`
+   opens an Octo PR search prompt. These match the upstream LazyVim
+   octo-extra bindings verbatim.
 4. Works identically on the Windows install produced by
    `setup-dev-tools.ps1` (no extra admin prompts, no extra PATH tweaks
    beyond the existing `gh` CLI install on Linux and winget `gh` install
