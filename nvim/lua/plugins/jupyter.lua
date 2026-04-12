@@ -36,7 +36,7 @@ return {
   -- Visual highlight for # %% cell markers.
   -- Lua pattern: %%%% matches literal %% (each %% = one literal %).
   {
-    "echasnovski/mini.hipatterns",
+    "nvim-mini/mini.hipatterns",
     event = { "BufReadPost *.py", "BufReadPost *.ipynb", "BufNewFile *.py" },
     opts = function(_, opts)
       opts.highlighters = opts.highlighters or {}
