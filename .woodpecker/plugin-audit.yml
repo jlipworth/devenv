@@ -1,0 +1,16 @@
+# .woodpecker/plugin-audit.yml
+# Non-blocking plugin-freshness audit.
+# Opt-in: reports drift without gating merges.
+
+when:
+  event: [push, pull_request, manual]
+
+steps:
+  - name: nvim-plugin-audit
+    image: alpine:latest
+    failure: ignore
+    commands:
+      - apk add --no-cache bash jq curl git
+      - bash scripts/nvim-plugin-audit.sh --dry-run
+      - echo "-- live run (may be rate-limited without GITHUB_TOKEN) --"
+      - bash scripts/nvim-plugin-audit.sh || true
