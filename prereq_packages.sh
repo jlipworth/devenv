@@ -743,6 +743,22 @@ install_python_prereqs() {
     # Add Python bin directory to PATH
     PYTHON_BIN_DIR="$(python3 -m site --user-base)/bin"
     add_to_path "$PYTHON_BIN_DIR" "Python binaries (pipx)"
+
+    # Jupyter CLI tooling via uv (matches setup-dev-tools.ps1 behavior on Windows).
+    if command -v uv > /dev/null 2>&1; then
+        for tool in jupytext ipython; do
+            if ! uv tool list 2> /dev/null | grep -q "^${tool}\b"; then
+                log "Installing ${tool} via uv tool install..." "INFO"
+                uv tool install "${tool}"
+            fi
+        done
+        if ! uv tool list 2> /dev/null | grep -q "^ipykernel\b"; then
+            log "Installing ipykernel via uv tool install..." "INFO"
+            uv tool install ipykernel --with ipython
+        fi
+    else
+        log "WARNING: uv not found; skipping Jupyter CLI install. Run bootstrap.sh first." "WARNING"
+    fi
 }
 
 install_r_support() {
