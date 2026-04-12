@@ -1,0 +1,52 @@
+{
+  "align*": {
+    "prefix": "al*",
+    "body": [
+      "\\begin{align*}",
+      "  $1",
+      "\\end{align*}",
+      "$0"
+    ],
+    "description": "LaTeX align* environment"
+  },
+  "equation*": {
+    "prefix": "eq*",
+    "body": [
+      "\\begin{equation*}",
+      "  $1",
+      "\\end{equation*}",
+      "$0"
+    ],
+    "description": "LaTeX equation* environment"
+  },
+  "section*": {
+    "prefix": "secc",
+    "body": [
+      "\\section*{$1}",
+      "$0"
+    ],
+    "description": "LaTeX unnumbered section"
+  },
+  "subsection*": {
+    "prefix": "subb",
+    "body": [
+      "\\subsection*{$1}",
+      "$0"
+    ],
+    "description": "LaTeX unnumbered subsection"
+  },
+  "textit": {
+    "prefix": "i",
+    "body": [
+      "\\textit{$1}$0"
+    ],
+    "description": "LaTeX italic"
+  },
+  "underline": {
+    "prefix": "u",
+    "body": [
+      "\\underline{$1}$0"
+    ],
+    "description": "LaTeX underline"
+  }
+}

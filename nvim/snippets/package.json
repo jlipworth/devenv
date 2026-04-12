@@ -1,0 +1,14 @@
+{
+  "name": "nvim-parity-snippets",
+  "description": "Repo-managed snippets ported from snippets/ yasnippet sources.",
+  "version": "1.0.0",
+  "engines": { "vscode": "^1.11.0" },
+  "contributes": {
+    "snippets": [
+      {
+        "language": ["tex", "latex", "plaintex"],
+        "path": "./latex.json"
+      }
+    ]
+  }
+}
