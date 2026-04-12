@@ -17,3 +17,17 @@ vim.api.nvim_create_autocmd("FileType", {
     })
   end,
 })
+
+-- === Jupyter cell workflow ===================================================
+-- See docs/superpowers/specs/2026-04-12-nvim-jupyter-workflow-design.md.
+-- BufReadCmd/BufWriteCmd for *.ipynb and buffer-local keymaps for python files.
+
+require("jupyter.autocmds").setup()
+
+vim.api.nvim_create_autocmd("FileType", {
+  group = vim.api.nvim_create_augroup("JupyterFiletype", { clear = true }),
+  pattern = "python",  -- BufReadCmd normalizes .ipynb -> python; no "ipynb" branch needed
+  callback = function(args)
+    require("jupyter.keymaps").setup(args.buf)
+  end,
+})
