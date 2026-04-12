@@ -75,11 +75,12 @@ function M.setup(bufnr)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
     vim.bo[buf].modifiable = false
     vim.bo[buf].bufhidden = "wipe"
+    local width = math.min(60, vim.o.columns - 4)
     vim.api.nvim_open_win(buf, true, {
       relative = "editor", border = "rounded",
-      width = 60, height = #lines + 1,
+      width = width, height = #lines + 1,
       row = math.floor((vim.o.lines - #lines) / 2) - 2,
-      col = math.floor((vim.o.columns - 60) / 2),
+      col = math.floor((vim.o.columns - width) / 2),
       style = "minimal", title = " Jupyter ", title_pos = "center",
     })
     vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = buf, nowait = true })

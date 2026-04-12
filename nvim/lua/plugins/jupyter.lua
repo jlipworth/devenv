@@ -65,10 +65,10 @@ return {
   {
     "folke/which-key.nvim",
     optional = true,
-    opts = {
-      spec = {
-        { "<localleader>j", group = "jupyter", mode = { "n", "x" } },
-      },
-    },
+    opts = function(_, opts)
+      opts.spec = opts.spec or {}
+      table.insert(opts.spec, { "<localleader>j", group = "jupyter", mode = { "n", "x" } })
+      return opts
+    end,
   },
 }
