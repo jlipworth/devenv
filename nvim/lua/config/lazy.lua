@@ -6,8 +6,10 @@ require("lazy").setup({
     { import = "lazyvim.plugins.extras.ai.claudecode" },
     { import = "lazyvim.plugins.extras.util.octo" },
     { import = "lazyvim.plugins.extras.dap.core" },
-    { import = "lazyvim.plugins.extras.lang.python" },
-    { import = "lazyvim.plugins.extras.lang.typescript" },
+    -- lang.python and lang.typescript already imported in plugins/lang.lua;
+    -- they pull in nvim-dap-python and JS/TS dap adapters respectively
+    -- whenever dap.core is loaded. Keeping them out of here avoids a
+    -- duplicate-import lint on the lazy spec.
     { import = "plugins" },
   },
   defaults = { lazy = false },

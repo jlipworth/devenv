@@ -969,13 +969,18 @@ Expected: empty.
 - [ ] **Step 5: Snippets load**
 
 ```bash
+tmpdir="$(mktemp -d)" && touch "$tmpdir/x.tex" && \
 NVIM_APPNAME=nvim_parity_debug nvim --headless \
-  -c 'lua require("luasnip.loaders.from_vscode").lazy_load({ paths = { vim.fn.stdpath("config") .. "/snippets" } })' \
+  -c "edit $tmpdir/x.tex" \
+  -c 'lua vim.wait(200, function() return #require("luasnip").get_snippets("tex") > 0 end)' \
   -c 'lua print(vim.tbl_count(require("luasnip").get_snippets("tex") or {}))' \
-  -c 'qall' 2>&1 | tail -3
+  -c 'qall' 2>&1 | tail -3 ; rm -rf "$tmpdir"
 ```
 
-Expected: ≥ 6.
+Expected: ≥ 6. The `lazy_load` call in `snippets.lua` is async and only
+populates snippets once a `tex`/`latex`/`plaintex` buffer is actually
+loaded, so validate in that context — a bare headless session will
+return 0 even when the wiring is correct.
 
 - [ ] **Step 6: Audit dry-run**
 
