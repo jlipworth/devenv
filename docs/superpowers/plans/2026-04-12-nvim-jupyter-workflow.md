@@ -620,7 +620,7 @@ return {
   -- Visual highlight for # %% cell markers.
   -- Lua pattern: %%%% matches literal %% (each %% = one literal %).
   {
-    "echasnovski/mini.hipatterns",
+    "nvim-mini/mini.hipatterns",
     event = { "BufReadPost *.py", "BufReadPost *.ipynb", "BufNewFile *.py" },
     opts = function(_, opts)
       opts.highlighters = opts.highlighters or {}
@@ -1107,7 +1107,7 @@ In `nvim/lua/plugins/jupyter.lua`, add two more entries to the returned table (a
 ```lua
   -- mini.ai textobjects for cells. `aj` includes the `# %%` marker, `ij` excludes it.
   {
-    "echasnovski/mini.ai",
+    "nvim-mini/mini.ai",
     optional = true,
     opts = function(_, opts)
       opts.custom_textobjects = opts.custom_textobjects or {}
