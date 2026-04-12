@@ -346,6 +346,54 @@ customized here.
 Inside `octo://` buffers, `<localleader>` groups cover assignee / comment
 / label / issue / react / pr / review. See the octo.nvim docs upstream.
 
+## Debug (nvim-dap)
+
+Debugging is wired through LazyVim's `dap.core`, `lang.python`, and
+`lang.typescript` extras. Adapters install automatically via Mason on
+first use (`debugpy` for Python, `js-debug-adapter` for JS/TS). Run
+`:MasonInstall debugpy js-debug-adapter` manually if the auto-install
+fails or is skipped.
+
+### Session (group `<leader>d` — "debug")
+
+| Keys | Action |
+|---|---|
+| `<leader>db` | Toggle breakpoint |
+| `<leader>dB` | Breakpoint with condition |
+| `<leader>dc` | Run / Continue |
+| `<leader>dC` | Run to cursor |
+| `<leader>da` | Run with args (prompts) |
+| `<leader>dl` | Run last |
+| `<leader>dt` | Terminate |
+| `<leader>dr` | Toggle REPL |
+| `<leader>ds` | Session info |
+
+### Stepping
+
+| Keys | Action |
+|---|---|
+| `<leader>di` | Step into |
+| `<leader>dO` | Step over |
+| `<leader>do` | Step out |
+| `<leader>dP` | Pause |
+| `<leader>dj` / `<leader>dk` | Frame down / up |
+| `<leader>dg` | Go to line (no execute) |
+
+### Inspection
+
+| Keys | Mode | Action |
+|---|---|---|
+| `<leader>du` | normal | Toggle DAP UI |
+| `<leader>dw` | normal | Hover widget |
+| `<leader>de` | normal / visual | Evaluate expression |
+
+### Python-specific
+
+| Keys | Action |
+|---|---|
+| `<leader>dPt` | Debug test method under cursor |
+| `<leader>dPc` | Debug test class under cursor |
+
 ### Spacemacs translation
 
 | Spacemacs | Neovim here |
@@ -358,3 +406,64 @@ Inside `octo://` buffers, `<localleader>` groups cover assignee / comment
 | `SPC g f h` (file hunk stage) | `<leader>ghs` |
 | `SPC g h i` (Forge list issues) | `<leader>gi` |
 | `SPC g h p` (Forge list PRs) | `<leader>gp` |
+| `SPC d d` (run / continue) | `<leader>dc` |
+| `SPC d b` (toggle breakpoint) | `<leader>db` |
+| `SPC d i` (step into) | `<leader>di` |
+| `SPC d o` (step over) | `<leader>dO` |
+| `SPC d r` (REPL) | `<leader>dr` |
+
+## Multi-cursor (vim-visual-multi)
+
+| Keys | Mode | Action |
+|---|---|---|
+| `<C-n>` | normal / visual | Start session; select word / range under cursor. Press again to add next match. |
+| `<C-Up>` / `<C-Down>` | normal | Add a cursor above / below |
+| `<S-Left>` / `<S-Right>` | VM | Extend all cursors' selection |
+| `n` / `N` | VM | Next / previous match |
+| `q` | VM | Skip current match, jump to next |
+| `Q` | VM | Remove the current cursor |
+| `<Esc>` | VM | Exit multi-cursor mode |
+
+See `:help visual-multi` for the full cheatsheet. The upstream project
+is feature-complete; its most recent commit (2024-09-01) predates
+the `nvim-plugin-audit.sh` warn threshold but not the fail threshold.
+
+## Spell check
+
+LazyVim sets `spell` automatically on `gitcommit` and `markdown`
+filetypes. For any other buffer:
+
+```
+:setlocal spell spelllang=en_us
+```
+
+Neovim downloads `.spl` files on demand to
+`~/.local/share/nvim/site/spell/`. If the first prompt was declined,
+re-run `:set spell` in an interactive session to re-trigger it.
+
+| Keys | Action |
+|---|---|
+| `]s` / `[s` | Next / previous misspelling |
+| `z=` | Suggest replacements |
+| `zg` / `zw` | Mark word good / wrong (persists in spellfile) |
+
+## Snippets (LuaSnip)
+
+LuaSnip ships with LazyVim. This repo adds VSCode-style snippets in
+`nvim/snippets/`, ported from the Yasnippet sources under `snippets/`
+so the same triggers work in both Spacemacs and Neovim.
+
+Current ported set (filetype `tex`):
+
+| Trigger | Expansion |
+|---|---|
+| `al*` | `\begin{align*} ... \end{align*}` |
+| `eq*` | `\begin{equation*} ... \end{equation*}` |
+| `secc` | `\section*{...}` |
+| `subb` | `\subsection*{...}` |
+| `i` | `\textit{...}` |
+| `u` | `\underline{...}` |
+
+Type the trigger in insert mode and press `<Tab>` to expand (default
+LazyVim / LuaSnip expansion key). `friendly-snippets` provides
+additional `tex` snippets alongside these.
