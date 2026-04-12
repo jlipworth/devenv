@@ -236,3 +236,42 @@ Jupyter session — the Neovim REPL is plain IPython.
 | `SPC m s r` (send region) | visual-select then `,js` |
 | `SPC m s s` (swap to REPL) | `,jo` |
 | *(new)* | `,jj` = run cell (was not a Spacemacs verb) |
+
+## Claude Code
+
+`<leader>ac` toggles a vertical split running the `claude` CLI inside
+Neovim. The split and the CLI discover each other over a localhost
+WebSocket — no further configuration needed. The Claude Code CLI must
+already be on PATH (both `setup-dev-tools.ps1` and `prereq_packages.sh`
+install it as part of the base setup).
+
+### Session (group `<leader>a` — "ai")
+
+| Keys | Action |
+|---|---|
+| `<leader>ac` | Toggle Claude Code split |
+| `<leader>af` | Focus Claude Code split |
+| `<leader>ar` | Resume last Claude session |
+| `<leader>aC` | Continue current Claude session |
+| `<leader>ab` | Add current buffer to Claude context |
+
+### Sending code
+
+| Keys | Mode | Action |
+|---|---|---|
+| `<leader>as` | visual | Send visual selection to Claude |
+| `<leader>as` | normal (in NvimTree / neo-tree / oil) | Add the file under cursor to Claude |
+
+### Diff review
+
+| Keys | Action |
+|---|---|
+| `<leader>aa` | Accept Claude-proposed diff |
+| `<leader>ad` | Deny Claude-proposed diff |
+
+### Spacemacs translation
+
+| Spacemacs | Neovim here |
+|---|---|
+| *(no direct equivalent)* | `<leader>ac` toggles Claude Code session |
+| `SPC a *` (apps/assistants prefix) | `<leader>a *` — same mnemonic, same intent |
