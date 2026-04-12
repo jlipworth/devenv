@@ -1070,6 +1070,51 @@ if (-not $uvCommand) {
 $uvVersion = (& $uvCommand.Source --version).Trim()
 Write-Host "uv $uvVersion" -ForegroundColor Green
 
+# --- 5b. Jupyter Python tooling (via uv) ---
+Write-Host "`n[5b/10] Installing Jupyter CLI tools via uv..." -ForegroundColor Yellow
+
+foreach ($tool in @("jupytext", "ipython", "ipykernel")) {
+    $alreadyInstalled = $false
+    try {
+        $toolList = & $uvCommand.Source tool list 2>$null
+        if ($toolList -and ($toolList -match "^$tool\b")) {
+            $alreadyInstalled = $true
+        }
+    } catch {}
+
+    if (-not $alreadyInstalled) {
+        Write-Host "Installing $tool via uv tool install..." -ForegroundColor Yellow
+        $installArgs = @("tool", "install", $tool)
+        if ($tool -eq "ipykernel") {
+            $installArgs += @("--with", "ipython")
+        }
+        & $uvCommand.Source @installArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw "uv tool install $tool failed with exit code $LASTEXITCODE."
+        }
+    } else {
+        Write-Host "$tool already installed via uv." -ForegroundColor Green
+    }
+}
+
+$jupyterToolPaths = Get-DirectoryCommandCandidatePaths `
+    -Directories @("$env:USERPROFILE\.local\bin") `
+    -BinaryNames @("jupytext", "ipython") `
+    -IncludeExtensionless
+
+$jupytextCommand = Wait-ForCommandInfo -Names @("jupytext") -CandidatePaths $jupyterToolPaths -TimeoutSeconds 15
+if (-not $jupytextCommand) {
+    throw "jupytext install completed but not on PATH. Check '$env:USERPROFILE\.local\bin'."
+}
+$ipythonCommand = Wait-ForCommandInfo -Names @("ipython") -CandidatePaths $jupyterToolPaths -TimeoutSeconds 15
+if (-not $ipythonCommand) {
+    throw "ipython install completed but not on PATH. Check '$env:USERPROFILE\.local\bin'."
+}
+
+$jupytextVersion = (& $jupytextCommand.Source --version).Trim()
+$ipythonVersion  = (& $ipythonCommand.Source --version).Trim()
+Write-Host "jupytext: $jupytextVersion | ipython: $ipythonVersion" -ForegroundColor Green
+
 # --- 6. Clone GNU_files repo ---
 Write-Host "`n[6/10] Preparing GNU_files repo..." -ForegroundColor Yellow
 
