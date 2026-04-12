@@ -275,3 +275,88 @@ install it as part of the base setup).
 |---|---|
 | *(no direct equivalent)* | `<leader>ac` toggles Claude Code session |
 | `SPC a *` (apps/assistants prefix) | `<leader>a *` — same mnemonic, same intent |
+
+## Git
+
+`<leader>gg` opens Neogit — a Magit-style status buffer. Stage with `s`,
+unstage with `u`, commit with `cc`, push with `Pp`, pull with `Pl`,
+fetch with `Pf`, rebase with `r`. The full Neogit cheatsheet lives
+upstream at github.com/NeogitOrg/neogit.
+
+`<leader>gi` / `<leader>gp` open GitHub issues / PRs via Octo. Octo
+requires the `gh` CLI to be authenticated — run `gh auth login` once
+per machine. On Windows this is installed by `setup-dev-tools.ps1` via
+winget; on Linux / macOS it comes from `Brewfile.git`.
+
+`<leader>gh*` hunk bindings are LazyVim's gitsigns defaults and are not
+customized here.
+
+### Status / stage / commit (group `<leader>g` — "git")
+
+| Keys | Action |
+|---|---|
+| `<leader>gg` | Open Neogit status |
+| `<leader>gG` | Lazygit (cwd) — LazyVim default, unchanged |
+| `<leader>gc` | Neogit commit popup |
+| `<leader>gl` | Neogit log popup |
+| `<leader>gr` | Neogit pull popup |
+| `<leader>gP` | Neogit push popup |
+
+### Diff / file history
+
+| Keys | Action |
+|---|---|
+| `<leader>gd` | Diffview (working tree vs HEAD) |
+| `<leader>gD` | Diffview (origin/HEAD..HEAD) |
+| `<leader>gf` | Git Current File History (Snacks picker) |
+| `<leader>gF` | Diffview file history (current buffer) |
+| `<leader>gx` | Close Diffview |
+
+### Blame / browse
+
+| Keys | Action |
+|---|---|
+| `<leader>gb` | Git Blame Line (Snacks) |
+| `<leader>gB` | Git Browse (open in browser) |
+| `<leader>gY` | Copy Git Browse URL |
+
+### Hunks — gitsigns
+
+| Keys | Action |
+|---|---|
+| `<leader>ghs` | Stage hunk |
+| `<leader>ghr` | Reset hunk |
+| `<leader>ghS` | Stage buffer |
+| `<leader>ghu` | Undo stage hunk |
+| `<leader>ghR` | Reset buffer |
+| `<leader>ghp` | Preview hunk inline |
+| `<leader>ghb` | Blame line (full) |
+| `<leader>ghB` | Blame buffer |
+| `<leader>ghd` | Diff this |
+| `<leader>ghD` | Diff this against `~` |
+
+### GitHub issues / PRs — Octo
+
+| Keys | Action |
+|---|---|
+| `<leader>gi` | List Issues (Octo) |
+| `<leader>gI` | Search Issues (Octo) |
+| `<leader>gp` | List PRs (Octo) |
+| `<leader>gR` | List Repos (Octo) |
+| `<leader>gS` | Octo search |
+
+Inside `octo://` buffers, `<localleader>` groups cover assignee / comment
+/ label / issue / react / pr / review. See the octo.nvim docs upstream.
+
+### Spacemacs translation
+
+| Spacemacs | Neovim here |
+|---|---|
+| `SPC g s` (Magit status) | `<leader>gg` |
+| `SPC g c c` (Magit commit) | `<leader>gc` |
+| `SPC g l l` (Magit log) | `<leader>gl` |
+| `SPC g f f` (Magit pull) | `<leader>gr` |
+| `SPC g P p` (Magit push) | `<leader>gP` |
+| `SPC g f h` (file hunk stage) | `<leader>ghs` |
+| `SPC g h i` (Forge list issues) | `<leader>gi` |
+| `SPC g h p` (Forge list PRs) | `<leader>gp` |
