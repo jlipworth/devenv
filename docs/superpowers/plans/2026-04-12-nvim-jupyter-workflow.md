@@ -20,32 +20,50 @@ Scope: Sub-project 1 of 4 in the Neovim Spacemacs-parity pass. AI assistants, Gi
 
 The spec §2 lists `mini.hipatterns` as "already LazyVim-friendly" — strictly true, but LazyVim does **not** ship it enabled in the base. This plan adds it as a new plugin spec entry. Net plugin delta is **+2** (`iron.nvim` and `mini.hipatterns`), not +1 as written in spec §2. Both pass the maintenance rule (iron.nvim active Feb 2026, mini.nvim active daily).
 
+## Review Revisions (post-code-reviewer)
+
+This plan was reviewed by the code-reviewer agent before implementation and amended in place to fix the following blockers:
+
+1. **Wiring lives in `config/autocmds.lua`, not a plugin piggyback.** Earlier drafts attached `require("jupyter.autocmds").setup()` to a `folke/lazy.nvim` plugin spec entry. That never runs — lazy.nvim special-cases its own spec and doesn't invoke user `config`. LazyVim's `lua/config/autocmds.lua` is the correct home (auto-loaded on `VeryLazy`, fires before any user-opened `.ipynb` buffer triggers `BufReadCmd`).
+2. **`BufReadCmd` / `BufWriteCmd` use `nvim_buf_get_name`** (not `args.match`) and **fire `BufWritePost`** after successful write so format-on-save, gitsigns, and LSP sync stay functional on `.ipynb` buffers.
+3. **`M.MARKER` pattern is strict**: `"^# %%%%"` (exactly `# %%`), not the looser `"^# %%"` which matched `# %` + anything.
+4. **FileType autocmd pattern is `"python"` only** — the `"ipynb"` branch was dead (BufReadCmd sets filetype to `python`).
+5. **`interrupt_repl` uses `chansend`** directly on the REPL terminal's job channel. Going through `iron.core.send` would wrap `^C` in bracketed-paste and produce garbage.
+6. **`iron.nvim` is initialized with `keymaps = false`** — not an empty table — so iron's defaults do not silently collide with our buffer-local maps.
+7. **`writefile` return value is checked** in `BufWriteCmd`.
+8. **Test specs use `cq! 1`** (with bang) so the exit is reliable even when the test buffer is modified.
+9. **Additional test fixtures**: a `# %` single-percent line must NOT be treated as a marker.
+
 ## File Structure
 
 ### Files created
 
-- `nvim/lua/plugins/jupyter.lua` — LazyVim plugin specs for `iron.nvim` and `mini.hipatterns`, plus the `FileType` autocmd that wires buffer-local keymaps.
-- `nvim/lua/jupyter/cells.lua` — pure functions: cell-range computation, cell navigation. No Neovim-internal globals imported at module level — everything takes explicit `bufnr`/`line` args so the module is unit-testable headlessly.
-- `nvim/lua/jupyter/repl.lua` — send-to-iron wrappers. Depends on `cells.lua` and `iron.core`. Each function takes no args and operates on the current buffer/window.
-- `nvim/lua/jupyter/autocmds.lua` — `BufReadCmd` and `BufWriteCmd` handlers for `*.ipynb` that shell `jupytext`. Separated so the core lua modules remain side-effect-free.
-- `nvim/lua/jupyter/init.lua` — thin module that calls `require("jupyter.autocmds").setup()` at top-level require time. Loaded from `plugins/jupyter.lua` via `config = function() ... end`.
-- `tests/nvim/jupyter_cells_spec.lua` — headless-runnable assertions against `jupyter.cells`. Pure Lua, no plenary/busted dependency; uses plain `assert` and a tiny per-test runner.
-- `tests/nvim/run_nvim_tests.sh` — shell driver that invokes `nvim --headless` against each `*_spec.lua` and exits non-zero on any failure.
+- `nvim/lua/plugins/jupyter.lua` — LazyVim plugin specs for `iron.nvim`, `mini.hipatterns`, `mini.ai` cell-textobject contribution, and `which-key.nvim` group label. **No setup calls or FileType autocmds** — wiring lives in `config/autocmds.lua`.
+- `nvim/lua/jupyter/cells.lua` — pure functions: cell-range computation, cell navigation. Everything takes explicit `bufnr`/`line` args so the module is unit-testable headlessly.
+- `nvim/lua/jupyter/repl.lua` — send-to-iron wrappers. Depends on `cells.lua` and `iron.core`.
+- `nvim/lua/jupyter/autocmds.lua` — pure `setup()` function that registers `BufReadCmd` / `BufWriteCmd` handlers for `*.ipynb` via `jupytext`. Called explicitly from `config/autocmds.lua`.
+- `nvim/lua/jupyter/keymaps.lua` — `setup(bufnr)` function that installs all buffer-local maps (execution, navigation, manipulation, cheatsheet). Plus `mini_ai_spec(ai_type)` helper for cell textobjects.
+- `tests/nvim/jupyter_cells_spec.lua` — headless assertions for `jupyter.cells`.
+- `tests/nvim/jupyter_repl_spec.lua` — headless assertions for `jupyter.repl.range_for_*`.
+- `tests/nvim/run_nvim_tests.sh` — shell driver that invokes `nvim --headless` against each `*_spec.lua`.
 
 ### Files modified
 
-- `setup-dev-tools.ps1` — insert three `uv tool install` calls between the existing `# --- 5. uv ---` success line and `# --- 6. Clone GNU_files repo ---`.
+- `setup-dev-tools.ps1` — insert three `uv tool install` calls after the existing `# --- 5. uv ---` block.
 - `prereq_packages.sh` — add the same three installs to `install_python_prereqs()`.
+- `nvim/lua/config/autocmds.lua` — call `require("jupyter.autocmds").setup()` and register the `FileType` autocmd that calls `require("jupyter.keymaps").setup(bufnr)` for `python` filetype. LazyVim auto-loads this file on `VeryLazy`, so it runs before any user-opened `.ipynb` buffer can trigger `BufReadCmd`.
 - `docs/NEOVIM_KEYBINDINGS.md` — append a new "Jupyter cells" section.
 
 ### Responsibility split rationale
 
-- `cells.lua` knows about buffer lines and `# %%` markers. It does not know about `iron` or keymaps.
-- `repl.lua` knows about `cells.lua` and `iron`. It does not know about keymaps or autocmds.
-- `autocmds.lua` knows about `jupytext` CLI invocation. It knows nothing of cells or repl.
-- `plugins/jupyter.lua` is the only file that knows about LazyVim/lazy.nvim plugin conventions and which-key.
+- `cells.lua` knows about buffer lines and `# %%` markers. Nothing else.
+- `repl.lua` knows about `cells.lua` and `iron`. Nothing about keymaps or autocmds.
+- `autocmds.lua` shells `jupytext`. Knows nothing about cells or repl.
+- `keymaps.lua` composes cells + repl into buffer-local maps.
+- `plugins/jupyter.lua` declares plugins only.
+- `config/autocmds.lua` is the **only** place where the jupyter modules are wired into live Neovim — this avoids the `folke/lazy.nvim`-piggyback anti-pattern (lazy.nvim does not run user `config` for its own spec).
 
-This split keeps each module under 100 lines, makes `cells.lua` fully headless-testable without Iron or jupytext installed, and lets us replace any one piece (e.g., swap iron for a different REPL backend) without touching others.
+This split keeps each module under 100 lines, makes `cells.lua` fully headless-testable without Iron or jupytext installed, and centralizes the side-effectful wiring in a single file that LazyVim auto-loads.
 
 ---
 
@@ -215,7 +233,7 @@ Write `tests/nvim/jupyter_cells_spec.lua`:
 local ok, cells = pcall(require, "jupyter.cells")
 if not ok then
   io.stderr:write("FAIL: could not require jupyter.cells: " .. tostring(cells) .. "\n")
-  vim.cmd("cq 1")
+  os.exit(1)
 end
 
 local function reset_buf(lines)
@@ -225,7 +243,7 @@ end
 local function expect_eq(name, got, want)
   if got ~= want then
     io.stderr:write(("FAIL: %s: got %s, want %s\n"):format(name, tostring(got), tostring(want)))
-    vim.cmd("cq 1")
+    vim.cmd("cq! 1")
   else
     print(("PASS: %s"):format(name))
   end
@@ -256,6 +274,16 @@ expect_eq("cell_end in cell 2",           cells.cell_end(0, 4),   5)
 reset_buf({ "print('a')", "x = 1" })
 expect_eq("cell_start no marker",    cells.cell_start(0, 1), 1)
 expect_eq("cell_end no marker",      cells.cell_end(0, 1),   2)
+
+-- Fixture where a single-percent comment must NOT be treated as a marker.
+reset_buf({
+  "# % not a cell",
+  "print('a')",
+  "# %% real cell",
+  "print('b')",
+})
+expect_eq("single-% ignored, implicit start", cells.cell_start(0, 2), 1)
+expect_eq("double-%% is the real start",      cells.cell_start(0, 4), 3)
 
 -- find_next / find_prev markers
 reset_buf({
@@ -302,7 +330,9 @@ Replace `nvim/lua/jupyter/cells.lua` with:
 -- takes bufnr/line arguments explicitly so the module is unit-testable.
 local M = {}
 
-M.MARKER = "^# %%"
+-- Lua pattern. `%%` matches one literal `%`, so `%%%%` matches `%%`.
+-- A line like `# %` (single percent) is NOT a cell marker and must not match.
+M.MARKER = "^# %%%%"
 
 -- Return the Lua pattern-matched marker start line at or above `line`.
 -- If no marker is found, returns 1 (implicit first cell).
@@ -433,26 +463,32 @@ local function notify_err(msg)
 end
 
 -- Read .ipynb via `jupytext --to py:percent --output - <path>`.
+-- Uses nvim_buf_get_name to get the real path (args.match may be a pattern
+-- expansion that drops the directory component on some platforms).
 local function on_read(args)
-  local path = args.match
+  local path = vim.api.nvim_buf_get_name(args.buf)
+  if path == "" then path = args.match end
   local result = vim.fn.systemlist({ "jupytext", "--to", "py:percent", "--output", "-", path })
   if vim.v.shell_error ~= 0 then
     notify_err("jupytext read failed for " .. path)
     return
   end
   vim.api.nvim_buf_set_lines(args.buf, 0, -1, false, result)
-  vim.api.nvim_buf_set_name(args.buf, path)
   vim.bo[args.buf].filetype = "python"
   vim.bo[args.buf].modified = false
 end
 
--- Write .ipynb by piping current buffer lines to
--- `jupytext --from py:percent --to ipynb --output <path> -`.
+-- Write .ipynb by piping current buffer lines to jupytext.
+-- Fires BufWritePost on success so format-on-save, gitsigns, LSP sync keep working.
 local function on_write(args)
-  local path = args.match
+  local path = vim.api.nvim_buf_get_name(args.buf)
+  if path == "" then path = args.match end
   local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
   local tmp = vim.fn.tempname() .. ".py"
-  vim.fn.writefile(lines, tmp)
+  if vim.fn.writefile(lines, tmp) ~= 0 then
+    notify_err("failed to write temp buffer for " .. path)
+    return
+  end
   vim.fn.system({ "jupytext", "--from", "py:percent", "--to", "ipynb",
                   "--output", path, tmp })
   local rc = vim.v.shell_error
@@ -462,6 +498,10 @@ local function on_write(args)
     return
   end
   vim.bo[args.buf].modified = false
+  vim.api.nvim_exec_autocmds("BufWritePost", {
+    buffer = args.buf,
+    modeline = false,
+  })
 end
 
 function M.setup()
@@ -537,15 +577,17 @@ git commit -m "Add jupytext-based BufReadCmd/BufWriteCmd for .ipynb"
 **Files:**
 - Create: `nvim/lua/plugins/jupyter.lua`
 
-- [ ] **Step 1: Write initial plugin spec with iron.nvim and mini.hipatterns only**
+- [ ] **Step 1: Write plugin spec with iron.nvim and mini.hipatterns only**
 
 Write `nvim/lua/plugins/jupyter.lua`:
 
 ```lua
 -- Jupyter / .ipynb editing. See docs/superpowers/specs/2026-04-12-nvim-jupyter-workflow-design.md
 -- Plugin delta: +2 (iron.nvim for REPL, mini.hipatterns for # %% marker highlight).
--- The actual cell logic and keymaps are wired in later; this task establishes
--- plugin registration and the autocmds that read/write .ipynb files.
+-- mini.ai contribution and which-key group are added in Task 7.
+-- The setup calls and FileType autocmd live in config/autocmds.lua (Task 6)
+-- — NOT here, because lazy.nvim does not run user `config` blocks for its
+-- own spec entry, and every other plugin-piggyback is brittle.
 
 return {
   -- REPL sender: current buffer/visual/line -> external IPython via :terminal.
@@ -566,7 +608,9 @@ return {
           },
           repl_open_cmd = view.split.vertical.botright("40%"),
         },
-        keymaps = {},        -- all keymaps live in the FileType autocmd (Task 5+)
+        -- Disable iron's default keymaps entirely; ours are installed per-buffer
+        -- by jupyter.keymaps (Task 6) and must not collide with iron defaults.
+        keymaps = false,
         highlight = { italic = true },
         ignore_blank_lines = true,
       })
@@ -574,6 +618,7 @@ return {
   },
 
   -- Visual highlight for # %% cell markers.
+  -- Lua pattern: %%%% matches literal %% (each %% = one literal %).
   {
     "echasnovski/mini.hipatterns",
     event = { "BufReadPost *.py", "BufReadPost *.ipynb", "BufNewFile *.py" },
@@ -584,16 +629,6 @@ return {
         group = "Title",
       }
       return opts
-    end,
-  },
-
-  -- Install the jupytext read/write autocmds as part of plugin init. This
-  -- is done via a no-op plugin entry so lazy.nvim still manages ordering.
-  {
-    "folke/lazy.nvim", -- piggyback on a guaranteed-present plugin
-    priority = 1000,
-    config = function()
-      require("jupyter.autocmds").setup()
     end,
   },
 }
@@ -661,7 +696,7 @@ Write `tests/nvim/jupyter_repl_spec.lua`:
 local ok, repl = pcall(require, "jupyter.repl")
 if not ok then
   io.stderr:write("FAIL: could not require jupyter.repl: " .. tostring(repl) .. "\n")
-  vim.cmd("cq 1")
+  os.exit(1)
 end
 
 local function reset_buf(lines)
@@ -675,13 +710,13 @@ local function expect_range(name, got, want_s, want_e)
       return
     end
     io.stderr:write(("FAIL: %s: got nil, want %d..%d\n"):format(name, want_s, want_e))
-    vim.cmd("cq 1")
+    vim.cmd("cq! 1")
     return
   end
   if got[1] ~= want_s or got[2] ~= want_e then
     io.stderr:write(("FAIL: %s: got %d..%d, want %d..%d\n")
       :format(name, got[1], got[2], want_s or -1, want_e or -1))
-    vim.cmd("cq 1")
+    vim.cmd("cq! 1")
   else
     print("PASS: " .. name)
   end
@@ -835,8 +870,17 @@ function M.restart_repl()
   require("iron.core").repl_for("python")
 end
 
+-- Interrupt by sending SIGINT (ASCII 0x03) directly to the REPL's terminal
+-- job channel. Going through iron.core.send would wrap it in bracketed-paste
+-- and produce garbage instead of an interrupt.
 function M.interrupt_repl()
-  require("iron.core").send("python", string.char(3))  -- Ctrl-C
+  local memory = require("iron.memory")
+  local repl = memory.get(0, "python") or memory.get_repl_for("python")
+  if not repl or not repl.job then
+    vim.notify("jupyter: no python REPL to interrupt", vim.log.levels.WARN)
+    return
+  end
+  vim.fn.chansend(repl.job, string.char(3))
 end
 
 return M
@@ -862,24 +906,30 @@ git commit -m "Add jupyter.repl module with range tests and iron send wrappers"
 
 ---
 
-## Task 6: Wire execution keymaps via FileType autocmd
+## Task 6: Create keymaps module and wire FileType autocmd via config/autocmds.lua
 
 **Files:**
-- Modify: `nvim/lua/plugins/jupyter.lua`
+- Create: `nvim/lua/jupyter/keymaps.lua`
+- Modify: `nvim/lua/config/autocmds.lua`
 
-- [ ] **Step 1: Extract FileType keymap setup into a separate function in `plugins/jupyter.lua`**
+- [ ] **Step 1: Write the keymaps module**
 
-Edit `nvim/lua/plugins/jupyter.lua`. Replace the current contents with:
+Write `nvim/lua/jupyter/keymaps.lua`:
 
 ```lua
--- Jupyter / .ipynb editing. See docs/superpowers/specs/2026-04-12-nvim-jupyter-workflow-design.md
+-- Buffer-local keymaps for Jupyter cells. Called from config/autocmds.lua's
+-- FileType autocmd. The `setup` function is idempotent per buffer because
+-- vim.keymap.set with the same (mode, lhs, buffer) simply overwrites.
 
-local function setup_keymaps(bufnr)
+local cells = require("jupyter.cells")
+local repl  = require("jupyter.repl")
+
+local M = {}
+
+function M.setup(bufnr)
   local map = function(mode, lhs, rhs, desc)
     vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc, silent = true })
   end
-  local repl  = require("jupyter.repl")
-  local cells = require("jupyter.cells")
 
   -- Execution / REPL
   map("n", "<localleader>jj", repl.run_cell,             "Jupyter: run cell")
@@ -901,118 +951,14 @@ local function setup_keymaps(bufnr)
   map({ "n", "x", "o" }, "[C", cells.goto_first_cell, "First cell")
 end
 
-local function setup_filetype_autocmd()
-  local group = vim.api.nvim_create_augroup("JupyterFiletype", { clear = true })
-  vim.api.nvim_create_autocmd("FileType", {
-    group = group,
-    pattern = { "python", "ipynb" },
-    callback = function(args)
-      setup_keymaps(args.buf)
-    end,
-  })
-end
-
-return {
-  -- REPL sender.
-  {
-    "Vigemus/iron.nvim",
-    cmd = { "IronRepl", "IronAttach", "IronSend", "IronFocus" },
-    config = function()
-      local iron = require("iron.core")
-      local view = require("iron.view")
-      iron.setup({
-        config = {
-          scratch_repl = true,
-          repl_definition = {
-            python = {
-              command = { "ipython", "--no-autoindent" },
-              format = require("iron.fts.common").bracketed_paste_python,
-            },
-          },
-          repl_open_cmd = view.split.vertical.botright("40%"),
-        },
-        keymaps = {},
-        highlight = { italic = true },
-        ignore_blank_lines = true,
-      })
-    end,
-  },
-
-  -- Highlight # %% markers.
-  {
-    "echasnovski/mini.hipatterns",
-    event = { "BufReadPost *.py", "BufReadPost *.ipynb", "BufNewFile *.py" },
-    opts = function(_, opts)
-      opts.highlighters = opts.highlighters or {}
-      opts.highlighters.jupyter_cell = {
-        pattern = "^# %%%%.*$",
-        group = "Title",
-      }
-      return opts
-    end,
-  },
-
-  -- Install jupytext autocmds and the filetype keymap autocmd at startup.
-  {
-    "folke/lazy.nvim",
-    priority = 1000,
-    config = function()
-      require("jupyter.autocmds").setup()
-      setup_filetype_autocmd()
-    end,
-  },
-}
-```
-
-- [ ] **Step 2: Verify the spec file parses**
-
-```bash
-cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
-nvim --headless --cmd "set runtimepath^=./nvim" -u NONE \
-  -c 'luafile ./nvim/lua/plugins/jupyter.lua' -c 'qall!' 2>&1 | tail -3
-```
-
-Expected: empty output.
-
-- [ ] **Step 3: Open the fixture notebook via full config and confirm the `]]` map is installed**
-
-```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
-  /tmp/jup_smoke.ipynb \
-  -c 'lua io.write(tostring(vim.fn.maparg("]]", "n") ~= "") .. "\n")' \
-  -c 'qall!' 2>&1 | tail -3
-```
-
-Expected: `true` in the output. If `false`, the FileType autocmd didn't fire or the buffer filetype isn't `python`.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add nvim/lua/plugins/jupyter.lua
-git commit -m "Wire Jupyter execution and navigation keymaps via FileType autocmd"
-```
-
----
-
-## Task 7: Add cell textobjects and which-key group label
-
-**Files:**
-- Modify: `nvim/lua/plugins/jupyter.lua`
-
-- [ ] **Step 1: Extend `nvim/lua/plugins/jupyter.lua` with mini.ai + which-key specs**
-
-At the top of `plugins/jupyter.lua`, after the existing `local function setup_keymaps` block, add a helper that returns a mini.ai textobject spec for cells:
-
-```lua
--- mini.ai spec for cells: `aj` includes the `# %%` marker line, `ij` excludes it.
-local function jupyter_cell_ai_spec(ai_type)
-  local cells = require("jupyter.cells")
+-- mini.ai textobject spec for cells. `ai_type` is "a" or "i".
+-- Returns nil when the cell has no code (e.g. two markers with nothing between).
+function M.mini_ai_spec(ai_type)
   local bufnr = vim.api.nvim_get_current_buf()
   local line = vim.api.nvim_win_get_cursor(0)[1]
   local s = cells.cell_start(bufnr, line)
   local e = cells.cell_end(bufnr, line)
   if ai_type == "i" then
-    -- inside: exclude marker line
     local first = vim.api.nvim_buf_get_lines(bufnr, s - 1, s, false)[1]
     if first and first:match(cells.MARKER) then s = s + 1 end
     if s > e then return nil end
@@ -1023,58 +969,101 @@ local function jupyter_cell_ai_spec(ai_type)
     to   = { line = e, col = math.max(1, #last_line) },
   }
 end
+
+return M
 ```
 
-Then extend the `return { ... }` table with two more entries (keeping the existing three):
+- [ ] **Step 2: Extend `nvim/lua/config/autocmds.lua` with the Jupyter wiring**
+
+Append to `nvim/lua/config/autocmds.lua` (LazyVim auto-loads this file on `VeryLazy`, which fires before any user buffer read, so the BufReadCmd is in place when the first `.ipynb` is opened):
 
 ```lua
-  -- mini.ai textobjects for cells.
-  {
-    "echasnovski/mini.ai",
-    optional = true,
-    opts = function(_, opts)
-      opts.custom_textobjects = opts.custom_textobjects or {}
-      opts.custom_textobjects.j = jupyter_cell_ai_spec
-      return opts
-    end,
-  },
 
-  -- which-key group label for <localleader>j
-  {
-    "folke/which-key.nvim",
-    optional = true,
-    opts = {
-      spec = {
-        { "<localleader>j", group = "jupyter", mode = { "n", "x" } },
-      },
-    },
-  },
+-- === Jupyter cell workflow ===================================================
+-- See docs/superpowers/specs/2026-04-12-nvim-jupyter-workflow-design.md.
+-- BufReadCmd/BufWriteCmd for *.ipynb and buffer-local keymaps for python files.
+
+require("jupyter.autocmds").setup()
+
+vim.api.nvim_create_autocmd("FileType", {
+  group = vim.api.nvim_create_augroup("JupyterFiletype", { clear = true }),
+  pattern = "python",  -- BufReadCmd normalizes .ipynb -> python; no "ipynb" branch needed
+  callback = function(args)
+    require("jupyter.keymaps").setup(args.buf)
+  end,
+})
 ```
 
-- [ ] **Step 2: Add cell-manipulation keymaps (`ji`, `jI`, `jx`) to `setup_keymaps`**
+- [ ] **Step 3: Verify the modified autocmds file parses in isolation**
 
-In the same file, append inside `setup_keymaps` before the closing `end`:
+```bash
+cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
+nvim --headless --cmd "set runtimepath^=./nvim" -u NONE \
+  -c 'luafile ./nvim/lua/config/autocmds.lua' -c 'qall!' 2>&1 | tail -5
+```
+
+Expected: output will contain one error about `require("jupyter.autocmds")` failing because no runtimepath resolves it to the worktree's `nvim/lua/jupyter/`. That's fine for parse — the next step verifies the full flow.
+
+- [ ] **Step 4: Drive the full config via the test symlink and confirm wiring fires**
+
+```bash
+mkdir -p ~/.config
+if [ -e ~/.config/nvim_parity_test ] && [ ! -L ~/.config/nvim_parity_test ]; then
+  echo "ERROR: ~/.config/nvim_parity_test exists and is not a symlink" && exit 1
+fi
+ln -sfn /home/jlipworth/GNU_files/.worktrees/nvim-parity/nvim ~/.config/nvim_parity_test
+
+# Opening any .ipynb should trigger BufReadCmd (jupytext) then FileType=python
+# (keymaps). Verify the ]] map is buffer-local installed.
+NVIM_APPNAME=nvim_parity_test nvim --headless \
+  /tmp/jup_smoke.ipynb \
+  -c 'doautocmd User VeryLazy' \
+  -c 'lua io.write("maparg_]]:" .. vim.fn.maparg("]]", "n") .. "\n")' \
+  -c 'lua io.write("filetype:" .. vim.bo.filetype .. "\n")' \
+  -c 'qall!' 2>&1 | tail -10
+```
+
+Expected: `filetype:python` and a non-empty `maparg_]]:` string (the Lua function reference shows as a hash-ish string, not empty).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add nvim/lua/jupyter/keymaps.lua nvim/lua/config/autocmds.lua
+git commit -m "Wire Jupyter keymaps via config/autocmds.lua FileType autocmd"
+```
+
+---
+
+## Task 7: Add cell manipulation maps, cell textobjects, and which-key group
+
+**Files:**
+- Modify: `nvim/lua/jupyter/keymaps.lua`
+- Modify: `nvim/lua/plugins/jupyter.lua`
+
+- [ ] **Step 1: Extend `nvim/lua/jupyter/keymaps.lua` with cell-manipulation maps and the cheatsheet popup**
+
+In `nvim/lua/jupyter/keymaps.lua`, inside `M.setup(bufnr)`, immediately before the function's closing `end`, insert:
 
 ```lua
   -- Cell manipulation
   map("n", "<localleader>ji", function()
     local line = vim.api.nvim_win_get_cursor(0)[1]
-    local e = require("jupyter.cells").cell_end(0, line)
+    local e = cells.cell_end(0, line)
     vim.api.nvim_buf_set_lines(0, e, e, false, { "# %%", "" })
     vim.api.nvim_win_set_cursor(0, { e + 2, 0 })
   end, "Jupyter: insert cell below")
 
   map("n", "<localleader>jI", function()
     local line = vim.api.nvim_win_get_cursor(0)[1]
-    local s = require("jupyter.cells").cell_start(0, line)
+    local s = cells.cell_start(0, line)
     vim.api.nvim_buf_set_lines(0, s - 1, s - 1, false, { "# %%", "" })
     vim.api.nvim_win_set_cursor(0, { s + 1, 0 })
   end, "Jupyter: insert cell above")
 
   map("n", "<localleader>jx", function()
     local line = vim.api.nvim_win_get_cursor(0)[1]
-    local s = require("jupyter.cells").cell_start(0, line)
-    local e = require("jupyter.cells").cell_end(0, line)
+    local s = cells.cell_start(0, line)
+    local e = cells.cell_end(0, line)
     vim.api.nvim_buf_set_lines(0, s - 1, e, false, {})
   end, "Jupyter: delete cell")
 
@@ -1107,7 +1096,38 @@ In the same file, append inside `setup_keymaps` before the closing `end`:
       col = math.floor((vim.o.columns - 60) / 2),
       style = "minimal", title = " Jupyter ", title_pos = "center",
     })
+    vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = buf, nowait = true })
   end, "Jupyter: cheatsheet")
+```
+
+- [ ] **Step 2: Add mini.ai and which-key plugin entries to `nvim/lua/plugins/jupyter.lua`**
+
+In `nvim/lua/plugins/jupyter.lua`, add two more entries to the returned table (after the `mini.hipatterns` entry):
+
+```lua
+  -- mini.ai textobjects for cells. `aj` includes the `# %%` marker, `ij` excludes it.
+  {
+    "echasnovski/mini.ai",
+    optional = true,
+    opts = function(_, opts)
+      opts.custom_textobjects = opts.custom_textobjects or {}
+      opts.custom_textobjects.j = function(ai_type)
+        return require("jupyter.keymaps").mini_ai_spec(ai_type)
+      end
+      return opts
+    end,
+  },
+
+  -- which-key group label for <localleader>j
+  {
+    "folke/which-key.nvim",
+    optional = true,
+    opts = {
+      spec = {
+        { "<localleader>j", group = "jupyter", mode = { "n", "x" } },
+      },
+    },
+  },
 ```
 
 - [ ] **Step 3: Verify the spec file still parses**
@@ -1324,10 +1344,15 @@ rm ~/.config/nvim_parity_test
 
 ### Spec coverage
 
-- §1 Goal: `.ipynb` opens as Python → Task 3. Cell navigation → Task 6. REPL in split → Task 4+5. Cross-platform → Task 1 installs tooling on both Windows and Unix.
-- §1 Success criteria 1–4 → covered by Task 9 smoke test steps 1–6. Criterion 5 (Windows) is verified out-of-band by the user on a real Windows box — mirrored by Task 1's wiring.
-- §2 Plugin stack: iron + mini.hipatterns → Task 4. DIY cells → Task 2. DIY repl glue → Task 5. DIY autocmds → Task 3.
-- §3 Keymaps: execution → Task 6. Nav → Task 6. Textobjects + manip + which-key → Task 7. Cheatsheet popup → Task 7.
+- §1 Goal: `.ipynb` opens as Python → Task 3 (autocmds) + Task 6 (config/autocmds wiring). Cell navigation → Task 6. REPL in split → Task 4 + 5. Cross-platform → Task 1 installs tooling on both Windows and Unix.
+- §1 Success criteria:
+  - Criterion 1 (`.ipynb` shows Python): Task 9 smoke step 1.
+  - Criterion 2 (save round-trips to valid `.ipynb`): Task 9 smoke step 10.
+  - Criterion 3 (`<localleader>jj` works within ~1s after warm-up): Task 9 smoke step 5.
+  - Criterion 4 (`]]` / `[[` navigation): Task 9 smoke steps 3–4.
+  - Criterion 5 (works on Windows): verified out-of-band by the user; wiring is in Task 1.
+- §2 Plugin stack: iron + mini.hipatterns → Task 4. mini.ai + which-key → Task 7. DIY cells → Task 2. DIY repl glue → Task 5. DIY autocmds → Task 3. Wiring into live Neovim → Task 6 via `config/autocmds.lua`.
+- §3 Keymaps: execution + navigation → Task 6. Cell manipulation + textobjects + which-key group + cheatsheet popup → Task 7.
 - §4 Install wiring: Task 1 (both scripts).
 - §5 Implementation structure: reflected in File Structure section + task split.
 - §6 Testing: headless tests → Tasks 2 & 5 (pure helpers). Smoke test → Task 9.
@@ -1343,8 +1368,9 @@ Checked for TBD, TODO, FIXME, "similar to", "appropriate error handling", "add t
 
 Functions used across tasks:
 
-- `cells.MARKER`, `cells.cell_start`, `cells.cell_end`, `cells.current_cell_range`, `cells.find_next_marker`, `cells.find_prev_marker`, `cells.goto_next_cell`, `cells.goto_prev_cell`, `cells.goto_first_cell`, `cells.goto_last_cell` — defined in Task 2, referenced consistently in Tasks 5–7.
-- `repl.range_for_cell`, `repl.range_for_above`, `repl.range_for_below`, `repl.run_cell`, `repl.run_cell_and_advance`, `repl.run_all_above`, `repl.run_all_below`, `repl.send_line`, `repl.send_file`, `repl.send_visual`, `repl.toggle_repl`, `repl.focus_repl`, `repl.restart_repl`, `repl.interrupt_repl` — defined in Task 5, referenced consistently in Task 6.
-- `autocmds.setup` — defined in Task 3, called in Task 4/6.
+- `cells.MARKER`, `cells.cell_start`, `cells.cell_end`, `cells.current_cell_range`, `cells.find_next_marker`, `cells.find_prev_marker`, `cells.goto_next_cell`, `cells.goto_prev_cell`, `cells.goto_first_cell`, `cells.goto_last_cell` — defined in Task 2, referenced in Tasks 5–7.
+- `repl.range_for_cell`, `repl.range_for_above`, `repl.range_for_below`, `repl.run_cell`, `repl.run_cell_and_advance`, `repl.run_all_above`, `repl.run_all_below`, `repl.send_line`, `repl.send_file`, `repl.send_visual`, `repl.toggle_repl`, `repl.focus_repl`, `repl.restart_repl`, `repl.interrupt_repl` — defined in Task 5, referenced in Task 6.
+- `autocmds.setup` — defined in Task 3, called from `config/autocmds.lua` in Task 6.
+- `keymaps.setup(bufnr)`, `keymaps.mini_ai_spec(ai_type)` — defined in Task 6, extended in Task 7, called from `config/autocmds.lua` and `plugins/jupyter.lua`.
 
 All names consistent.
