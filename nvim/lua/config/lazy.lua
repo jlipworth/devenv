@@ -4,6 +4,7 @@ require("lazy").setup({
   spec = {
     { "LazyVim/LazyVim", import = "lazyvim.plugins" },
     { import = "lazyvim.plugins.extras.ai.claudecode" },
+    { import = "lazyvim.plugins.extras.util.octo" },
     { import = "plugins" },
   },
   defaults = { lazy = false },
