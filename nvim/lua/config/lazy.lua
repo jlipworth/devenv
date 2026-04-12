@@ -3,6 +3,7 @@ local disable_ci_background_checks = vim.env.NVIM_DISABLE_AUTO_INSTALLS == "1"
 require("lazy").setup({
   spec = {
     { "LazyVim/LazyVim", import = "lazyvim.plugins" },
+    { import = "lazyvim.plugins.extras.ai.claudecode" },
     { import = "plugins" },
   },
   defaults = { lazy = false },
