@@ -17,7 +17,7 @@
 Before Task 1 Step 3, ensure the headless-test appname symlink exists:
 
 ```bash
-ln -sfn /home/jlipworth/GNU_files/.worktrees/nvim-parity/nvim ~/.config/nvim_parity_test
+ln -sfn /home/jlipworth/GNU_files/.worktrees/nvim-git-parity/nvim ~/.config/nvim_parity_git
 ```
 
 Expected: symlink exists (idempotent; no output if already set).
@@ -41,7 +41,7 @@ Expected: symlink exists (idempotent; no output if already set).
 - [ ] **Step 1: Read the current file**
 
 ```bash
-cat /home/jlipworth/GNU_files/.worktrees/nvim-parity/nvim/lua/config/lazy.lua
+cat /home/jlipworth/GNU_files/.worktrees/nvim-git-parity/nvim/lua/config/lazy.lua
 ```
 
 Expected: a `require("lazy").setup({ ... })` block whose `spec` table contains:
@@ -75,8 +75,8 @@ Rationale: LazyVim extras are applied in order; keep the local `plugins` import 
 - [ ] **Step 3: Headless parse check**
 
 ```bash
-cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
-NVIM_APPNAME=nvim_parity_test nvim --headless -c 'qall' 2>&1 | tail -5
+cd /home/jlipworth/GNU_files/.worktrees/nvim-git-parity
+NVIM_APPNAME=nvim_parity_git nvim --headless -c 'qall' 2>&1 | tail -5
 ```
 
 Expected: empty output, exit 0. Any stderr = config error. If there is an error, do NOT proceed; report BLOCKED and include the stderr.
@@ -84,7 +84,7 @@ Expected: empty output, exit 0. Any stderr = config error. If there is an error,
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
+cd /home/jlipworth/GNU_files/.worktrees/nvim-git-parity
 git add nvim/lua/config/lazy.lua
 git commit -m "Import LazyVim octo extra for GitHub issues/PRs in Neovim"
 ```
@@ -99,7 +99,7 @@ git commit -m "Import LazyVim octo extra for GitHub issues/PRs in Neovim"
 - [ ] **Step 1: Confirm no file at the target path**
 
 ```bash
-ls /home/jlipworth/GNU_files/.worktrees/nvim-parity/nvim/lua/plugins/git.lua 2>&1
+ls /home/jlipworth/GNU_files/.worktrees/nvim-git-parity/nvim/lua/plugins/git.lua 2>&1
 ```
 
 Expected: `No such file or directory`. If the file exists, STOP and escalate — the plan assumes a clean create.
@@ -173,8 +173,8 @@ return {
 - [ ] **Step 3: Headless parse check**
 
 ```bash
-cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
-NVIM_APPNAME=nvim_parity_test nvim --headless -c 'qall' 2>&1 | tail -5
+cd /home/jlipworth/GNU_files/.worktrees/nvim-git-parity
+NVIM_APPNAME=nvim_parity_git nvim --headless -c 'qall' 2>&1 | tail -5
 ```
 
 Expected: empty output, exit 0. Any stderr = config error. If there is an error, do NOT proceed; report BLOCKED and include the stderr.
@@ -182,7 +182,7 @@ Expected: empty output, exit 0. Any stderr = config error. If there is an error,
 - [ ] **Step 4: Lazy sync to install plugins**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless "+Lazy! sync" +qa 2>&1 | tail -15
+NVIM_APPNAME=nvim_parity_git nvim --headless "+Lazy! sync" +qa 2>&1 | tail -15
 ```
 
 Expected: no errors. You should see `neogit`, `diffview.nvim`, and `octo.nvim` appear in the update log (plus `plenary.nvim` if not already installed).
@@ -190,15 +190,15 @@ Expected: no errors. You should see `neogit`, `diffview.nvim`, and `octo.nvim` a
 - [ ] **Step 5: Verify each Lua module loads**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_git nvim --headless \
   -c 'lua require("neogit"); print("NEOGIT OK")' \
   -c 'qall' 2>&1 | tail -3
 
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_git nvim --headless \
   -c 'lua require("diffview"); print("DIFFVIEW OK")' \
   -c 'qall' 2>&1 | tail -3
 
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_git nvim --headless \
   -c 'lua require("octo"); print("OCTO OK")' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -208,7 +208,7 @@ Expected: each prints its respective `... OK` line. Any "module not found" or st
 - [ ] **Step 6: Confirm user commands exist**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_git nvim --headless \
   -c 'lua print(vim.fn.exists(":Neogit"), vim.fn.exists(":DiffviewOpen"), vim.fn.exists(":Octo"))' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -218,7 +218,7 @@ Expected: `2\t2\t2` (three 2s, space- or tab-separated). `0` for any of the thre
 - [ ] **Step 7: Verify <leader>gg resolves to Neogit, not Snacks.lazygit**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_git nvim --headless \
   -c 'lua local k = vim.fn.maparg(" gg", "n", false, true); print(vim.inspect({rhs = k.rhs, desc = k.desc, callback = k.callback ~= nil}))' \
   -c 'qall' 2>&1 | tail -10
 ```
@@ -228,7 +228,7 @@ Expected: the output's `desc` is `"Neogit"` OR the `callback` is `true` with no 
 - [ ] **Step 8: Commit**
 
 ```bash
-cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
+cd /home/jlipworth/GNU_files/.worktrees/nvim-git-parity
 git add nvim/lua/plugins/git.lua
 git commit -m "Add neogit + diffview + octo keymap overrides"
 ```
@@ -243,7 +243,7 @@ git commit -m "Add neogit + diffview + octo keymap overrides"
 - [ ] **Step 1: Locate the right install block**
 
 ```bash
-grep -nE "Test-CommandExists|winget install" /home/jlipworth/GNU_files/.worktrees/nvim-parity/setup-dev-tools.ps1 | head -30
+grep -nE "Test-CommandExists|winget install" /home/jlipworth/GNU_files/.worktrees/nvim-git-parity/setup-dev-tools.ps1 | head -30
 ```
 
 Expected: multiple lines showing the existing `winget install` pattern used for Git-for-Windows, lazygit, and other core tools. Pick the block that installs core tools in the "Pre-flight" / "Core tools" area (roughly lines 400–460). If no clear block exists, insert between the Git install and the Neovim install blocks.
@@ -251,7 +251,7 @@ Expected: multiple lines showing the existing `winget install` pattern used for 
 - [ ] **Step 2: Read ~40 lines around the chosen insertion point**
 
 ```bash
-sed -n '420,470p' /home/jlipworth/GNU_files/.worktrees/nvim-parity/setup-dev-tools.ps1
+sed -n '420,470p' /home/jlipworth/GNU_files/.worktrees/nvim-git-parity/setup-dev-tools.ps1
 ```
 
 Expected: a clear `if (-not (Test-CommandExists "git"))` or similar pattern with `winget install --id ... -e --accept-source-agreements --accept-package-agreements` and `Refresh-SessionPath` afterwards. If the existing blocks differ in shape, MATCH that shape exactly in your insertion.
@@ -282,7 +282,7 @@ Ensure:
 - [ ] **Step 4: Syntax-check the PowerShell file**
 
 ```bash
-pwsh -NoProfile -Command "Get-Command -Syntax -Name /home/jlipworth/GNU_files/.worktrees/nvim-parity/setup-dev-tools.ps1" 2>&1 | tail -5
+pwsh -NoProfile -Command "Get-Command -Syntax -Name /home/jlipworth/GNU_files/.worktrees/nvim-git-parity/setup-dev-tools.ps1" 2>&1 | tail -5
 ```
 
 If `pwsh` is available. Expected: no parse errors. If `pwsh` is not installed on the Linux dev host, skip this step and note it — the syntax will be validated by the next full CI run on a Windows host.
@@ -290,7 +290,7 @@ If `pwsh` is available. Expected: no parse errors. If `pwsh` is not installed on
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
+cd /home/jlipworth/GNU_files/.worktrees/nvim-git-parity
 git add setup-dev-tools.ps1
 git commit -m "Install GitHub CLI on Windows for octo.nvim"
 ```
@@ -305,8 +305,8 @@ git commit -m "Install GitHub CLI on Windows for octo.nvim"
 - [ ] **Step 1: Inspect the current doc structure**
 
 ```bash
-head -20 /home/jlipworth/GNU_files/.worktrees/nvim-parity/docs/NEOVIM_KEYBINDINGS.md
-tail -15 /home/jlipworth/GNU_files/.worktrees/nvim-parity/docs/NEOVIM_KEYBINDINGS.md
+head -20 /home/jlipworth/GNU_files/.worktrees/nvim-git-parity/docs/NEOVIM_KEYBINDINGS.md
+tail -15 /home/jlipworth/GNU_files/.worktrees/nvim-git-parity/docs/NEOVIM_KEYBINDINGS.md
 ```
 
 Expected: a markdown doc. The Jupyter and Claude Code sub-specs appended their sections at the end; do the same for "Git" for consistency.
@@ -408,7 +408,7 @@ Do NOT include the triple-backtick fences above in the file — they are delimit
 - [ ] **Step 3: Verify the append looks right**
 
 ```bash
-tail -80 /home/jlipworth/GNU_files/.worktrees/nvim-parity/docs/NEOVIM_KEYBINDINGS.md
+tail -80 /home/jlipworth/GNU_files/.worktrees/nvim-git-parity/docs/NEOVIM_KEYBINDINGS.md
 ```
 
 Expected: the new "Git" section appears at the bottom with all six tables, the three explanatory paragraphs, and the Spacemacs-translation table.
@@ -416,7 +416,7 @@ Expected: the new "Git" section appears at the bottom with all six tables, the t
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
+cd /home/jlipworth/GNU_files/.worktrees/nvim-git-parity
 git add docs/NEOVIM_KEYBINDINGS.md
 git commit -m "Document Neogit/Diffview/Octo bindings in NEOVIM_KEYBINDINGS.md"
 ```
@@ -430,8 +430,8 @@ No code changes in this task — run the full headless validation suite and reco
 - [ ] **Step 1: Full config parse**
 
 ```bash
-cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
-NVIM_APPNAME=nvim_parity_test nvim --headless -c 'qall' 2>&1 | tail -5
+cd /home/jlipworth/GNU_files/.worktrees/nvim-git-parity
+NVIM_APPNAME=nvim_parity_git nvim --headless -c 'qall' 2>&1 | tail -5
 ```
 
 Expected: empty output.
@@ -439,7 +439,7 @@ Expected: empty output.
 - [ ] **Step 2: Plugin count is 51–53**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_git nvim --headless \
   -c 'lua print(require("lazy").stats().count)' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -450,7 +450,7 @@ Expected: a number between 51 and 53 (pre-sub-spec-3 baseline was 48; we add neo
 
 ```bash
 for mod in neogit diffview octo; do
-  NVIM_APPNAME=nvim_parity_test nvim --headless \
+  NVIM_APPNAME=nvim_parity_git nvim --headless \
     -c "lua require(\"$mod\"); print(\"$mod OK\")" \
     -c 'qall' 2>&1 | tail -1
 done
@@ -469,7 +469,7 @@ Expected: `ALL TESTS PASSED` for both cells and repl specs. A failure means sub-
 - [ ] **Step 5: Claude Code regression guard**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_git nvim --headless \
   -c 'lua require("claudecode"); print("OK")' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -479,7 +479,7 @@ Expected: `OK`. Sub-spec 2 should be undisturbed.
 - [ ] **Step 6: Hunks still work (gitsigns regression guard)**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_git nvim --headless \
   -c 'lua require("gitsigns"); print(vim.fn.maparg(" ghs", "n") ~= "" and "GHS OK" or "GHS MISSING")' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -489,7 +489,7 @@ Expected: `GHS OK`. If `GHS MISSING`, our spec accidentally shadowed gitsigns �
 - [ ] **Step 7: `checkhealth` smoke**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_git nvim --headless \
   -c 'checkhealth neogit' \
   -c 'qall' 2>&1 | grep -iE "^\s*(error|fail)" | head
 ```
@@ -500,7 +500,7 @@ Expected: no output. A missing `git` on PATH would surface here as an error; hos
 
 Document this in the report; do NOT attempt to run it headlessly — `gh auth login`, Neogit staging, and Diffview all need a real terminal.
 
-1. Start nvim against this config: `NVIM_APPNAME=nvim_parity_test nvim` inside a GitHub-tracked repo.
+1. Start nvim against this config: `NVIM_APPNAME=nvim_parity_git nvim` inside a GitHub-tracked repo.
 2. Hit `<leader>gg`. Neogit status buffer opens. Confirm staged/unstaged sections render.
 3. Modify a file. Press `s` on it in Neogit to stage, `u` to unstage. Confirm the sections update.
 4. Press `cc` to commit. A commit message buffer opens. Type a message, `:wq`. Confirm the commit appears in `git log`.
@@ -553,7 +553,7 @@ No spec requirement is unclaimed.
 
 ### Type consistency
 
-- Extra import string `"lazyvim.plugins.extras.util.octo"` appears identically in spec §5, Task 1 Step 2, and matches the upstream file at `~/.local/share/nvim_parity_test/lazy/LazyVim/lua/lazyvim/plugins/extras/util/octo.lua`.
+- Extra import string `"lazyvim.plugins.extras.util.octo"` appears identically in spec §5, Task 1 Step 2, and matches the upstream file at `~/.local/share/nvim_parity_git/lazy/LazyVim/lua/lazyvim/plugins/extras/util/octo.lua`.
 - Plugin GitHub slugs (`NeogitOrg/neogit`, `sindrets/diffview.nvim`, `pwntester/octo.nvim`) are identical across spec §2, Task 2 Step 2, and the validation loop in Task 5 Step 3.
 - Keymap names (`<leader>gg`, `<leader>gc`, `<leader>gl`, `<leader>gr`, `<leader>gP`, `<leader>gd`, `<leader>gD`, `<leader>gF`, `<leader>gx`, `<leader>gi`, `<leader>gp`, `<leader>gI`, `<leader>gR`, `<leader>gS`, `<leader>gh*`) are consistent between spec §3, the spec file's keys blocks, the docs append in Task 4, and the validation steps.
 - Plugin count expectation (51–53) in Task 5 Step 2 is consistent with "48 baseline + 3 plugins + optional plenary/telescope transitive deps" reasoning in spec §2.
