@@ -68,7 +68,7 @@ Freshness check performed 2026-04-12 via `gh api repos/<owner>/<repo>/commits`:
 | Component | Plugin | Stars | Last commit | Status |
 |---|---|---|---|---|
 | Magit-style git UI | `NeogitOrg/neogit` | 5,281 | 2026-04-08 (4 days) | Active |
-| Side-by-side + merge-conflict diff | `sindrets/diffview.nvim` | 5,492 | 2024-06-13 (~22 months) | **Quiescent** — see Risks §8 |
+| Side-by-side + merge-conflict diff | `sindrets/diffview.nvim` | 5,492 | 2024-06-13 (~22 months) | **Quiescent (WARN, accepted)** — see Risks §8 |
 | GitHub PR / issue browser | `pwntester/octo.nvim` | 3,229 | 2026-04-12 (today) | Active |
 
 Net plugin delta: **+3** (neogit, diffview, octo) plus transitive deps
@@ -166,7 +166,7 @@ collision fixups above):
 Per-buffer `<localleader>` bindings inside `octo://` buffers (assignee /
 comment / label / issue / react / pr / review / goto_issue groups) are
 inherited verbatim from the octo extra; see
-`~/.local/share/nvim_parity_test/lazy/LazyVim/lua/lazyvim/plugins/extras/util/octo.lua`.
+`~/.local/share/nvim_parity_git/lazy/LazyVim/lua/lazyvim/plugins/extras/util/octo.lua`.
 
 ### Which-Key Integration
 
@@ -322,37 +322,37 @@ in the actual file.
 
 ### Headless Checks
 
-Run against a repo with `NVIM_APPNAME=nvim_parity_test` pointing at the
+Run against a repo with `NVIM_APPNAME=nvim_parity_git` pointing at the
 worktree's `nvim/` directory. If the symlink is missing, create it first:
 
 ```bash
-ln -sfn /home/jlipworth/GNU_files/.worktrees/nvim-parity/nvim ~/.config/nvim_parity_test
+ln -sfn /home/jlipworth/GNU_files/.worktrees/nvim-git-parity/nvim ~/.config/nvim_parity_git
 ```
 
 Then:
 
 ```bash
 # 1. Config parses
-NVIM_APPNAME=nvim_parity_test nvim --headless -c 'qall' 2>&1 | tail -5
+NVIM_APPNAME=nvim_parity_git nvim --headless -c 'qall' 2>&1 | tail -5
 
 # 2. Plugin count went from 48 to 51-53
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_git nvim --headless \
   -c 'lua print(require("lazy").stats().count)' -c 'qall' 2>&1 | tail -3
 
 # 3. Neogit module loads
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_git nvim --headless \
   -c 'lua require("neogit"); print("OK")' -c 'qall' 2>&1 | tail -3
 
 # 4. Diffview module loads
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_git nvim --headless \
   -c 'lua require("diffview"); print("OK")' -c 'qall' 2>&1 | tail -3
 
 # 5. Octo module loads
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_git nvim --headless \
   -c 'lua require("octo"); print("OK")' -c 'qall' 2>&1 | tail -3
 
 # 6. User commands registered
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_git nvim --headless \
   -c 'lua print(vim.fn.exists(":Neogit"), vim.fn.exists(":DiffviewOpen"), vim.fn.exists(":Octo"))' \
   -c 'qall' 2>&1 | tail -3
 # Expected: three 2s.
@@ -361,7 +361,7 @@ NVIM_APPNAME=nvim_parity_test nvim --headless \
 bash tests/nvim/run_nvim_tests.sh 2>&1 | tail -5
 
 # 8. No Claude Code regression
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_git nvim --headless \
   -c 'lua require("claudecode"); print("OK")' -c 'qall' 2>&1 | tail -3
 ```
 
@@ -413,16 +413,18 @@ mapping `SPC g *` to the Neovim equivalents.
 
 ### Risks
 
-1. **diffview.nvim quiescence.** Last commit 2024-06-13 (~22 months old
-   as of 2026-04-12), `pushed_at` 2024-08-02. Not archived; 5.5K stars;
-   132 open issues (typical for a mature tool). Neogit's README still
-   lists it as the recommended diff integration, and there is no fork
-   with meaningful daylight ahead of it. **Mitigation:** if the repo
-   archives, Neogit falls back to plain vimdiff and we lose `<leader>gd
-   / gD / gF / gx` until we pick a replacement (likely
-   `akinomyoga/git-delta` + builtin `:vert diff` or the upcoming
-   native-Neovim diff-view work). This is a low-probability, medium-
-   impact risk; acceptable.
+1. **diffview.nvim quiescence — ACCEPTED by user on 2026-04-12.** Last
+   commit 2024-06-13 (~22 months old as of 2026-04-12), `pushed_at`
+   2024-08-02. Not archived; 5.5K stars; 132 open issues (typical for a
+   mature tool). Neogit's README still lists it as the recommended diff
+   integration (canonical Neogit integration), and there is no viable
+   replacement / fork with meaningful daylight ahead of it. The plugin
+   is feature-complete for its scope. Shipping as an accepted WARN.
+   **Mitigation:** if the repo archives, Neogit falls back to plain
+   vimdiff and we lose `<leader>gd / gD / gF / gx` until we pick a
+   replacement (likely `akinomyoga/git-delta` + builtin `:vert diff` or
+   the upcoming native-Neovim diff-view work). This is a low-probability,
+   medium-impact risk; accepted.
 
 2. **Keymap collisions with octo extra.** `<leader>gr` (octo repos) and
    `<leader>gP` (octo search PRs) collide with the conventional
