@@ -26,7 +26,7 @@ Expected: symlink pointing at the worktree's `nvim/`. If it already exists point
 - [ ] **Record pre-sub-spec baseline plugin count**
 
 ```bash
-cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
+cd /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish
 NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua print(require("lazy").stats().count)' \
   -c 'qall' 2>&1 | tail -3
@@ -66,7 +66,7 @@ Expected: two paths. If either is missing, install via `$INSTALL_CMD` (brew or a
 - [ ] **Step 1: Read current lazy.lua**
 
 ```bash
-cat /home/jlipworth/GNU_files/.worktrees/nvim-parity/nvim/lua/config/lazy.lua
+cat /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish/nvim/lua/config/lazy.lua
 ```
 
 Expected shape:
@@ -101,7 +101,7 @@ Preserve 4-space indentation. If `lang.python` is already imported (grep the fil
 - [ ] **Step 3: Headless parse check**
 
 ```bash
-cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
+cd /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish
 NVIM_APPNAME=nvim_parity_debug nvim --headless -c 'qall' 2>&1 | tail -5
 ```
 
@@ -138,7 +138,7 @@ Expected: a `found:` line. If blank, the keymap may be lazy; acceptable. Record 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
+cd /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish
 git add nvim/lua/config/lazy.lua
 git commit -m "Import LazyVim dap.core + lang.python extras for Python debugging"
 ```
@@ -347,7 +347,7 @@ Record the output of Steps 1-3 in the task report. They inform the doc wording i
 - [ ] **Step 1: Confirm source yasnippets are exactly the six expected**
 
 ```bash
-ls /home/jlipworth/GNU_files/.worktrees/nvim-parity/snippets/latex-mode/
+ls /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish/snippets/latex-mode/
 ```
 
 Expected: `align_star  equation_star  section_star  subsection_star  textit  underline`. If any additional files are present, STOP and re-scope — the spec assumed 6.
@@ -355,7 +355,7 @@ Expected: `align_star  equation_star  section_star  subsection_star  textit  und
 - [ ] **Step 2: Create `nvim/snippets/` directory**
 
 ```bash
-mkdir -p /home/jlipworth/GNU_files/.worktrees/nvim-parity/nvim/snippets
+mkdir -p /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish/nvim/snippets
 ```
 
 - [ ] **Step 3: Write `nvim/snippets/package.json`**
@@ -465,7 +465,7 @@ return {
 - [ ] **Step 6: Headless parse**
 
 ```bash
-cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
+cd /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish
 NVIM_APPNAME=nvim_parity_debug nvim --headless -c 'qall' 2>&1 | tail -5
 ```
 
@@ -501,7 +501,7 @@ git commit -m "Port 6 LaTeX yasnippets to LuaSnip VSCode JSON format"
 - [ ] **Step 1: Verify `nvim/lazy-lock.json` exists and is non-empty**
 
 ```bash
-jq 'keys | length' /home/jlipworth/GNU_files/.worktrees/nvim-parity/nvim/lazy-lock.json
+jq 'keys | length' /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish/nvim/lazy-lock.json
 ```
 
 Expected: a number > 30. If the file is missing, run `NVIM_APPNAME=nvim_parity_debug nvim --headless "+Lazy! sync" +qa` first.
@@ -509,7 +509,7 @@ Expected: a number > 30. If the file is missing, run `NVIM_APPNAME=nvim_parity_d
 - [ ] **Step 2: Inspect one lock entry to check for a `url` field**
 
 ```bash
-jq '[to_entries[] | {k: .key, v: .value}][0]' /home/jlipworth/GNU_files/.worktrees/nvim-parity/nvim/lazy-lock.json
+jq '[to_entries[] | {k: .key, v: .value}][0]' /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish/nvim/lazy-lock.json
 ```
 
 If the `v` object has a `url` field, the script can skip the map-bootstrap (simpler). If not (only `commit` and `branch`), the script must resolve short-name → owner/repo via the plugin directory's `.git/config`. Record which path applies and follow it in Step 3.
@@ -713,7 +713,7 @@ exit 0
 - [ ] **Step 4: Make executable and dry-run**
 
 ```bash
-cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
+cd /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish
 chmod +x scripts/nvim-plugin-audit.sh
 bash scripts/nvim-plugin-audit.sh --dry-run 2>&1 | head -20
 ```
@@ -777,7 +777,7 @@ git commit -m "Add non-blocking Woodpecker step for nvim-plugin-audit"
 - [ ] **Step 1: Inspect the doc's current tail**
 
 ```bash
-tail -20 /home/jlipworth/GNU_files/.worktrees/nvim-parity/docs/NEOVIM_KEYBINDINGS.md
+tail -20 /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish/docs/NEOVIM_KEYBINDINGS.md
 ```
 
 Expected: ends with the Claude Code section's Spacemacs-translation table (from sub-spec 2).
@@ -909,7 +909,7 @@ the implementer — do NOT include it in the file.)
 - [ ] **Step 3: Verify the append landed**
 
 ```bash
-tail -60 /home/jlipworth/GNU_files/.worktrees/nvim-parity/docs/NEOVIM_KEYBINDINGS.md
+tail -60 /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish/docs/NEOVIM_KEYBINDINGS.md
 ```
 
 Expected: the new four sections at the bottom, "Snippets (LuaSnip)" last.
@@ -930,7 +930,7 @@ No code changes — run the full suite and record results.
 - [ ] **Step 1: Headless parse**
 
 ```bash
-cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
+cd /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish
 NVIM_APPNAME=nvim_parity_debug nvim --headless -c 'qall' 2>&1 | tail -5
 ```
 
