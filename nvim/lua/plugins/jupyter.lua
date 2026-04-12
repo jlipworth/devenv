@@ -35,10 +35,12 @@ return {
   },
 
   -- Visual highlight for # %% cell markers.
+  -- Load on `python` filetype so it activates both for real `.py` files and
+  -- for `.ipynb` buffers normalized to `filetype=python` via BufReadCmd.
   -- Lua pattern: %%%% matches literal %% (each %% = one literal %).
   {
     "nvim-mini/mini.hipatterns",
-    event = { "BufReadPost *.py", "BufReadPost *.ipynb", "BufNewFile *.py" },
+    ft = { "python" },
     opts = function(_, opts)
       opts.highlighters = opts.highlighters or {}
       opts.highlighters.jupyter_cell = {
