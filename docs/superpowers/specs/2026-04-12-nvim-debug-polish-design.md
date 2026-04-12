@@ -47,7 +47,7 @@ against silent plugin rot. Specifically:
 
 ### Success Criteria
 
-1. `NVIM_APPNAME=nvim_parity_test nvim --headless` loads cleanly after
+1. `NVIM_APPNAME=nvim_parity_debug nvim --headless` loads cleanly after
    all changes; plugin count increases in a known, bounded way.
 2. In a Python file, `<leader>db` sets a breakpoint, `<leader>dc`
    launches debugpy, DAP-UI opens, and `<leader>dPt` debugs the pytest
@@ -206,7 +206,7 @@ not override; we just document.
 ### Dictionary file path
 
 Neovim stores downloaded `.spl` files under `stdpath("data") .. /site/spell/`,
-which resolves to `~/.local/share/nvim_parity_test/site/spell/` under
+which resolves to `~/.local/share/nvim_parity_debug/site/spell/` under
 the test app-name, and `~/.local/share/nvim/site/spell/` under the
 user's normal config. First time the user does `:setlocal spell` on a
 buffer with an unrecognized language, Neovim prompts to download the
@@ -215,7 +215,7 @@ buffer with an unrecognized language, Neovim prompts to download the
 ### Validation
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'setlocal spell spelllang=en_us' \
   -c 'lua print(vim.o.spell, vim.o.spelllang)' \
   -c 'qall' 2>&1 | tail -3
@@ -381,7 +381,7 @@ Not wired to `make` (per user).
 ### Bootstrap: resolving short-name -> owner/repo
 
 First-run bootstrap walks lazy.nvim's install directory
-(`~/.local/share/nvim_parity_test/lazy/`) and reads each plugin's
+(`~/.local/share/nvim_parity_debug/lazy/`) and reads each plugin's
 `.git/config` for the remote URL. Writes `scripts/plugin-audit-map.json`
 (checked into Git). Subsequent runs skip this step if the map already
 has every plugin from `lazy-lock.json`.
@@ -509,7 +509,7 @@ See companion plan. Roughly:
 ### Headless parse
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless -c 'qall' 2>&1 | tail -5
+NVIM_APPNAME=nvim_parity_debug nvim --headless -c 'qall' 2>&1 | tail -5
 ```
 
 Expected: empty stderr, exit 0.
@@ -517,7 +517,7 @@ Expected: empty stderr, exit 0.
 ### Plugin count delta
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua print(require("lazy").stats().count)' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -528,7 +528,7 @@ count + 12). Exact value recorded in the plan during Task 8.
 ### DAP loads
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua require("dap"); require("dap-python"); print("OK")' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -539,7 +539,7 @@ defined after opening a `.ts` buffer (the extra sets this lazily).
 ### Visual-multi loads
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'let g:VM_mouse_mappings = 0' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -551,7 +551,7 @@ the global suppresses mouse mappings.
 ### Snippets load
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua require("luasnip"); require("luasnip.loaders.from_vscode").lazy_load({ paths = { vim.fn.stdpath("config") .. "/snippets" } })' \
   -c 'lua print(vim.tbl_count(require("luasnip").get_snippets("tex") or {}))' \
   -c 'qall' 2>&1 | tail -3
@@ -576,7 +576,7 @@ column, exit 0.
 bash tests/nvim/run_nvim_tests.sh 2>&1 | tail -5
 
 # claudecode still loads
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua require("claudecode")' -c 'qall' 2>&1 | tail -3
 ```
 

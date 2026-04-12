@@ -17,8 +17,8 @@
 - [ ] **Confirm the test-app symlink exists**
 
 ```bash
-ln -sfn /home/jlipworth/GNU_files/.worktrees/nvim-parity/nvim ~/.config/nvim_parity_test
-ls -l ~/.config/nvim_parity_test
+ln -sfn /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish/nvim ~/.config/nvim_parity_debug
+ls -l ~/.config/nvim_parity_debug
 ```
 
 Expected: symlink pointing at the worktree's `nvim/`. If it already exists pointing elsewhere, the `-f` in `-sfn` replaces it.
@@ -27,7 +27,7 @@ Expected: symlink pointing at the worktree's `nvim/`. If it already exists point
 
 ```bash
 cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua print(require("lazy").stats().count)' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -102,7 +102,7 @@ Preserve 4-space indentation. If `lang.python` is already imported (grep the fil
 
 ```bash
 cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
-NVIM_APPNAME=nvim_parity_test nvim --headless -c 'qall' 2>&1 | tail -5
+NVIM_APPNAME=nvim_parity_debug nvim --headless -c 'qall' 2>&1 | tail -5
 ```
 
 Expected: empty output. If there's an error referencing `lang.python` already being imported, the precondition check in Step 2 was wrong — revert the `lang.python` line.
@@ -110,7 +110,7 @@ Expected: empty output. If there's an error referencing `lang.python` already be
 - [ ] **Step 4: Lazy sync to pull nvim-dap + deps**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless "+Lazy! sync" +qa 2>&1 | tail -20
+NVIM_APPNAME=nvim_parity_debug nvim --headless "+Lazy! sync" +qa 2>&1 | tail -20
 ```
 
 Expected: nvim-dap, nvim-dap-ui, nvim-dap-virtual-text, nvim-nio, mason-nvim-dap, nvim-dap-python, venv-selector.nvim appear in the install log. No errors.
@@ -118,7 +118,7 @@ Expected: nvim-dap, nvim-dap-ui, nvim-dap-virtual-text, nvim-nio, mason-nvim-dap
 - [ ] **Step 5: Module loads**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua require("dap"); require("dap-python"); print("OK")' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -128,7 +128,7 @@ Expected: `OK`. Anything else is BLOCKED.
 - [ ] **Step 6: A representative DAP keymap is registered**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua for _, m in ipairs(vim.api.nvim_get_keymap("n")) do if m.lhs:match(" db$") or m.lhs == " db" then print("found: " .. m.lhs); break end end' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -168,7 +168,7 @@ and `new_string`:
 - [ ] **Step 2: Headless parse**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless -c 'qall' 2>&1 | tail -5
+NVIM_APPNAME=nvim_parity_debug nvim --headless -c 'qall' 2>&1 | tail -5
 ```
 
 Expected: empty.
@@ -176,7 +176,7 @@ Expected: empty.
 - [ ] **Step 3: Lazy sync**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless "+Lazy! sync" +qa 2>&1 | tail -20
+NVIM_APPNAME=nvim_parity_debug nvim --headless "+Lazy! sync" +qa 2>&1 | tail -20
 ```
 
 Expected: the ts LSP chain (vtsls extra + deps) installs. No errors.
@@ -184,7 +184,7 @@ Expected: the ts LSP chain (vtsls extra + deps) installs. No errors.
 - [ ] **Step 4: Confirm js-debug-adapter is queued for Mason**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua local ok, mc = pcall(require, "mason-nvim-dap.mappings.source"); print(ok and "mason-nvim-dap ok" or "missing")' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -194,7 +194,7 @@ Expected: `mason-nvim-dap ok`.
 - [ ] **Step 5: Manually trigger Mason install of js-debug-adapter (may already be auto-installed)**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'MasonInstall js-debug-adapter debugpy' \
   -c 'qall' 2>&1 | tail -10
 ```
@@ -218,7 +218,7 @@ git commit -m "Import LazyVim lang.typescript extra for JS/TS debug adapter"
 - [ ] **Step 1: Check for pre-existing `<C-n>` normal-mode conflict**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua for _, m in ipairs(vim.api.nvim_get_keymap("n")) do if m.lhs == "<C-n>" or m.lhs == "\\x0e" then print("CLASH: " .. vim.inspect(m)) end end' \
   -c 'qall' 2>&1 | tail -5
 ```
@@ -256,7 +256,7 @@ return {
 - [ ] **Step 3: Headless parse + install**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless "+Lazy! sync" +qa 2>&1 | tail -10
+NVIM_APPNAME=nvim_parity_debug nvim --headless "+Lazy! sync" +qa 2>&1 | tail -10
 ```
 
 Expected: vim-visual-multi appears in the install log. No errors.
@@ -264,7 +264,7 @@ Expected: vim-visual-multi appears in the install log. No errors.
 - [ ] **Step 4: Confirm the plugin registers its autocommand group**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'edit /tmp/vm_smoke.txt' \
   -c 'normal! ifoo foo foo' \
   -c 'lua local hit = false; for _, m in ipairs(vim.api.nvim_get_keymap("n")) do if m.lhs == "<C-N>" or m.lhs == "<C-n>" then hit = true end end; print(hit and "VM-bound" or "VM-lazy")' \
@@ -276,7 +276,7 @@ Expected: either `VM-bound` (plugin loaded eagerly) or `VM-lazy` (binding is in 
 - [ ] **Step 5: Confirm no insert-mode `<C-n>` regression**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua for _, m in ipairs(vim.api.nvim_get_keymap("i")) do if m.lhs == "<C-N>" or m.lhs == "<C-n>" then print("insert <C-n>: " .. (m.desc or "no desc")) end end' \
   -c 'qall' 2>&1 | tail -5
 ```
@@ -301,7 +301,7 @@ No code change in this task — pure verification. The doc append happens in Tas
 ```bash
 mkdir -p /tmp/spell_smoke
 printf '# Some misspelt %s here\n' "w""rod" > /tmp/spell_smoke/test.md
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'edit /tmp/spell_smoke/test.md' \
   -c 'lua print(vim.bo.spell, vim.bo.spelllang)' \
   -c 'qall' 2>&1 | tail -3
@@ -312,7 +312,7 @@ Expected: `true    en` (or `true    en_us`). If `false`, LazyVim's markdown auto
 - [ ] **Step 2: Test `:setlocal spell` works on arbitrary buffers**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'enew' \
   -c 'setlocal spell spelllang=en_us' \
   -c 'lua print(vim.wo.spell, vim.o.spelllang)' \
@@ -324,12 +324,12 @@ Expected: `true    en_us`.
 - [ ] **Step 3: Confirm spell data path resolves**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua print(vim.fn.stdpath("data") .. "/site/spell/")' \
   -c 'qall' 2>&1 | tail -3
 ```
 
-Expected: `/home/jlipworth/.local/share/nvim_parity_test/site/spell/` (or equivalent on the test host).
+Expected: `/home/jlipworth/.local/share/nvim_parity_debug/site/spell/` (or equivalent on the test host).
 
 - [ ] **Step 4: No commit for this task — verification only**
 
@@ -466,7 +466,7 @@ return {
 
 ```bash
 cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
-NVIM_APPNAME=nvim_parity_test nvim --headless -c 'qall' 2>&1 | tail -5
+NVIM_APPNAME=nvim_parity_debug nvim --headless -c 'qall' 2>&1 | tail -5
 ```
 
 Expected: empty.
@@ -474,13 +474,13 @@ Expected: empty.
 - [ ] **Step 7: Verify snippets load**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua require("luasnip.loaders.from_vscode").lazy_load({ paths = { vim.fn.stdpath("config") .. "/snippets" } })' \
   -c 'lua print("tex:", vim.tbl_count(require("luasnip").get_snippets("tex") or {}))' \
   -c 'qall' 2>&1 | tail -3
 ```
 
-Expected: `tex: N` where N ≥ 6. (friendly-snippets may contribute additional `tex` snippets.) If exactly 0, the loader path is wrong — verify `stdpath("config")` resolves to the nvim_parity_test directory.
+Expected: `tex: N` where N ≥ 6. (friendly-snippets may contribute additional `tex` snippets.) If exactly 0, the loader path is wrong — verify `stdpath("config")` resolves to the nvim_parity_debug directory.
 
 - [ ] **Step 8: Commit**
 
@@ -504,7 +504,7 @@ git commit -m "Port 6 LaTeX yasnippets to LuaSnip VSCode JSON format"
 jq 'keys | length' /home/jlipworth/GNU_files/.worktrees/nvim-parity/nvim/lazy-lock.json
 ```
 
-Expected: a number > 30. If the file is missing, run `NVIM_APPNAME=nvim_parity_test nvim --headless "+Lazy! sync" +qa` first.
+Expected: a number > 30. If the file is missing, run `NVIM_APPNAME=nvim_parity_debug nvim --headless "+Lazy! sync" +qa` first.
 
 - [ ] **Step 2: Inspect one lock entry to check for a `url` field**
 
@@ -535,7 +535,7 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOCK_FILE="${REPO_ROOT}/nvim/lazy-lock.json"
 MAP_FILE="${REPO_ROOT}/scripts/plugin-audit-map.json"
-LAZY_DIR="${HOME}/.local/share/nvim_parity_test/lazy"
+LAZY_DIR="${HOME}/.local/share/nvim_parity_debug/lazy"
 
 DRY_RUN=0
 JSON_OUT=0
@@ -931,7 +931,7 @@ No code changes — run the full suite and record results.
 
 ```bash
 cd /home/jlipworth/GNU_files/.worktrees/nvim-parity
-NVIM_APPNAME=nvim_parity_test nvim --headless -c 'qall' 2>&1 | tail -5
+NVIM_APPNAME=nvim_parity_debug nvim --headless -c 'qall' 2>&1 | tail -5
 ```
 
 Expected: empty.
@@ -939,7 +939,7 @@ Expected: empty.
 - [ ] **Step 2: Plugin count delta**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua print(require("lazy").stats().count)' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -949,7 +949,7 @@ Expected: pre-sub-spec count + 8 to + 12. Record the number. Any larger delta = 
 - [ ] **Step 3: DAP loads**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua require("dap"); require("dap-python"); require("dapui"); print("OK")' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -959,7 +959,7 @@ Expected: `OK`.
 - [ ] **Step 4: Visual-multi baseline**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'let g:VM_mouse_mappings = 0' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -969,7 +969,7 @@ Expected: empty.
 - [ ] **Step 5: Snippets load**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua require("luasnip.loaders.from_vscode").lazy_load({ paths = { vim.fn.stdpath("config") .. "/snippets" } })' \
   -c 'lua print(vim.tbl_count(require("luasnip").get_snippets("tex") or {}))' \
   -c 'qall' 2>&1 | tail -3
@@ -996,7 +996,7 @@ Expected: `ALL TESTS PASSED`.
 - [ ] **Step 8: Claude Code regression**
 
 ```bash
-NVIM_APPNAME=nvim_parity_test nvim --headless \
+NVIM_APPNAME=nvim_parity_debug nvim --headless \
   -c 'lua require("claudecode"); print("OK")' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -1007,7 +1007,7 @@ Expected: `OK`.
 
 Not automated. Document in the task report; the implementer hands this off to the user:
 
-1. Start `NVIM_APPNAME=nvim_parity_test nvim /tmp/debug_smoke.py` with a trivial Python file containing a `print("hi")`. Press `<leader>db` to set a breakpoint, `<leader>dc` to launch — DAP-UI should open.
+1. Start `NVIM_APPNAME=nvim_parity_debug nvim /tmp/debug_smoke.py` with a trivial Python file containing a `print("hi")`. Press `<leader>db` to set a breakpoint, `<leader>dc` to launch — DAP-UI should open.
 2. Open a trivial `.ts` file. Press `<leader>dc` and pick the node launch config.
 3. In any buffer with the word "foo" repeated, press `<C-n>` — a VM session should start.
 4. Open a `.md` file with a misspelling — it should highlight. Press `z=`.
