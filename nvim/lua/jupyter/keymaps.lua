@@ -30,6 +30,60 @@ function M.setup(bufnr)
   map({ "n", "x", "o" }, "[[", cells.goto_prev_cell,  "Prev cell")
   map({ "n", "x", "o" }, "]C", cells.goto_last_cell,  "Last cell")
   map({ "n", "x", "o" }, "[C", cells.goto_first_cell, "First cell")
+
+  -- Cell manipulation
+  map("n", "<localleader>ji", function()
+    local line = vim.api.nvim_win_get_cursor(0)[1]
+    local e = cells.cell_end(0, line)
+    vim.api.nvim_buf_set_lines(0, e, e, false, { "# %%", "" })
+    vim.api.nvim_win_set_cursor(0, { e + 2, 0 })
+  end, "Jupyter: insert cell below")
+
+  map("n", "<localleader>jI", function()
+    local line = vim.api.nvim_win_get_cursor(0)[1]
+    local s = cells.cell_start(0, line)
+    vim.api.nvim_buf_set_lines(0, s - 1, s - 1, false, { "# %%", "" })
+    vim.api.nvim_win_set_cursor(0, { s + 1, 0 })
+  end, "Jupyter: insert cell above")
+
+  map("n", "<localleader>jx", function()
+    local line = vim.api.nvim_win_get_cursor(0)[1]
+    local s = cells.cell_start(0, line)
+    local e = cells.cell_end(0, line)
+    vim.api.nvim_buf_set_lines(0, s - 1, e, false, {})
+  end, "Jupyter: delete cell")
+
+  -- Buffer-local cheatsheet popup
+  map("n", "<localleader>?", function()
+    local lines = {
+      "Jupyter bindings (buffer-local):",
+      "",
+      "  <localleader>jj  run cell            <localleader>jn  run & advance",
+      "  <localleader>jl  send line           <localleader>js  send selection",
+      "  <localleader>jf  send file           <localleader>ja  run above",
+      "  <localleader>jb  run below           <localleader>jr  restart REPL",
+      "  <localleader>jk  interrupt kernel    <localleader>jt  toggle REPL",
+      "  <localleader>jo  focus REPL",
+      "",
+      "  <localleader>ji  insert cell below   <localleader>jI  insert cell above",
+      "  <localleader>jx  delete cell",
+      "",
+      "  ]]  next cell    [[  prev cell    ]C  last cell    [C  first cell",
+      "  aj  around cell (incl. marker)   ij  inside cell (code only)",
+    }
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+    vim.bo[buf].modifiable = false
+    vim.bo[buf].bufhidden = "wipe"
+    vim.api.nvim_open_win(buf, true, {
+      relative = "editor", border = "rounded",
+      width = 60, height = #lines + 1,
+      row = math.floor((vim.o.lines - #lines) / 2) - 2,
+      col = math.floor((vim.o.columns - 60) / 2),
+      style = "minimal", title = " Jupyter ", title_pos = "center",
+    })
+    vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = buf, nowait = true })
+  end, "Jupyter: cheatsheet")
 end
 
 -- mini.ai textobject spec for cells. `ai_type` is "a" or "i".
