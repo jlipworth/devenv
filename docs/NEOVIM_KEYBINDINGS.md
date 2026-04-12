@@ -181,3 +181,58 @@ Key groups:
 6. **Harpoon 2 is a working-set helper** — use it if you like curated hot files; ignore it if you prefer picker/buffer flows.
 7. **Mason manages tool installs** — run `:Mason` to inspect/update language servers and related tools.
 8. **Lazy manages plugins** — run `:Lazy` to inspect/update plugins.
+
+## Jupyter cells (in `.py` / `.ipynb` buffers)
+
+`.ipynb` files are opened as Python with `# %%` cell markers via the
+`jupytext` CLI. Plots and real-kernel runs still live in your browser
+Jupyter session — the Neovim REPL is plain IPython.
+
+### Execution (leader is `,`)
+
+| Keys | Action |
+|---|---|
+| `,jj` | Run current cell |
+| `,jn` | Run current cell, advance to next |
+| `,jl` | Send current line |
+| `,js` | Send visual selection (visual mode) |
+| `,jf` | Send entire file |
+| `,ja` | Run all cells above current |
+| `,jb` | Run all cells below current |
+| `,jr` | Restart IPython REPL |
+| `,jk` | Interrupt kernel (Ctrl-C) |
+| `,jt` | Toggle REPL window |
+| `,jo` | Focus REPL split |
+
+### Manipulation
+
+| Keys | Action |
+|---|---|
+| `,ji` | Insert new cell below current |
+| `,jI` | Insert new cell above current |
+| `,jx` | Delete current cell |
+
+### Navigation
+
+| Keys | Action |
+|---|---|
+| `]]` | Next cell |
+| `[[` | Previous cell |
+| `]C` | Last cell |
+| `[C` | First cell |
+| `aj` | Around cell textobject (incl. marker) |
+| `ij` | Inside cell textobject (code only) |
+
+### Cheatsheet popup
+
+`,?` in a Python/ipynb buffer shows the above in a floating window.
+
+### Spacemacs translation
+
+| Spacemacs | Neovim here |
+|---|---|
+| `SPC m s b` (send buffer) | `,jf` |
+| `SPC m s f` (send function) | visual-select then `,js` |
+| `SPC m s r` (send region) | visual-select then `,js` |
+| `SPC m s s` (swap to REPL) | `,jo` |
+| *(new)* | `,jj` = run cell (was not a Spacemacs verb) |
