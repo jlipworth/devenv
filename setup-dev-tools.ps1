@@ -1429,6 +1429,8 @@ $gccBinary = Ensure-WingetBinaryInstalled -Id "BrechtSanders.WinLibs.POSIX.UCRT"
 $treeSitterBinary = Ensure-WingetBinaryInstalled -Id "tree-sitter.tree-sitter-cli" -PackagePrefix "tree-sitter.tree-sitter-cli" -BinaryNames @("tree-sitter") -DisplayName "tree-sitter-cli"
 $lazygitBinary = Ensure-WingetBinaryInstalled -Id "JesseDuffield.lazygit" -PackagePrefix "JesseDuffield.lazygit" -BinaryNames @("lazygit") -DisplayName "lazygit"
 $cmakeBinary = Ensure-WingetBinaryInstalled -Id "Kitware.CMake" -PackagePrefix "Kitware.CMake" -BinaryNames @("cmake") -DisplayName "CMake"
+# GitHub CLI is required by octo.nvim for GitHub issue/PR browsing.
+$ghBinary = Ensure-WingetBinaryInstalled -Id "GitHub.cli" -PackagePrefix "GitHub.cli" -BinaryNames @("gh") -DisplayName "GitHub CLI"
 
 $fdVersion = (& $fdBinary.Source --version | Select-Object -First 1).Trim()
 $rgVersion = (& $rgBinary.Source --version | Select-Object -First 1).Trim()
@@ -1436,7 +1438,8 @@ $gccVersion = (& $gccBinary.Source --version | Select-Object -First 1).Trim()
 $treeSitterVersion = (& $treeSitterBinary.Source --version | Select-Object -First 1).Trim()
 $lazygitVersion = (& $lazygitBinary.Source --version | Select-Object -First 1).Trim()
 $cmakeVersion = (& $cmakeBinary.Source --version | Select-Object -First 1).Trim()
-Write-Host "fd: $fdVersion | rg: $rgVersion | gcc: $gccVersion | tree-sitter: $treeSitterVersion | lazygit: $lazygitVersion | cmake: $cmakeVersion" -ForegroundColor Green
+$ghVersion = (& $ghBinary.Source --version | Select-Object -First 1).Trim()
+Write-Host "fd: $fdVersion | rg: $rgVersion | gcc: $gccVersion | tree-sitter: $treeSitterVersion | lazygit: $lazygitVersion | cmake: $cmakeVersion | gh: $ghVersion" -ForegroundColor Green
 
 $targetNeovimVersion = Get-LatestNeovimVersion
 $targetNeovimVersionObject = [version]$targetNeovimVersion
