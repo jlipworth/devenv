@@ -124,8 +124,8 @@ query_last_commit() {
 # -----------------------------------------------------------------------------
 
 today_epoch="$(date +%s)"
-warn_cutoff_sec=$((60 * 60 * 24 * 365 + 60 * 60 * 24 * 30)) # ~13 mo grace
-fail_cutoff_sec=$((60 * 60 * 24 * 365 * 2))                 # 24 mo
+warn_cutoff_sec=$((60 * 60 * 24 * 30 * 12)) # 12 mo
+fail_cutoff_sec=$((60 * 60 * 24 * 30 * 24)) # 24 mo
 
 declare -a rows=()
 ok_count=0
