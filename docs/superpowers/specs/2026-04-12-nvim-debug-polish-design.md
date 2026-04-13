@@ -22,11 +22,6 @@ against silent plugin rot. Specifically:
 4. **Snippet parity** — port the six Yasnippet templates in `snippets/`
    to LuaSnip's VSCode-style JSON format so the same triggers work in
    both editors.
-5. **Plugin-freshness audit** — a manually-invocable script that walks
-   `nvim/lazy-lock.json`, queries GitHub for each plugin's last commit
-   date, and classifies stale (>12 mo) / abandoned (>24 mo). Non-zero
-   exit on abandoned; non-blocking CI opt-in.
-
 ### Non-Goals
 
 - **New language-DAP support beyond Python + JS/TS.** LazyVim has extras
@@ -40,10 +35,8 @@ against silent plugin rot. Specifically:
 - **Porting Yasnippet snippets from Spacemacs private layers outside the
   tracked `snippets/` directory.** Anything not in Git is personal; the
   repo only owns what's in Git.
-- **A `make nvim-plugin-audit` target.** Per user: "that is polluting my
-  makefile." The script is invoked directly or by CI.
-- **Strict CI blocking on the audit.** GitHub rate-limiting would cause
-  transient failures; CI wiring is opt-in `continue-on-error`.
+- **Plugin-freshness audit tooling.** Originally in-scope; removed.
+  Per-plugin decisions live in the spec/PR, not a committed script.
 
 ### Success Criteria
 
@@ -60,9 +53,7 @@ against silent plugin rot. Specifically:
    download instructions are documented.
 6. `require("luasnip").get_snippets("tex")` returns at least 6 entries
    matching the ported Yasnippets' triggers.
-7. `bash scripts/nvim-plugin-audit.sh` prints a tabular report with one
-   row per locked plugin and exits 0 when no plugin exceeds 24 months.
-8. No regression: Jupyter cells/repl tests and claudecode module load
+7. No regression: Jupyter cells/repl tests and claudecode module load
    still pass.
 
 ## 2. Plugin Stack
@@ -73,7 +64,7 @@ against silent plugin rot. Specifically:
 | Python DAP adapter | `mfussenegger/nvim-dap-python` via `lazyvim.plugins.extras.lang.python` (already imported? verify) | LazyVim extra; debugpy auto-installed via Mason |
 | JS/TS DAP adapter | `js-debug-adapter` (vscode-js-debug) via `lazyvim.plugins.extras.lang.typescript` | LazyVim extra; adapter auto-installed via Mason |
 | Mason DAP bridge | `jay-babu/mason-nvim-dap.nvim` (comes with `extras.dap.core`) | Tracks mason-registry |
-| Multi-cursor | `mg979/vim-visual-multi` | Last commit 2024-09-01 (~19 mo as of 2026-04-12). **Stale by the >12 mo warn threshold, NOT abandoned**; plugin is feature-complete and widely used. Acceptable risk; flagged as known-stale in the audit baseline. |
+| Multi-cursor | `mg979/vim-visual-multi` | Last commit 2024-09-01 (~19 mo as of 2026-04-12). Feature-complete and widely used; acceptable risk. |
 | Snippet engine | `L3MON4D3/LuaSnip` + `rafamadriz/friendly-snippets` | Already present in LazyVim base; no plugin delta |
 
 Net plugin delta expected after this sub-spec:
@@ -108,16 +99,11 @@ during plan Task 8 validation.
   the python extra is active; adding vim-test on top is redundant.
 - **`spellsitter.nvim`** for treesitter-aware spell. Nice-to-have, not
   needed for parity with Spacemacs's default flyspell; defer.
-- **Custom plugin-audit tooling written in Rust/Go.** Shell + curl + jq
-  is sufficient for ~50 repos and needs zero build dependencies.
+### No-abandonware check (this sub-spec's new plugins)
 
-### No-abandonware audit (this sub-spec's new plugins)
-
-- **vim-visual-multi**: last commit 2024-09-01. Falls in the **warn**
-  band (>12 mo, <24 mo). The plugin is functionally complete and still
-  the canonical Vim multi-cursor tool; issues get community patches.
-  Accept with warning. Flagged explicitly so future audit runs don't
-  surprise anyone.
+- **vim-visual-multi**: last commit 2024-09-01. The plugin is functionally
+  complete and still the canonical Vim multi-cursor tool; issues get
+  community patches. Accepted.
 - **nvim-dap family**: LazyVim-maintained extras; all underlying repos
   (mfussenegger/nvim-dap, rcarriga/nvim-dap-ui, dap-python,
   dap-virtual-text) had commits within the last 3 months as of spec
@@ -329,109 +315,6 @@ wiring `snippets/` into `~/.emacs.d/private/snippets`. We do NOT remove
 that; the source-of-truth yasnippets remain valid for Emacs. Neovim
 reads the same six sources via the port, not via symlink.
 
-## 6. Plugin-Freshness Audit Script
-
-### Location & invocation
-
-- Path: `scripts/nvim-plugin-audit.sh`
-- Invocation: `bash scripts/nvim-plugin-audit.sh [--dry-run] [--json]`
-- Exit codes:
-  - `0` — no plugin exceeds 24 mo; may have warnings.
-  - `1` — one or more plugins exceed 24 mo.
-  - `2` — script error (missing deps, unparsable lock file).
-
-Not wired to `make` (per user).
-
-### Inputs
-
-- `nvim/lazy-lock.json` — source of truth for pinned plugin commits.
-  Parsed with `jq`.
-- `$GITHUB_TOKEN` — optional. Used if set. Without it, the script falls
-  back to anonymous GitHub API (60 req/hr). ~50 plugins fits in one hour
-  trivially; for local invocation with no token, the script may pause
-  if rate-limited — it does NOT retry aggressively.
-
-### Algorithm
-
-```
-1. Require: jq, curl. Fail with code 2 if missing.
-2. Read nvim/lazy-lock.json; extract map of { plugin_name -> commit_sha }.
-3. For each plugin, derive owner/repo from LazyVim's lazy.nvim metadata.
-   lazy-lock.json does NOT store the repo URL, only the short name
-   (e.g. "nvim-dap"). Resolve via:
-     - prefer nvim/lazy-lock.json's "url" field if present (lazy.nvim
-       v11+ emits this);
-     - else, require an adjacent nvim/plugin-audit-map.json committed
-       to the repo that maps short-name -> owner/repo. Keep this map
-       generated automatically on first run (see "Bootstrap" below).
-4. For each owner/repo + commit_sha, query:
-     GET https://api.github.com/repos/OWNER/REPO/commits?per_page=1
-   Extract the author/committer date of the most recent commit on
-   the default branch.
-5. Compare to today:
-     age_mo = (today - last_commit) / 30
-     green  = age_mo <= 12
-     warn   = 12 < age_mo <= 24
-     fail   = age_mo > 24
-6. Print a table: plugin | age (months) | status | last_commit_date.
-   Sort by age descending.
-7. Summary line: "N green, M warn, K fail"; exit 1 if K > 0.
-```
-
-### Bootstrap: resolving short-name -> owner/repo
-
-First-run bootstrap walks lazy.nvim's install directory
-(`~/.local/share/nvim_parity_debug/lazy/`) and reads each plugin's
-`.git/config` for the remote URL. Writes `scripts/plugin-audit-map.json`
-(checked into Git). Subsequent runs skip this step if the map already
-has every plugin from `lazy-lock.json`.
-
-If the map is stale (missing a newly-installed plugin), the script
-warns and runs the bootstrap routine automatically for the missing
-entries.
-
-### `--dry-run`
-
-Skips HTTP entirely. Parses `lazy-lock.json`, resolves owner/repo via
-the map, and prints what would be queried. Exit 0. Used in CI smoke.
-
-### `--json`
-
-Prints the full result as JSON instead of a table. For machine
-consumption (future CI annotations).
-
-### CI integration (opt-in, non-blocking)
-
-Add a new step in `.woodpecker/lint.yml` (or a new
-`.woodpecker/plugin-audit.yml` pipeline) that runs the audit with
-`failure: ignore` (Woodpecker's equivalent of `continue-on-error`).
-The step's job is to surface a drift signal in the CI log, not gate
-merges.
-
-### Output format
-
-```
-Plugin                          Age (mo)   Status    Last commit
-------------------------------- ---------- --------- ----------
-vim-visual-multi                19         WARN      2024-09-01
-nvim-dap                        0          OK        2026-04-05
-LazyVim                         0          OK        2026-04-09
-...
-Summary: 48 OK, 1 WARN, 0 FAIL
-```
-
-Monospace alignment via `printf "%-32s %-10s %-9s %s\n"`.
-
-### Error tolerance
-
-- 404 from GitHub (plugin renamed/deleted) → print `MOVED` in Status
-  column, count as WARN, do not fail.
-- Rate-limit (`X-RateLimit-Remaining: 0`) → print a one-line notice
-  with the reset timestamp, skip the remaining plugins, exit 0 with a
-  summary indicating "partial run."
-- Network error (curl exit ≠ 0) → print `NET_ERR`, count as neutral,
-  exit 0. (Local network flakes shouldn't fail a polish check.)
-
 ## 7. Implementation Structure
 
 ### Files touched
@@ -442,13 +325,8 @@ Monospace alignment via `printf "%-32s %-10s %-9s %s\n"`.
 - `nvim/lua/plugins/snippets.lua` — new LuaSnip loader wiring.
 - `nvim/snippets/package.json` — new VSCode manifest.
 - `nvim/snippets/latex.json` — new ported snippets.
-- `scripts/nvim-plugin-audit.sh` — new audit script.
-- `scripts/plugin-audit-map.json` — new short-name → owner/repo map
-  (generated on first run; committed).
 - `docs/NEOVIM_KEYBINDINGS.md` — append Debug, Multi-cursor, Spell
   sections.
-- `.woodpecker/lint.yml` (or new file) — opt-in non-blocking audit
-  step.
 
 No deletions. No rewrites of existing files beyond appends.
 
@@ -498,11 +376,10 @@ See companion plan. Roughly:
 3. Add vim-visual-multi spec + `<C-n>` conflict verification.
 4. Verify spell works + doc update.
 5. Port six LaTeX yasnippets to LuaSnip VSCode JSON.
-6. Write `scripts/nvim-plugin-audit.sh` + map bootstrap.
-7. Append Debug / Multi-cursor / Spell / Snippet sections to
+6. Append Debug / Multi-cursor / Spell / Snippet sections to
    `docs/NEOVIM_KEYBINDINGS.md`.
-8. Full validation pass (headless parse, plugin count, module loads,
-   Jupyter regression, claudecode regression, audit dry-run).
+7. Full validation pass (headless parse, plugin count, module loads,
+   Jupyter regression, claudecode regression).
 
 ## 8. Testing Strategy
 
@@ -560,15 +437,6 @@ NVIM_APPNAME=nvim_parity_debug nvim --headless \
 Expected: `6` (or more, if friendly-snippets contributes additional
 `tex` snippets — then ≥ 6).
 
-### Audit dry-run
-
-```bash
-bash scripts/nvim-plugin-audit.sh --dry-run 2>&1 | head -20
-```
-
-Expected: a table with one row per locked plugin, "DRY" in the Status
-column, exit 0.
-
 ### Regression guards
 
 ```bash
@@ -596,8 +464,7 @@ NVIM_APPNAME=nvim_parity_debug nvim --headless \
 
 ### CI
 
-Non-blocking audit step in Woodpecker. Existing lint / Jupyter tests
-remain blocking.
+Existing lint / Jupyter tests remain blocking. No new CI steps.
 
 ## 9. Risks & Open Questions
 
@@ -619,21 +486,12 @@ remain blocking.
    resolution order). Verified in plan Task 3.
 4. **Vim-visual-multi's 19-month age.** Plugin is feature-complete;
    community patches land in forks occasionally. If it becomes truly
-   abandoned (>24 mo), the audit will fail CI and force a migration
-   decision. Not today's problem.
-5. **GitHub anonymous rate limit hits.** Audit script handles this
-   gracefully (partial run, non-zero exit only for real age failures).
-   Local dev usage is fine; CI usage is opt-in non-blocking.
-6. **LuaSnip `i` and `u` single-char triggers firing mid-word.** This
+   abandoned (>24 mo), a migration decision will need to happen. Not
+   today's problem.
+5. **LuaSnip `i` and `u` single-char triggers firing mid-word.** This
    matches Spacemacs yasnippet behavior, so it's a parity feature, not
    a regression. If the user finds it annoying, a one-line `regex`
    condition can gate expansion.
-7. **`plugin-audit-map.json` drift.** When a new plugin is added,
-   lazy-lock.json updates but the map doesn't. The script detects
-   missing entries and auto-bootstraps them; on CI this would produce
-   a git-dirty state. Mitigation: the script only commits on
-   explicit `--update-map` flag; CI uses `--dry-run` which skips
-   HTTP entirely.
 
 ### Resolved decisions
 
@@ -642,15 +500,12 @@ remain blocking.
 - **`<C-n>` rebind?** No. Conflict analysis confirms no clash.
 - **Snippet format?** VSCode JSON (portable).
 - **Batch yasnippet port?** Not needed; only 6 files — one task.
-- **CI blocking on audit?** No. `failure: ignore`.
+- **Plugin-freshness audit tooling?** Dropped — handled as skill/reference, not committed code.
 
 ### Open questions (defer to plan)
 
 - **Exact plugin-count delta.** Plan Task 8 records it after real
   `:Lazy sync`. Spec gives a 3-unit band.
-- **Whether `lazy-lock.json` already has a `url` field.** Plan Task 6
-  Step 2 inspects one entry; if yes, skip the map-bootstrap path and
-  simplify the script.
 
 ## 10. Out of Scope (for future work)
 

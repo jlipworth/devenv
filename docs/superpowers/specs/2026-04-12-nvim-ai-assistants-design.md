@@ -25,8 +25,7 @@ code to maintain.
 - **Prompt libraries or snippet integration.** Orthogonal; out of scope.
 - **GitHub Copilot, Avante, Codeium, Supermaven, Tabnine, Sidekick.** Not
   installed, not investigated. User picked Claude Code explicitly.
-- **No-abandonware audit tooling.** Deferred to sub-spec 4 (polish). This
-  spec is intentionally tiny.
+- **No-abandonware audit tooling.** This spec is intentionally tiny.
 
 ### Success Criteria
 
@@ -218,7 +217,7 @@ Preserve the existing Spacemacs-translation framing in the file.
 - Codex in-editor integration → no.
 - Keymap prefix → `<leader>a` (LazyVim default).
 - Full-force config → accept `opts = {}` defaults.
-- No-abandonware audit tooling → deferred to sub-spec 4.
+- No-abandonware audit tooling → dropped; handle via skill/reference.
 
 ## 9. Out of Scope (for this sub-spec)
 
@@ -226,6 +225,6 @@ Deferred to sibling sub-specs:
 
 - **Sub-spec 3**: Git parity (neogit / diffview / gitsigns refinements).
 - **Sub-spec 4**: Debug + polish (nvim-dap, visual-multi, spell, snippet
-  verification, plugin-freshness audit script).
+  verification).
 
 Each lands its own design doc under `docs/superpowers/specs/`.

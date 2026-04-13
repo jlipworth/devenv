@@ -425,8 +425,7 @@ fails or is skipped.
 | `<Esc>` | VM | Exit multi-cursor mode |
 
 See `:help visual-multi` for the full cheatsheet. The upstream project
-is feature-complete; its most recent commit (2024-09-01) predates
-the `nvim-plugin-audit.sh` warn threshold but not the fail threshold.
+is feature-complete (last commit 2024-09-01).
 
 ## Spell check
 
