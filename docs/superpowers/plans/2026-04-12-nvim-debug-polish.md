@@ -782,3 +782,20 @@ No drift detected.
 ### Commit-per-task discipline
 
 Tasks 1, 2, 3, 5, 7 each end with a commit. Task 4 is pure verification (no commit). Task 8 commits only if fixups are needed.
+
+---
+
+## Post-merge note (2026-04-12)
+
+After all four sub-specs landed on `feature/nvim-parity` (PR #63), the
+plugin-freshness audit framework originally scoped as Task 6 here —
+`scripts/nvim-plugin-audit.sh`, `scripts/plugin-audit-map.json`,
+`.woodpecker/plugin-audit.yml`, and the accepted-WARN allowlist — was
+removed before merge. Per-plugin freshness decisions will live in the
+PR / review, not a committed maintenance script. `markdown-preview.nvim`
+(the sole audit FAIL) was disabled via the `lang.markdown` extra
+override since `render-markdown.nvim` from the same extra covers
+in-buffer rendering.
+
+`git status` was confirmed clean on commit `e149abd` before this note
+was appended.
