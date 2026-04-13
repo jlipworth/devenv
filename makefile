@@ -180,13 +180,16 @@ update-deps:
 	@echo "Updating all dependencies from git..."
 	@./update_dependencies.sh
 
-# Sequential setup of foundations, followed by parallel layers
+# Sequential setup of foundations, followed by the default editor/runtime
+# environment needed on a primary machine.
 full-setup:
 	@echo "Starting sequential foundations..."
 	@$(MAKE) editor-symlinks
 	@$(MAKE) system-prereq
 	@echo "Foundations complete. Starting sequential layer installation..."
 	@$(MAKE) prereq-layers-all
+	@$(MAKE) python-env
+	@$(MAKE) spacemacs
 	@echo "Completed full system setup."
 
 # No-admin setup: full install without sudo-requiring steps
@@ -198,7 +201,7 @@ help:
 	@echo "JAL Emacs Installation Makefile"
 	@echo ""
 	@echo "Main targets:"
-	@echo "  full-setup        - Complete system setup (linking + system + all layers)"
+	@echo "  full-setup        - Complete system setup (linking + system + all layers + python-env + spacemacs)"
 	@echo "  noadmin-setup     - Full setup without sudo (skips system packages)"
 	@echo "  spacemacs         - Build Emacs 30.1 from source + install Spacemacs"
 	@echo "  editor-symlinks   - Create symlinks for .vimrc and .spacemacs"
