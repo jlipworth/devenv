@@ -9,6 +9,10 @@ return {
   { import = "lazyvim.plugins.extras.lang.yaml" },
   { import = "lazyvim.plugins.extras.lang.json" },
   { import = "lazyvim.plugins.extras.lang.markdown" },
+  -- markdown-preview.nvim (transitive via lang.markdown) is unmaintained
+  -- (last commit 2023-10-17, 30+ mo). render-markdown.nvim from the same
+  -- extra covers in-buffer rendering and is actively maintained.
+  { "iamcco/markdown-preview.nvim", enabled = false },
   { import = "lazyvim.plugins.extras.lang.sql" },
   { import = "lazyvim.plugins.extras.lang.toml" },
   { import = "lazyvim.plugins.extras.lang.r" },

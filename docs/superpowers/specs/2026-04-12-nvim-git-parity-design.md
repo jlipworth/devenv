@@ -464,7 +464,7 @@ mapping `SPC g *` to the Neovim equivalents.
 - gitsigns customization → none; accept LazyVim defaults.
 - Make-target or install-script changes → only the Windows `gh` install;
   no makefile changes.
-- Freshness-audit tooling → deferred to sub-spec 4 (polish).
+- Freshness-audit tooling → dropped; handle via skill/reference.
 - `<leader>gg` collision with Snacks.lazygit → Neogit wins, `<leader>gG`
   preserved for lazygit(cwd).
 
@@ -473,8 +473,7 @@ mapping `SPC g *` to the Neovim equivalents.
 Deferred to sibling sub-specs:
 
 - **Sub-spec 4**: Debug + polish (nvim-dap, visual-multi, spell, snippet
-  verification, plugin-freshness audit script, periodic no-abandonware
-  rechecks including a scheduled diffview.nvim revisit).
+  verification).
 
 Explicitly NOT in this sub-spec:
 

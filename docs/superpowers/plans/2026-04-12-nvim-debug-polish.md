@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Close the last parity gaps (debug, multi-cursor, spell, snippet port) and add a plugin-freshness audit script, without adding any make targets.
+**Goal:** Close the last parity gaps (debug, multi-cursor, spell, snippet port), without adding any make targets.
 
-**Architecture:** Debug is three LazyVim extras (`dap.core`, `lang.python`, `lang.typescript`). Multi-cursor is a local plugin spec wrapping `mg979/vim-visual-multi` with its default `<C-n>` trigger. Spell is verification + doc only. Snippets are six LaTeX yasnippets ported to LuaSnip VSCode-style JSON. The audit is a standalone `scripts/nvim-plugin-audit.sh` that reads `nvim/lazy-lock.json`, queries GitHub for each plugin's most recent commit, and classifies stale / abandoned.
+**Architecture:** Debug is three LazyVim extras (`dap.core`, `lang.python`, `lang.typescript`). Multi-cursor is a local plugin spec wrapping `mg979/vim-visual-multi` with its default `<C-n>` trigger. Spell is verification + doc only. Snippets are six LaTeX yasnippets ported to LuaSnip VSCode-style JSON.
 
-**Tech Stack:** Neovim 0.12, LazyVim, nvim-dap family (via LazyVim extras), `mg979/vim-visual-multi`, LuaSnip + friendly-snippets (already in LazyVim base), bash + `jq` + `curl` for the audit.
+**Tech Stack:** Neovim 0.12, LazyVim, nvim-dap family (via LazyVim extras), `mg979/vim-visual-multi`, LuaSnip + friendly-snippets (already in LazyVim base).
 
 **Spec:** `docs/superpowers/specs/2026-04-12-nvim-debug-polish-design.md`
 
@@ -51,10 +51,7 @@ Expected: two paths. If either is missing, install via `$INSTALL_CMD` (brew or a
 - New: `nvim/lua/plugins/snippets.lua` (Task 5).
 - New: `nvim/snippets/package.json` (Task 5).
 - New: `nvim/snippets/latex.json` (Task 5).
-- New: `scripts/nvim-plugin-audit.sh` (Task 6).
-- New: `scripts/plugin-audit-map.json` (Task 6, generated on first run).
 - Modify: `docs/NEOVIM_KEYBINDINGS.md` — append Debug / Multi-cursor / Spell / Snippets sections (Task 7).
-- Modify: `.woodpecker/lint.yml` or new `.woodpecker/plugin-audit.yml` (Task 6, non-blocking step).
 
 ---
 
@@ -491,284 +488,6 @@ git commit -m "Port 6 LaTeX yasnippets to LuaSnip VSCode JSON format"
 
 ---
 
-## Task 6: Write the plugin-freshness audit script
-
-**Files:**
-- New: `scripts/nvim-plugin-audit.sh`
-- New (generated): `scripts/plugin-audit-map.json`
-- Modify: `.woodpecker/` — add an opt-in non-blocking step
-
-- [ ] **Step 1: Verify `nvim/lazy-lock.json` exists and is non-empty**
-
-```bash
-jq 'keys | length' /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish/nvim/lazy-lock.json
-```
-
-Expected: a number > 30. If the file is missing, run `NVIM_APPNAME=nvim_parity_debug nvim --headless "+Lazy! sync" +qa` first.
-
-- [ ] **Step 2: Inspect one lock entry to check for a `url` field**
-
-```bash
-jq '[to_entries[] | {k: .key, v: .value}][0]' /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish/nvim/lazy-lock.json
-```
-
-If the `v` object has a `url` field, the script can skip the map-bootstrap (simpler). If not (only `commit` and `branch`), the script must resolve short-name → owner/repo via the plugin directory's `.git/config`. Record which path applies and follow it in Step 3.
-
-- [ ] **Step 3: Write `scripts/nvim-plugin-audit.sh`**
-
-Exact content (handle BOTH lock-file formats robustly):
-
-```bash
-#!/usr/bin/env bash
-# scripts/nvim-plugin-audit.sh
-# Walk nvim/lazy-lock.json, query GitHub for each plugin's most recent
-# commit, classify stale / abandoned. See
-# docs/superpowers/specs/2026-04-12-nvim-debug-polish-design.md §6.
-#
-# Exit codes:
-#   0 - no plugin exceeds 24 months (may have warnings)
-#   1 - one or more plugins exceed 24 months
-#   2 - script error (missing deps, unparsable lock, etc.)
-
-set -uo pipefail
-
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LOCK_FILE="${REPO_ROOT}/nvim/lazy-lock.json"
-MAP_FILE="${REPO_ROOT}/scripts/plugin-audit-map.json"
-LAZY_DIR="${HOME}/.local/share/nvim_parity_debug/lazy"
-
-DRY_RUN=0
-JSON_OUT=0
-UPDATE_MAP=0
-
-for arg in "$@"; do
-  case "$arg" in
-    --dry-run)    DRY_RUN=1 ;;
-    --json)       JSON_OUT=1 ;;
-    --update-map) UPDATE_MAP=1 ;;
-    -h|--help)
-      sed -n '2,12p' "$0"
-      exit 0
-      ;;
-    *)
-      echo "Unknown arg: $arg" >&2
-      exit 2
-      ;;
-  esac
-done
-
-for dep in jq curl; do
-  if ! command -v "$dep" >/dev/null 2>&1; then
-    echo "Missing dep: $dep" >&2
-    exit 2
-  fi
-done
-
-if [[ ! -f "$LOCK_FILE" ]]; then
-  echo "Lock file not found: $LOCK_FILE" >&2
-  exit 2
-fi
-
-# -----------------------------------------------------------------------------
-# Resolve short-name -> owner/repo map.
-# Lazy v11+ stores a "url" in each lock entry; older versions don't.
-# If missing, walk LAZY_DIR/*/.git/config for the remote URL.
-# -----------------------------------------------------------------------------
-
-bootstrap_map() {
-  local tmp
-  tmp="$(mktemp)"
-  echo '{}' > "$tmp"
-  if [[ ! -d "$LAZY_DIR" ]]; then
-    echo "Lazy plugin dir not found: $LAZY_DIR (run :Lazy sync first)" >&2
-    rm -f "$tmp"
-    return 2
-  fi
-  while IFS= read -r -d '' gitcfg; do
-    local plugin_dir plugin_name url owner_repo
-    plugin_dir="$(dirname "$(dirname "$gitcfg")")"
-    plugin_name="$(basename "$plugin_dir")"
-    url="$(git -C "$plugin_dir" config --get remote.origin.url 2>/dev/null || true)"
-    [[ -z "$url" ]] && continue
-    # Normalize git@github.com:owner/repo.git and https://github.com/owner/repo.git
-    owner_repo="$(echo "$url" \
-      | sed -E 's|^git@github.com:||; s|^https://github.com/||; s|\.git$||')"
-    jq --arg k "$plugin_name" --arg v "$owner_repo" \
-      '. + {($k): $v}' "$tmp" > "$tmp.new" && mv "$tmp.new" "$tmp"
-  done < <(find "$LAZY_DIR" -maxdepth 3 -name config -path '*/.git/config' -print0)
-  mv "$tmp" "$MAP_FILE"
-  echo "Wrote $MAP_FILE" >&2
-}
-
-if [[ ! -f "$MAP_FILE" ]] || [[ "$UPDATE_MAP" == "1" ]]; then
-  bootstrap_map || exit $?
-fi
-
-resolve_repo() {
-  local short="$1"
-  local from_lock from_map
-  from_lock="$(jq -r --arg k "$short" \
-    '.[$k].url // empty' "$LOCK_FILE" \
-    | sed -E 's|^git@github.com:||; s|^https://github.com/||; s|\.git$||')"
-  if [[ -n "$from_lock" ]]; then
-    echo "$from_lock"
-    return 0
-  fi
-  from_map="$(jq -r --arg k "$short" '.[$k] // empty' "$MAP_FILE")"
-  echo "$from_map"
-}
-
-# -----------------------------------------------------------------------------
-# Query GitHub for last commit date.
-# -----------------------------------------------------------------------------
-
-query_last_commit() {
-  local owner_repo="$1"
-  local auth=()
-  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    auth=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
-  fi
-  local resp
-  resp="$(curl -fsSL "${auth[@]}" \
-    -H "Accept: application/vnd.github+json" \
-    "https://api.github.com/repos/${owner_repo}/commits?per_page=1" 2>/dev/null)"
-  if [[ -z "$resp" ]]; then
-    echo "NET_ERR"
-    return
-  fi
-  # Array with one entry; date lives at [0].commit.committer.date
-  echo "$resp" | jq -r '.[0].commit.committer.date // "PARSE_ERR"' 2>/dev/null || echo "PARSE_ERR"
-}
-
-# -----------------------------------------------------------------------------
-# Main loop.
-# -----------------------------------------------------------------------------
-
-today_epoch="$(date +%s)"
-warn_cutoff_sec=$((60 * 60 * 24 * 365 + 60 * 60 * 24 * 30))   # ~13 mo grace
-fail_cutoff_sec=$((60 * 60 * 24 * 365 * 2))                   # 24 mo
-
-declare -a rows=()
-ok_count=0
-warn_count=0
-fail_count=0
-
-while IFS= read -r plugin; do
-  owner_repo="$(resolve_repo "$plugin")"
-  if [[ -z "$owner_repo" ]]; then
-    rows+=("$(printf '%s\t%s\t%s\t%s\n' "$plugin" "?" "UNKNOWN" "no-repo-mapping")")
-    warn_count=$((warn_count + 1))
-    continue
-  fi
-
-  if [[ "$DRY_RUN" == "1" ]]; then
-    rows+=("$(printf '%s\t%s\t%s\t%s\n' "$plugin" "-" "DRY" "$owner_repo")")
-    continue
-  fi
-
-  date_iso="$(query_last_commit "$owner_repo")"
-  if [[ "$date_iso" == "NET_ERR" ]] || [[ "$date_iso" == "PARSE_ERR" ]]; then
-    rows+=("$(printf '%s\t%s\t%s\t%s\n' "$plugin" "?" "$date_iso" "$owner_repo")")
-    continue
-  fi
-
-  last_epoch="$(date -d "$date_iso" +%s 2>/dev/null || echo 0)"
-  if [[ "$last_epoch" == "0" ]]; then
-    rows+=("$(printf '%s\t%s\t%s\t%s\n' "$plugin" "?" "PARSE_ERR" "$date_iso")")
-    continue
-  fi
-  age_sec=$((today_epoch - last_epoch))
-  age_mo=$((age_sec / (60 * 60 * 24 * 30)))
-
-  status="OK"
-  if   (( age_sec > fail_cutoff_sec )); then status="FAIL"; fail_count=$((fail_count + 1))
-  elif (( age_sec > warn_cutoff_sec )); then status="WARN"; warn_count=$((warn_count + 1))
-  else                                       ok_count=$((ok_count + 1))
-  fi
-
-  rows+=("$(printf '%s\t%s\t%s\t%s\n' "$plugin" "$age_mo" "$status" "${date_iso%T*}")")
-done < <(jq -r 'keys[]' "$LOCK_FILE")
-
-# -----------------------------------------------------------------------------
-# Render.
-# -----------------------------------------------------------------------------
-
-if [[ "$JSON_OUT" == "1" ]]; then
-  printf '%s\n' "${rows[@]}" | jq -R 'split("\t") | {plugin: .[0], age_months: .[1], status: .[2], detail: .[3]}' | jq -s .
-else
-  printf '%-32s %-10s %-9s %s\n' "Plugin" "Age (mo)" "Status" "Last commit"
-  printf '%-32s %-10s %-9s %s\n' "------" "--------" "------" "-----------"
-  printf '%s\n' "${rows[@]}" | sort -t $'\t' -k3,3r -k2,2nr | \
-    awk -F'\t' '{ printf "%-32s %-10s %-9s %s\n", $1, $2, $3, $4 }'
-  echo
-  echo "Summary: ${ok_count} OK, ${warn_count} WARN, ${fail_count} FAIL"
-fi
-
-if (( fail_count > 0 )); then
-  exit 1
-fi
-exit 0
-```
-
-- [ ] **Step 4: Make executable and dry-run**
-
-```bash
-cd /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish
-chmod +x scripts/nvim-plugin-audit.sh
-bash scripts/nvim-plugin-audit.sh --dry-run 2>&1 | head -20
-```
-
-Expected: a table with one row per locked plugin, "DRY" in the Status column, exit 0. If "no-repo-mapping" appears for some plugins, the bootstrap didn't find their `.git/config` — run a `Lazy sync` first and re-bootstrap via `--update-map`.
-
-- [ ] **Step 5: Live-run (hits GitHub API)**
-
-```bash
-bash scripts/nvim-plugin-audit.sh 2>&1 | tail -40
-```
-
-Expected: a sorted table with FAIL rows at top. On 2026-04-12, vim-visual-multi should appear as WARN (~19 mo). No FAILs are expected; if any appear, surface the list to the user as a follow-up decision.
-
-- [ ] **Step 6: Commit the script and generated map**
-
-```bash
-git add scripts/nvim-plugin-audit.sh scripts/plugin-audit-map.json
-git commit -m "Add nvim-plugin-audit.sh freshness checker"
-```
-
-- [ ] **Step 7: Add opt-in non-blocking CI step**
-
-Create `.woodpecker/plugin-audit.yml` with:
-
-```yaml
-# .woodpecker/plugin-audit.yml
-# Non-blocking plugin-freshness audit.
-# Opt-in: reports drift without gating merges.
-
-when:
-  event: [push, pull_request, manual]
-
-steps:
-  - name: nvim-plugin-audit
-    image: alpine:latest
-    failure: ignore
-    commands:
-      - apk add --no-cache bash jq curl git
-      - bash scripts/nvim-plugin-audit.sh --dry-run
-      - echo "-- live run (may be rate-limited without GITHUB_TOKEN) --"
-      - bash scripts/nvim-plugin-audit.sh || true
-```
-
-Note: the live step has `|| true` inside `failure: ignore` as belt-and-suspenders. The goal is a visible log signal, not a gate.
-
-- [ ] **Step 8: Commit the CI change**
-
-```bash
-git add .woodpecker/plugin-audit.yml
-git commit -m "Add non-blocking Woodpecker step for nvim-plugin-audit"
-```
-
----
-
 ## Task 7: Document Debug / Multi-cursor / Spell / Snippets
 
 **Files:**
@@ -859,8 +578,7 @@ fails or is skipped.
 | `<Esc>` | VM | Exit multi-cursor mode |
 
 See `:help visual-multi` for the full cheatsheet. The upstream project
-is feature-complete; its most recent commit (2024-09-01) predates
-the `nvim-plugin-audit.sh` warn threshold but not the fail threshold.
+is feature-complete (last commit 2024-09-01).
 
 ## Spell check
 
@@ -931,7 +649,7 @@ No code changes — run the full suite and record results.
 
 ```bash
 cd /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish
-NVIM_APPNAME=nvim_parity_debug nvim --headless -c 'qall' 2>&1 | tail -5
+NVIM_APPNAME=nvim_parity_debug NVIM_DISABLE_AUTO_INSTALLS=1 nvim --headless -c 'qall' 2>&1 | tail -5
 ```
 
 Expected: empty.
@@ -939,7 +657,7 @@ Expected: empty.
 - [ ] **Step 2: Plugin count delta**
 
 ```bash
-NVIM_APPNAME=nvim_parity_debug nvim --headless \
+NVIM_APPNAME=nvim_parity_debug NVIM_DISABLE_AUTO_INSTALLS=1 nvim --headless \
   -c 'lua print(require("lazy").stats().count)' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -949,7 +667,7 @@ Expected: pre-sub-spec count + 8 to + 12. Record the number. Any larger delta = 
 - [ ] **Step 3: DAP loads**
 
 ```bash
-NVIM_APPNAME=nvim_parity_debug nvim --headless \
+NVIM_APPNAME=nvim_parity_debug NVIM_DISABLE_AUTO_INSTALLS=1 nvim --headless \
   -c 'lua require("dap"); require("dap-python"); require("dapui"); print("OK")' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -959,7 +677,7 @@ Expected: `OK`.
 - [ ] **Step 4: Visual-multi baseline**
 
 ```bash
-NVIM_APPNAME=nvim_parity_debug nvim --headless \
+NVIM_APPNAME=nvim_parity_debug NVIM_DISABLE_AUTO_INSTALLS=1 nvim --headless \
   -c 'let g:VM_mouse_mappings = 0' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -970,7 +688,7 @@ Expected: empty.
 
 ```bash
 tmpdir="$(mktemp -d)" && touch "$tmpdir/x.tex" && \
-NVIM_APPNAME=nvim_parity_debug nvim --headless \
+NVIM_APPNAME=nvim_parity_debug NVIM_DISABLE_AUTO_INSTALLS=1 nvim --headless \
   -c "edit $tmpdir/x.tex" \
   -c 'lua vim.wait(200, function() return #require("luasnip").get_snippets("tex") > 0 end)' \
   -c 'lua print(vim.tbl_count(require("luasnip").get_snippets("tex") or {}))' \
@@ -982,15 +700,7 @@ populates snippets once a `tex`/`latex`/`plaintex` buffer is actually
 loaded, so validate in that context — a bare headless session will
 return 0 even when the wiring is correct.
 
-- [ ] **Step 6: Audit dry-run**
-
-```bash
-bash scripts/nvim-plugin-audit.sh --dry-run 2>&1 | head -20
-```
-
-Expected: table, exit 0.
-
-- [ ] **Step 7: Jupyter regression**
+- [ ] **Step 6: Jupyter regression**
 
 ```bash
 bash tests/nvim/run_nvim_tests.sh 2>&1 | tail -5
@@ -1001,7 +711,7 @@ Expected: `ALL TESTS PASSED`.
 - [ ] **Step 8: Claude Code regression**
 
 ```bash
-NVIM_APPNAME=nvim_parity_debug nvim --headless \
+NVIM_APPNAME=nvim_parity_debug NVIM_DISABLE_AUTO_INSTALLS=1 nvim --headless \
   -c 'lua require("claudecode"); print("OK")' \
   -c 'qall' 2>&1 | tail -3
 ```
@@ -1043,16 +753,14 @@ Mapping each spec requirement to a task:
 - §1 Success Criteria 4 (`<C-n>` starts VM, `<Esc>` exits) → Task 3 Steps 3-5, Task 8 Step 9 (manual).
 - §1 Success Criteria 5 (spell on `.md`, dictionary docs) → Task 4 Steps 1-3, Task 7 Step 2.
 - §1 Success Criteria 6 (≥6 tex snippets) → Task 5 Step 7, Task 8 Step 5.
-- §1 Success Criteria 7 (audit prints table, exits 0 when all < 24 mo) → Task 6 Steps 4-5, Task 8 Step 6.
-- §1 Success Criteria 8 (no regression) → Task 8 Steps 7-8.
+- §1 Success Criteria 7 (no regression) → Task 8 Steps 6-7.
 - §2 Plugin stack (dap extras, visual-multi, LuaSnip loader) → Task 1 Step 2, Task 2 Step 1, Task 3 Step 2, Task 5 Step 5.
 - §3 Keymap layout (LazyVim defaults, VM defaults) → Tasks 1-3 accept defaults; Task 7 documents them.
 - §4 Spell check (no plugin, document only) → Task 4 + Task 7 Step 2.
 - §5 Snippet parity (6 LaTeX yasnippets ported to VSCode JSON) → Task 5.
-- §6 Audit script (read lock file, query GitHub, classify, exit codes, --dry-run, --json, opt-in non-blocking CI) → Task 6.
-- §7 Implementation structure (file list) → matches Task 1 / 2 / 3 / 5 / 6 / 7 file lists.
-- §8 Testing strategy (headless parse, DAP loads, VM loads, snippets load, audit dry-run, regression guards) → Task 8 covers all six.
-- §9 Risks (extra.lang.python double-import, Mason flakes, `<C-n>` clash, 19-mo VM, rate-limit, single-char triggers, map drift) → mitigations land in Task 1 Step 1 (pre-inspect), Task 2 Step 5 (manual Mason), Task 3 Steps 1/5 (conflict check), Task 6 (rate-limit handling).
+- §7 Implementation structure (file list) → matches Task 1 / 2 / 3 / 5 / 7 file lists.
+- §8 Testing strategy (headless parse, DAP loads, VM loads, snippets load, regression guards) → Task 8.
+- §9 Risks (extra.lang.python double-import, Mason flakes, `<C-n>` clash, 19-mo VM, single-char triggers) → mitigations land in Task 1 Step 1 (pre-inspect), Task 2 Step 5 (manual Mason), Task 3 Steps 1/5 (conflict check).
 
 No spec requirement is unclaimed.
 
@@ -1061,13 +769,11 @@ No spec requirement is unclaimed.
 - No TBD / TODO / FIXME / "similar to" / "appropriate error handling" / vague test descriptions.
 - Every code block is complete and paste-able.
 - Every shell command has an explicit Expected line.
-- The audit script's exit codes, argument surface, and error classes are spelled out inline.
 
 ### Type consistency
 
 - Extras-import strings (`lazyvim.plugins.extras.dap.core`, `lazyvim.plugins.extras.lang.python`, `lazyvim.plugins.extras.lang.typescript`) appear identically in Tasks 1-2 and spec §7.
 - Snippet filetype (`tex`) appears identically in Task 5 Step 3 (package.json), Task 5 Step 7 (validation), Task 7 Step 2 (docs), spec §5.
-- Audit script path (`scripts/nvim-plugin-audit.sh`) appears identically in Tasks 6 and 8, spec §6, and the Woodpecker YAML.
 - Plugin-count delta expectation (+8 to +12) in Task 8 Step 2 matches spec §2.
 - Keymap strings (`<leader>db`, `<leader>dc`, `<leader>dPt`, `<C-n>`, etc.) are identical between Task 7 docs and spec §3.
 
@@ -1075,4 +781,4 @@ No drift detected.
 
 ### Commit-per-task discipline
 
-Tasks 1, 2, 3, 5, 6, 7 each end with a commit. Task 4 is pure verification (no commit). Task 8 commits only if fixups are needed. Total commits in this plan: 6 definite + 2 conditional (Task 6 has two commits: script and CI YAML; Task 8 optional fixup).
+Tasks 1, 2, 3, 5, 7 each end with a commit. Task 4 is pure verification (no commit). Task 8 commits only if fixups are needed.
