@@ -14,4 +14,6 @@ return {
       colorscheme = "tokyonight-night",
     },
   },
+
+  { "catppuccin/nvim", enabled = false },
 }

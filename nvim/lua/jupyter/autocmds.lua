@@ -30,14 +30,19 @@ local function on_write(args)
   if path == "" then path = args.match end
   local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
   local tmp = vim.fn.tempname() .. ".py"
-  if vim.fn.writefile(lines, tmp) ~= 0 then
+  local ok, rc = pcall(function()
+    if vim.fn.writefile(lines, tmp) ~= 0 then
+      error("writefile")
+    end
+    vim.fn.system({ "jupytext", "--from", "py:percent", "--to", "ipynb",
+                    "--output", path, tmp })
+    return vim.v.shell_error
+  end)
+  vim.fn.delete(tmp)
+  if not ok then
     notify_err("failed to write temp buffer for " .. path)
     return
   end
-  vim.fn.system({ "jupytext", "--from", "py:percent", "--to", "ipynb",
-                  "--output", path, tmp })
-  local rc = vim.v.shell_error
-  vim.fn.delete(tmp)
   if rc ~= 0 then
     notify_err("jupytext write failed for " .. path)
     return
