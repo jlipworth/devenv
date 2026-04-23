@@ -3,6 +3,7 @@
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
+  "tui": "fullscreen",
   "hooks": {
     "Stop": [
       {
