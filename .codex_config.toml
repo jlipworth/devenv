@@ -6,6 +6,9 @@ model_reasoning_effort = "high"
 # Stable repo-managed notification shim installed by `make ai-tools`.
 notify = ["ai-notify-if-unfocused"]
 
+[agents]
+max_threads = 20
+
 [features]
 multi_agent = true
 apps = true
