@@ -98,13 +98,9 @@ choose_backend() {
     return 0
   fi
 
-  if [[ "$terminal" == "ghostty" ]]; then
-    printf 'ghostty-osc9\n'
-    return 0
-  fi
-
   if is_macos; then
     case "$terminal" in
+      ghostty) printf 'macos-osascript\n' ;;
       alacritty) printf 'macos-osascript\n' ;;
       *) printf 'macos-osascript\n' ;;
     esac
