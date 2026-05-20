@@ -177,7 +177,7 @@ neovim-package:
 
 windows-terminal-tooling:
 	@echo "Installing Windows-side psmux + Alacritty tooling from WSL..."
-	@./bin/install-windows-terminal-tooling-from-wsl.sh
+	@bash ./bin/install-windows-terminal-tooling-from-wsl.sh
 
 # Update dependencies after Renovate MRs
 update-deps:
