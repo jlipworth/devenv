@@ -5,7 +5,7 @@
         latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools \
         whisper whisper_toolchain whisper_audio latex_tooling latex_distribution \
         cli_tools cli_tools_core cli_tools_system starship syntax-highlighting update-deps \
-        full-setup noadmin-setup help neovim neovim-source neovim-package
+        full-setup noadmin-setup help neovim neovim-source neovim-package windows-terminal-tooling
 
 # Default target to install all prerequisite layers
 prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools
@@ -175,6 +175,10 @@ neovim-package:
 	@echo "Installing Neovim and configuring LazyVim via package/download path..."
 	@NEOVIM_INSTALL_MODE=package ./prereq_packages.sh install_neovim
 
+windows-terminal-tooling:
+	@echo "Installing Windows-side psmux + Alacritty tooling from WSL..."
+	@./bin/install-windows-terminal-tooling-from-wsl.sh
+
 # Update dependencies after Renovate MRs
 update-deps:
 	@echo "Updating all dependencies from git..."
@@ -242,3 +246,4 @@ help:
 	@echo "  neovim          - Build pinned Neovim from source + LazyVim (default Unix path)"
 	@echo "  neovim-source   - Explicit source-build alias for pinned Neovim + LazyVim"
 	@echo "  neovim-package  - Legacy package/download Neovim + LazyVim path"
+	@echo "  windows-terminal-tooling - From WSL, install Windows-side psmux + Alacritty config"
