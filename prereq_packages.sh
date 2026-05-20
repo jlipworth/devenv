@@ -1710,7 +1710,9 @@ install_ai_tools() {
         $NODE_CMD install -g "$pkg" || log "Error installing $pkg." "WARNING"
     done
 
-    # Create symlinks for Claude Code config
+    # Create Claude Code config links/defaults. Keep mutable settings local:
+    # Claude Code rewrites settings.json, so symlinking it into the repo causes
+    # normal UI/model preference changes to dirty the checkout.
     log "Setting up Claude Code config..."
     mkdir -p "$HOME/.claude"
     if [[ -f "$GNU_DIR/.claude_global.md" ]]; then
@@ -1720,8 +1722,26 @@ install_ai_tools() {
         log "Claude global config not found at $GNU_DIR/.claude_global.md" "WARNING"
     fi
     if [[ -f "$GNU_DIR/.claude_settings.json" ]]; then
-        ln -sf "$GNU_DIR/.claude_settings.json" "$HOME/.claude/settings.json"
-        log "Symlinked Claude Code settings (vim mode enabled)."
+        local claude_settings_target="$HOME/.claude/settings.json"
+        if [[ -L "$claude_settings_target" ]]; then
+            local claude_settings_tmp
+            claude_settings_tmp="$(mktemp "$HOME/.claude/settings.json.XXXXXX")"
+            if cp "$claude_settings_target" "$claude_settings_tmp" 2> /dev/null; then
+                rm -f "$claude_settings_target"
+                mv "$claude_settings_tmp" "$claude_settings_target"
+                log "Converted Claude Code settings symlink to local file."
+            else
+                rm -f "$claude_settings_tmp"
+                rm -f "$claude_settings_target"
+                cp "$GNU_DIR/.claude_settings.json" "$claude_settings_target"
+                log "Recreated Claude Code settings as local file from repo defaults." "WARNING"
+            fi
+        elif [[ -f "$claude_settings_target" ]]; then
+            log "Claude Code settings already exist locally; leaving them unchanged."
+        else
+            cp "$GNU_DIR/.claude_settings.json" "$claude_settings_target"
+            log "Copied Claude Code settings defaults to local settings.json."
+        fi
     else
         log "Claude settings not found at $GNU_DIR/.claude_settings.json" "WARNING"
     fi
