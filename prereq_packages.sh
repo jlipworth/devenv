@@ -135,7 +135,14 @@ install_homebrew() {
 
         if ! is_installed "brew"; then
             log "Installing Homebrew for Linux..."
-            CI=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            # Let local runs stay interactive. The Homebrew installer treats any
+            # non-empty CI value as non-interactive, so only request unattended
+            # mode when this script is actually running under CI.
+            if [[ "${CI:-}" == "true" || "${CI:-}" == "1" ]]; then
+                NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            else
+                CI= /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            fi
             brew_bin="$(find_brew_bin || true)"
             if [[ -n "$brew_bin" ]]; then
                 eval "$("$brew_bin" shellenv)"
