@@ -146,6 +146,14 @@ GCC_VERSION="auto"
 | Go | 1+ | sqls |
 | OCaml | 4+ | merlin, utop, ocamlformat |
 
+> **opam sandboxing:** `install_ocaml_support()` runs `opam init
+> --disable-sandboxing`. opam's bubblewrap (`bwrap`) sandbox cannot initialize
+> inside this repo's CI container or under WSL (no unprivileged user namespaces
+> / `CAP_SYS_ADMIN`). Because the OCaml toolchain is installed from trusted
+> opam repositories, build isolation is intentionally traded away so setup
+> stays reliable across those environments. This is a deliberate policy, not a
+> pending TODO.
+
 ## Troubleshooting
 
 ### Renovate Not Creating PRs

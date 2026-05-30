@@ -99,7 +99,7 @@ Legend:
 | `html_css`    | User-space   | Stub target; actual tooling comes from the JS layer |
 | `docker`      | Admin-only   | Docker daemon access is external/system-level |
 | `kubernetes`  | Conditional  | brew-first; fallback is admin-backed |
-| `ocaml`       | Conditional  | brew-first; opam itself is user-space |
+| `ocaml`       | Conditional  | brew-first; opam itself is user-space; opam sandboxing disabled (bwrap fails in containers/WSL) |
 | `terraform`   | Conditional  | brew-first; apt repo fallback skipped under NO_ADMIN |
 | `rust`        | User-space   | rustup + cargo entirely in user space |
 | `ai-tools`    | Conditional  | Mostly user-space; npm globals depend on nvm setup |
