@@ -114,8 +114,14 @@ All pinned versions are managed in `versions.conf`:
 ```bash
 # versions.conf
 EMACS_VERSION="30.1"
-GCC_VERSION="auto"
+GCC_VERSION="auto"        # "auto" detects highest available, or pin like "14"
+NODE_VERSION="25"         # installed via nvm ("lts" or a major like "22" also work)
+ALACRITTY_VERSION="0.16.1" # Windows portable fallback
+NEOVIM_VERSION="0.12.0"   # default Unix source-build path
 ```
+
+Renovate tracks `versions.conf` via the Dependency Dashboard (no auto-PRs);
+bumps are applied here manually.
 
 ### Emacs (Pinned: 30.1)
 
@@ -129,6 +135,12 @@ GCC_VERSION="auto"
 **To Change Version**:
 - Set `GCC_VERSION="auto"` to detect highest available (default)
 - Or pin to specific version: `GCC_VERSION="14"`
+
+### Also Pinned (in `versions.conf`)
+
+- Node.js (`NODE_VERSION`, currently `25`)
+- Neovim (`NEOVIM_VERSION`, currently `0.12.0`)
+- Alacritty (`ALACRITTY_VERSION`, currently `0.16.1`)
 
 ### Rolling Latest (not pinned)
 

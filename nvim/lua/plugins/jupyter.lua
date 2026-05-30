@@ -1,4 +1,4 @@
--- Jupyter / .ipynb editing. See docs/superpowers/specs/2026-04-12-nvim-jupyter-workflow-design.md
+-- Jupyter / .ipynb editing. See docs/archive/2026-04-12-nvim-jupyter-workflow-design.md
 -- Plugin delta: +2 (iron.nvim for REPL, mini.hipatterns for # %% marker highlight).
 -- mini.ai contribution and which-key group are added in Task 7.
 -- The setup calls and FileType autocmd live in config/autocmds.lua (Task 6)

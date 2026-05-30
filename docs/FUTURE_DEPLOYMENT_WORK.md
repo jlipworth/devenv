@@ -59,6 +59,12 @@ GNU_files/
 - Version drift between machines possible
 - No easy rollback mechanism
 
+> **Already in place (CI only):** the repo now ships Docker images for
+> continuous integration — `ci/Dockerfile` (`jlipworth/gnu-files-ci`) and
+> `ci/Dockerfile.noadmin`, exercised by `.woodpecker/` plus a Neovim smoke test
+> (`ci/neovim-smoke.sh`). These are for testing the layers, not the portable
+> GUI-Emacs deployment image proposed in the Docker section below.
+
 ---
 
 ## Nix + Home Manager Setup
@@ -579,7 +585,7 @@ ansible-playbook -i inventory.ini playbooks/emacs-setup.yml
 
 - [x] Shell scripts working for Linux and macOS
 - [x] CI testing all layers
-- [ ] Document all dependencies with versions
+- [x] Document all dependencies with versions (`docs/DEPENDENCIES.md` + `versions.conf`)
 - [ ] Create `requirements.lock` or similar for pinning
 
 ### Phase 2: Nix Exploration

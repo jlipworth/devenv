@@ -1,4 +1,4 @@
--- Multi-cursor editing. See docs/superpowers/specs/2026-04-12-nvim-debug-polish-design.md
+-- Multi-cursor editing. See docs/archive/2026-04-12-nvim-debug-polish-design.md
 -- Plugin delta: +1 (vim-visual-multi).
 -- Default <C-n> trigger: no conflict with LazyVim defaults (normal-mode
 -- <C-n> is unbound; insert-mode <C-n> is cmp's "next item" and VM does

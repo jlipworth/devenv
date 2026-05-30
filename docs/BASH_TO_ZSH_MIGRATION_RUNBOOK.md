@@ -1,5 +1,10 @@
 # Bash → Zsh Migration Runbook (Linux, General)
 
+> **Status:** The repo's setup scripts already support both shells —
+> `common_utils.sh` detects the active shell and writes init blocks to the right
+> RC file (`get_shell_rc`/`add_to_shell_rc`). This runbook is the per-machine
+> procedure for switching your login shell, not pending repo work.
+
 ## Goal
 Switch from bash to zsh safely, while keeping intentional customizations and avoiding shell-startup cruft.
 

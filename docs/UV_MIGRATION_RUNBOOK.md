@@ -1,5 +1,10 @@
 # UV Migration Runbook
 
+> **Status:** The repo-side migration is complete — `make python-env` installs
+> uv (`install_python_env` in `prereq_packages.sh`) and the conda layer has been
+> removed from `.spacemacs`. This runbook is the per-machine cleanup procedure
+> for hosts that still carry an old conda/poetry install.
+
 Migrate from conda + poetry to uv on each machine.
 
 ## Prerequisites

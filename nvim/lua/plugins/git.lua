@@ -1,5 +1,5 @@
 -- Git parity: Magit-style Neogit + Diffview + Octo (GitHub issues/PRs).
--- See docs/superpowers/specs/2026-04-12-nvim-git-parity-design.md.
+-- See docs/archive/2026-04-12-nvim-git-parity-design.md.
 -- Plugin delta: +3 (neogit, diffview, octo via extra). gitsigns stays on
 -- LazyVim defaults with no customization here.
 

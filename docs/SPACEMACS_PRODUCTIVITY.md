@@ -34,7 +34,8 @@ function:
 
 ### Paste Transient State
 
-Cycle through kill ring with `C-j`/`C-k` after pasting:
+Cycle through kill ring with `C-j`/`C-k` after pasting. Currently set to `nil`
+in `.spacemacs` — flip the dotspacemacs setting to enable:
 
 ```elisp
 ;; Enable paste transient state - cycle through kill ring with C-j/C-k
@@ -43,16 +44,18 @@ Cycle through kill ring with `C-j`/`C-k` after pasting:
 
 ### Better Search Defaults
 
-Use ripgrep by default (faster than ag/grep):
+Use ripgrep by default (faster than ag/grep). Already configured in
+`.spacemacs` as:
 
 ```elisp
 ;; Prefer ripgrep for searches
-(setq dotspacemacs-search-tools '("rg" "ag" "pt" "ack" "grep"))
+dotspacemacs-search-tools '("rg" "ag" "ack" "grep")
 ```
 
 ### Layout Persistence
 
-Resume previous window layout on restart:
+Resume previous window layout on restart. Currently set to `nil` in
+`.spacemacs` — flip the dotspacemacs setting to enable:
 
 ```elisp
 ;; Resume layouts on restart
@@ -98,11 +101,12 @@ Show keybinding hints faster:
 
 ### Magit Fullscreen
 
-Git status takes full frame:
+Git status takes full frame. Not currently enabled; set it as a variable on the
+`git` layer (see *Layer Configuration Variables* below) rather than via `setq`:
 
 ```elisp
-;; Magit status opens fullscreen
-(setq git-magit-status-fullscreen t)
+;; In the git layer block:
+git-magit-status-fullscreen t
 ```
 
 ---
@@ -113,9 +117,11 @@ Add these to `dotspacemacs-configuration-layers` in `.spacemacs`:
 
 ### Git Layer
 
+The layer as currently configured in `.spacemacs`:
+
 ```elisp
 (git :variables
-     git-magit-status-fullscreen t
+     git-enable-magit-delta-plugin t
      git-enable-magit-forge-plugin t)
 ```
 
@@ -165,7 +171,7 @@ Workspace management - separate window arrangements per task:
 | `SPC l d` | Delete current layout |
 | `SPC l ?` | Show layout transient state |
 
-Enable persistence:
+Enable persistence (currently `nil` in `.spacemacs`):
 ```elisp
 (setq dotspacemacs-auto-resume-layouts t)
 ```
