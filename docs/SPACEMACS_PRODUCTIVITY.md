@@ -205,6 +205,37 @@ Store and recall text, positions, window configs:
 | `SPC r j` | Jump to saved point |
 | `SPC r w` | Save window config to register |
 
+### LaTeX Navigation
+
+Moving through `.tex` documents — sections and expressions.
+
+**Section navigation:**
+
+| Key | Action |
+|-----|--------|
+| `]]` / `[[` | Jump to next / previous section heading (count-aware) |
+| `SPC m j n` / `SPC m j p` | Next / previous section heading |
+| `SPC m j j` | Fuzzy-jump to any section (helm-imenu) |
+| `SPC m r t` | Table-of-contents outline buffer (reftex-toc) |
+
+The `]] / [[` motions also compose with operators (e.g. `d]]` deletes to the
+next section) and push the prior position onto the jump list (`C-o` returns).
+
+**Expression navigation** (provided by `evil-tex` + `evil-matchit`, active in
+LaTeX buffers):
+
+| Key | Action |
+|-----|--------|
+| `%` | Jump between matched `\begin`/`\end` and delimiter pairs |
+| `cie` / `die` | Change / delete *inside* the current environment |
+| `cae` / `dae` | Change / delete *around* the environment (incl. `\begin`/`\end`) |
+| `ci$` / `di$` | Change / delete inside inline math |
+| `cic` / `dic` | Change / delete a command's argument |
+| `cid` / `did` | Change / delete inside the current delimiter |
+
+`i` = "inner" (contents only), `a` = "around" (contents + delimiters), as with
+any Vim text object. Substitute any operator (`y`, `v`, `=`) for `c`/`d`.
+
 ---
 
 ## Performance Tips

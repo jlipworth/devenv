@@ -1,7 +1,7 @@
 # LaTeX Navigation — Design
 
 Date: 2026-05-30
-Status: Draft (awaiting user review)
+Status: Implemented & headless-tested (19/19 checks pass)
 Issue: #21 "Latex Navigation"
 Scope: Make moving through LaTeX expressions and sections in Spacemacs less
 cumbersome, wired the Spacemacs way (which-key, declared prefixes, docs).
@@ -84,28 +84,43 @@ LSP backend). **`j` is free** and is the conventional Spacemacs "jump" letter.
 All in `jal-functions.el`, in the `;;;; Keybindings` region alongside the
 existing latex-mode block.
 
-### 3.1 Section motions (build on AUCTeX outline machinery)
+### 3.1 Section motions (derive regexp from `LaTeX-section-list`)
 
-AUCTeX sets a buffer-local `outline-regexp` / `outline-level` for sectioning
-commands in LaTeX buffers, so we reuse `outline-next-heading` /
-`outline-previous-heading` rather than hardcoding a section regexp. Define them
-as evil motions so they honor counts and operator/visual state:
+> **Revised during implementation.** The original plan reused
+> `outline-next-heading` / `outline-previous-heading`. Headless testing showed
+> AUCTeX's `outline-regexp` also matches `\documentclass`, `\begin{...}`
+> environment lines, `appendix`, etc. — so outline motion stops at every
+> environment, not just sections. Replaced with a regexp built from AUCTeX's
+> buffer-local `LaTeX-section-list` (the canonical list of sectioning commands,
+> including any the document class adds), anchored at line start.
 
 ```elisp
+(defun jal//latex-section-regexp ()
+  (concat "^[ \t]*" (regexp-quote TeX-esc)
+          "\\(?:"
+          (mapconcat (lambda (entry) (regexp-quote (car entry)))
+                     LaTeX-section-list "\\|")
+          "\\)\\*?"))
+
 (evil-define-motion jal/latex-next-section (count)
-  "Move to the next LaTeX section heading."
   :jump t
-  (dotimes (_ (or count 1))
-    (outline-next-heading)))
+  (let ((re (jal//latex-section-regexp)) (case-fold-search nil))
+    (dotimes (_ (or count 1))
+      (end-of-line)
+      (if (re-search-forward re nil t) (goto-char (match-beginning 0))
+        (goto-char (point-max))))))
 
 (evil-define-motion jal/latex-previous-section (count)
-  "Move to the previous LaTeX section heading."
   :jump t
-  (dotimes (_ (or count 1))
-    (outline-previous-heading)))
+  (let ((re (jal//latex-section-regexp)) (case-fold-search nil))
+    (dotimes (_ (or count 1))
+      (beginning-of-line)
+      (if (re-search-backward re nil t) (goto-char (match-beginning 0))
+        (goto-char (point-min))))))
 ```
 
 `:jump t` records the prior position in the evil jump list so `C-o` returns.
+`case-fold-search nil` keeps matching case-sensitive (LaTeX commands are).
 
 ### 3.2 Leader keys (guaranteed which-key + docs)
 
@@ -151,11 +166,10 @@ covering:
 
 ## 5. Risks & Verification
 
-- **`outline-regexp` availability.** The motions assume AUCTeX has set
-  `outline-regexp` in the buffer. Verify in a real `.tex` buffer that
-  `outline-next-heading` lands on `\section`/`\subsection`/`\frame` headings;
-  if AUCTeX's default outline level excludes a sectioning command in use, note
-  it in docs.
+- **Section regexp source.** *(Resolved during testing.)* `outline-regexp` was
+  too broad (matched environments/`\documentclass`); switched to
+  `LaTeX-section-list`. Headless test confirms motion lands only on
+  `\section`/`\subsection` headings and skips `\begin{document}`.
 - **`LaTeX-mode-map` load timing.** `evil-define-key` on `LaTeX-mode-map` must
   run after AUCTeX is loaded. jal-functions.el loads after layers init, but
   confirm the map is defined at eval time (wrap in `with-eval-after-load 'latex`
