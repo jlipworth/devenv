@@ -117,6 +117,50 @@ your config won't keep zooming the current frame."
   ;; Also apply to frames created later (daemon / emacsclient).
   (add-hook 'after-make-frame-functions #'jal//startup-frame-zoom-after-make-frame))
 
+;;;; LaTeX navigation
+
+;; Section motions match only sectioning commands. The regexp is derived from
+;; AUCTeX's buffer-local `LaTeX-section-list' (part/chapter/section/subsection
+;; ... plus any the document class adds), so it tracks what AUCTeX considers a
+;; section -- unlike `outline-regexp', which also matches \documentclass,
+;; environment \begin lines, etc. Defined as evil motions so they honor a
+;; numeric count, work in operator/visual state, and push the prior point onto
+;; the jump list.
+
+(defun jal//latex-section-regexp ()
+  "Return a regexp matching any sectioning command known to AUCTeX.
+Anchored at line start so it lands on the heading, not on an inline
+cross-reference to it."
+  (concat "^[ \t]*" (regexp-quote TeX-esc)
+          "\\(?:"
+          (mapconcat (lambda (entry) (regexp-quote (car entry)))
+                     LaTeX-section-list "\\|")
+          "\\)\\*?"))
+
+(evil-define-motion jal/latex-next-section (count)
+  "Move to the next LaTeX section heading.
+With COUNT, move that many headings forward."
+  :jump t
+  (let ((re (jal//latex-section-regexp))
+        (case-fold-search nil))
+    (dotimes (_ (or count 1))
+      (end-of-line)                       ; step off the current heading line
+      (if (re-search-forward re nil t)
+          (goto-char (match-beginning 0))
+        (goto-char (point-max))))))
+
+(evil-define-motion jal/latex-previous-section (count)
+  "Move to the previous LaTeX section heading.
+With COUNT, move that many headings backward."
+  :jump t
+  (let ((re (jal//latex-section-regexp))
+        (case-fold-search nil))
+    (dotimes (_ (or count 1))
+      (beginning-of-line)                 ; step off the current heading line
+      (if (re-search-backward re nil t)
+          (goto-char (match-beginning 0))
+        (goto-char (point-min))))))
+
 ;;;; Configuration
 
 ;; ob-mermaid babel integration (must defer until org loads)
@@ -136,6 +180,20 @@ your config won't keep zooming the current frame."
 ;; latex-mode: SPC m o c - insert date
 (spacemacs/set-leader-keys-for-major-mode 'latex-mode
   "oc" 'jal/insert-current-date)
+
+;; latex-mode: section navigation (SPC m j ...)
+(spacemacs/declare-prefix-for-mode 'latex-mode "mj" "jump")
+(spacemacs/set-leader-keys-for-major-mode 'latex-mode
+  "jn" 'jal/latex-next-section
+  "jp" 'jal/latex-previous-section
+  "jj" 'helm-imenu)
+
+;; latex-mode: vim-style section motions. LaTeX-mode-map is only defined once
+;; AUCTeX's `latex' feature loads (it is deferred), so bind after load.
+(with-eval-after-load 'latex
+  (evil-define-key '(normal visual operator) LaTeX-mode-map
+    "]]" 'jal/latex-next-section
+    "[[" 'jal/latex-previous-section))
 
 ;; markdown/gfm-mode: SPC m M - compile mermaid at point
 (spacemacs/set-leader-keys-for-major-mode 'markdown-mode
