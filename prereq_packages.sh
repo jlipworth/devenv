@@ -141,7 +141,7 @@ install_homebrew() {
             if [[ "${CI:-}" == "true" || "${CI:-}" == "1" ]]; then
                 NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
             else
-                CI= /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+                CI='' /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
             fi
             brew_bin="$(find_brew_bin || true)"
             if [[ -n "$brew_bin" ]]; then
