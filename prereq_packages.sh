@@ -937,7 +937,12 @@ install_ocaml_support() {
     # Initialize opam if needed
     if ! opam var root &> /dev/null; then
         log "Initializing opam..."
-        # TODO: Evaluate sandboxing needs for your environment
+        # opam sandboxing is intentionally disabled. opam's bubblewrap (bwrap)
+        # sandbox cannot initialize inside this repo's CI container or under
+        # WSL (no unprivileged user namespaces / CAP_SYS_ADMIN), and the OCaml
+        # toolchain here is dev tooling installed from trusted opam
+        # repositories -- so build isolation is not worth breaking those
+        # environments. See docs/DEPENDENCIES.md (opam sandboxing).
         opam init --disable-sandboxing -a || log "Error initializing opam." "WARNING"
     fi
 
