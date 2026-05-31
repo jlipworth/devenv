@@ -8,8 +8,7 @@ This runbook documents strategies for deploying the GNU_files Emacs environment 
 2. [Current State](#current-state)
 3. [Nix + Home Manager Setup](#nix--home-manager-setup)
 4. [Alternative: Docker Approach](#alternative-docker-approach)
-5. [Alternative: Ansible Automation](#alternative-ansible-automation)
-6. [Migration Path](#migration-path)
+5. [Migration Path](#migration-path)
 
 ---
 
@@ -516,66 +515,6 @@ docker run -it --rm \
 - Font rendering may differ slightly from native
 - Startup slower than native Emacs
 - File watching (for auto-revert) needs volume mounts
-
----
-
-## Alternative: Ansible Automation
-
-Ansible can orchestrate your existing shell scripts across multiple machines.
-
-### `playbooks/emacs-setup.yml`
-
-```yaml
----
-- name: Deploy GNU_files Emacs environment
-  hosts: all
-  vars:
-    gnu_files_repo: "git@gitlab.com:jlipworth/GNU_files.git"
-    gnu_files_dir: "{{ ansible_env.HOME }}/GNU_files"
-
-  tasks:
-    - name: Install git
-      package:
-        name: git
-        state: present
-      become: yes
-
-    - name: Clone GNU_files repository
-      git:
-        repo: "{{ gnu_files_repo }}"
-        dest: "{{ gnu_files_dir }}"
-        version: main
-        accept_hostkey: yes
-
-    - name: Run full setup
-      command: make full-setup
-      args:
-        chdir: "{{ gnu_files_dir }}"
-      environment:
-        CI: "false"
-
-    - name: Verify Emacs installation
-      command: emacs --version
-      register: emacs_version
-      changed_when: false
-
-    - name: Display Emacs version
-      debug:
-        msg: "Installed: {{ emacs_version.stdout_lines[0] }}"
-```
-
-### Usage
-
-```bash
-# Install Ansible
-pip install ansible
-
-# Create inventory
-echo "newmachine.local ansible_user=jlipworth" > inventory.ini
-
-# Run playbook
-ansible-playbook -i inventory.ini playbooks/emacs-setup.yml
-```
 
 ---
 
