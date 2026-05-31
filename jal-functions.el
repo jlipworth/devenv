@@ -75,6 +75,34 @@ Only activates in non-graphical frames (e.g., Emacs -nw in tmux)."
       (global-clipetty-mode 1)
       (message "Clipetty enabled for terminal clipboard integration"))))
 
+;;;; Context-aware quit
+
+(defun jal/keyboard-quit-dwim ()
+  "Do-What-I-Mean quit, suitable for binding to <escape> globally.
+
+Unlike a bare `keyboard-quit', this dismisses whatever is actually
+active:
+
+- with an active region, cancel it;
+- with a completion list open, close its window;
+- inside the minibuffer (at any recursion depth), abort it -- even when
+  point is in another window;
+- otherwise fall back to `keyboard-quit'.
+
+Works in GUI and terminal Emacs.  Evil binds <escape> in its own state
+maps at higher priority, so this only takes effect where Evil does not
+already handle it (minibuffer, completion, Emacs-state / special buffers)."
+  (interactive)
+  (cond
+   ((region-active-p)
+    (keyboard-quit))
+   ((derived-mode-p 'completion-list-mode)
+    (delete-completion-window))
+   ((> (minibuffer-depth) 0)
+    (abort-recursive-edit))
+   (t
+    (keyboard-quit))))
+
 ;;;; Startup UI tweaks
 
 (defcustom jal-startup-frame-zoom-steps 3

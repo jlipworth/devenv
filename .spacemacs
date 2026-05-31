@@ -41,8 +41,12 @@ This function should only modify configuration layer settings."
 
      (ranger :variables
              ranger-override-dired 'dirvish
-             ranger-show-preview t
-             ranger-show-hidden t
+             ;; Show hidden files. Dirvish equivalent of the old
+             ;; `ranger-show-hidden t' (the `ranger' package isn't loaded under
+             ;; the dirvish backend). The layer defaults this to t, which turns
+             ;; ON `dired-omit-mode' and HIDES dotfiles, so nil = show them.
+             ;; (Preview has no always-on toggle here; use SPC a t r r.)
+             dirvish-enable-dired-omit nil
              )
 
      (spacemacs-layouts :variables
@@ -56,7 +60,6 @@ This function should only modify configuration layer settings."
 
      (git :variables
           git-enable-magit-delta-plugin t
-          git-enable-magit-forge-plugin t
           )
 
      (auto-completion :variables
@@ -137,7 +140,6 @@ This function should only modify configuration layer settings."
              )
 
      (c-c++ :variables
-            ;; c-c++-default-mode-for-headers 'c++-mode ;; not needed anymore after >26.1
             c-c++-backend 'lsp-clangd
             c-c++-dap-adapters '(dap-lldb)
             ;; c-c++-enable-organize-includes-on-save t
@@ -194,7 +196,8 @@ This function should only modify configuration layer settings."
 
      (rust :variables
            lsp-rust-analyzer-cargo-auto-reload t
-           rustic-format-on-save t
+           ;; `rustic-format-on-save' is obsolete since Rustic 0.19.
+           rustic-format-trigger 'on-save
            )
 
      (docker :variables
@@ -730,8 +733,6 @@ It is mostly for variables that should be set before packages are loaded.
 If you are unsure, try setting them in `dotspacemacs/user-config' first."
   (setq network-security-level 'high)
   (setq tls-checktrust t)
-  ;; (setq custom-file "~/.emacs.d/temp-custom.el")
-  ;; (load-file custom-file)
 
   ;; Load custom functions from GNU_files (natively compiled on first load)
   ;; Derive path from symlinked .spacemacs location for portability
@@ -789,8 +790,11 @@ before packages are loaded."
   (setq-default evil-escape-delay 0.2)
   (setq evil-respect-visual-line-mode t)
 
-  ;; find out a better way to do this
-  (global-set-key (kbd "<escape>") #'keyboard-quit)
+  ;; ESC: context-aware quit (jal/keyboard-quit-dwim, in jal-functions.el).
+  ;; Replaces a bare (global-set-key <escape> keyboard-quit), which didn't
+  ;; cleanly abort the minibuffer/completion. Evil still owns <escape> where
+  ;; its state maps bind it; this covers the rest, in GUI and terminal.
+  (global-set-key (kbd "<escape>") #'jal/keyboard-quit-dwim)
 
   ;; Formatting section
 
@@ -813,10 +817,6 @@ before packages are loaded."
 
   ;; Terminal clipboard support via clipetty (for Emacs -nw in tmux)
   (jal/setup-terminal-clipboard)
-
-  ;; Ensure lsp-mode launches Ruff via the modern CLI
-  ;; (with-eval-after-load 'lsp-ruff
-  ;;   (setq lsp-ruff-server-command '("ruff" "server")))
 
   ;; Uncertain if needed
   (with-eval-after-load 'tramp-sh
