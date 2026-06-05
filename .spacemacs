@@ -734,6 +734,13 @@ If you are unsure, try setting them in `dotspacemacs/user-config' first."
   (setq network-security-level 'high)
   (setq tls-checktrust t)
 
+  ;; Allow upgrading built-in packages (e.g. transient) from (M)ELPA. Emacs 30
+  ;; ships an older transient that shadows the newer one Magit 4 requires
+  ;; (>= 0.13); without this, package.el refuses the upgrade and Magit/Forge
+  ;; load half-initialized ("forge--pull is already defined as something else
+  ;; than a generic function").
+  (setq package-install-upgrade-built-in t)
+
   ;; Load custom functions from GNU_files (natively compiled on first load)
   ;; Derive path from symlinked .spacemacs location for portability
   ;; Use dotspacemacs-filepath (Spacemacs variable) since load-file-name points
@@ -884,11 +891,12 @@ This function is called at the very end of Spacemacs initialization."
                 spacemacs-purpose-popwin spacemacs-whitespace-cleanup sphinx-doc
                 sql-indent sqlup-mode string-edit-at-point string-inflection
                 symbol-overlay symon tagedit term-cursor terminal-here toc-org
-                toml-mode treemacs-evil treemacs-icons-dired treemacs-magit
-                treemacs-persp treemacs-projectile undo-fu undo-fu-session utop
-                vi-tilde-fringe vimrc-mode volatile-highlights vundo web-beautify
-                web-mode web-server websocket wgrep winum writeroom-mode ws-butler
-                yaml-mode yasnippet-snippets))
+                toml-mode transient treemacs-evil treemacs-icons-dired
+                treemacs-magit treemacs-persp treemacs-projectile undo-fu
+                undo-fu-session utop vi-tilde-fringe vimrc-mode
+                volatile-highlights vundo web-beautify web-mode web-server
+                websocket wgrep winum writeroom-mode ws-butler yaml-mode
+                yasnippet-snippets))
    '(paradox-github-token t))
   (custom-set-faces
    ;; custom-set-faces was added by Custom.
