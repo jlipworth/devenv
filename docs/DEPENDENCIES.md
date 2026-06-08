@@ -73,8 +73,8 @@ make python      # Updates Python packages
 
 These use npm global installs, Brewfiles, or platform package managers and are updated manually:
 - JavaScript, Shell, YAML, Vimscript, HTML/CSS, AI Tools
-- LaTeX, C/C++, SQL, OCaml, Terraform
-- Homebrew packages under `brewfiles/Brewfile.*`
+- LaTeX, C/C++, SQL, OCaml, Terraform, Swift
+- Homebrew packages under `brewfiles/Brewfile.*`; Swift may also be installed by Swiftly on Linux when Homebrew is unavailable
 
 ## Manual Dependency Updates
 
