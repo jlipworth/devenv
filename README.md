@@ -14,7 +14,7 @@ Automated setup for Emacs 30.1 with Spacemacs, plus opt-in Neovim support, langu
 - **Emacs 30.1** compiled from source with native compilation, tree-sitter, and Cairo
 - **Spacemacs** configuration with Evil mode
 - **Neovim** support as an opt-in install path via `make neovim`, grounded in current Spacemacs conventions where practical
-- **Language servers**: Python, JavaScript/TypeScript, C/C++, SQL, Terraform, LaTeX, Docker, OCaml, and more
+- **Language servers**: Python, JavaScript/TypeScript, C/C++, SQL, Terraform, LaTeX, Docker, OCaml, Swift, and more
 - **Modern CLI tools**: eza, bat, ripgrep, fd, fzf, zoxide, lazygit
 - **Fonts**: Nerd Font versions of Meslo, DejaVu Sans Mono, Source Code Pro
 
@@ -79,6 +79,7 @@ make js         # typescript-language-server, prettier, eslint
 make c_cpp      # clangd/LLVM
 make sql        # sqls
 make terraform  # terraform-ls
+make swift      # Swift toolchain + sourcekit-lsp
 make latex      # texlab
 make docker     # dockerfile-language-server, hadolint
 make ocaml      # opam, merlin, utop
@@ -95,7 +96,7 @@ make neovim     # Install/configure Neovim (opt-in)
 
 **Linux:**
 - Debian/Ubuntu and Arch paths are supported in scripts
-- Homebrew on Linux is used for some packages and no-admin flows
+- Homebrew on Linux is used for some packages and no-admin flows; Swift falls back to Swiftly when Homebrew is unavailable
 
 ## CI / Validation
 

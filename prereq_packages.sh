@@ -1104,6 +1104,141 @@ install_rust_support() {
     log "Rust development environment setup complete!" "SUCCESS"
 }
 
+find_sourcekit_lsp() {
+    if command -v sourcekit-lsp > /dev/null 2>&1; then
+        command -v sourcekit-lsp
+        return 0
+    fi
+
+    if [[ "$OS" == "Darwin" ]]; then
+        local xcode_sourcekit="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/sourcekit-lsp"
+        if [[ -x "$xcode_sourcekit" ]]; then
+            echo "$xcode_sourcekit"
+            return 0
+        fi
+    fi
+
+    if is_installed "brew"; then
+        local swift_prefix
+        swift_prefix="$(brew --prefix swift 2> /dev/null || true)"
+        if [[ -n "$swift_prefix" ]]; then
+            for candidate in \
+                "$swift_prefix/usr/bin/sourcekit-lsp" \
+                "$swift_prefix/bin/sourcekit-lsp" \
+                "$swift_prefix"/Swift-*.xctoolchain/usr/bin/sourcekit-lsp; do
+                if [[ -x "$candidate" ]]; then
+                    echo "$candidate"
+                    return 0
+                fi
+            done
+        fi
+    fi
+
+    for candidate in \
+        "$HOME/.swiftly/bin/sourcekit-lsp" \
+        "$HOME/.swiftly/toolchains"/*/usr/bin/sourcekit-lsp \
+        "$HOME/.local/share/swiftly/bin/sourcekit-lsp" \
+        "$HOME/.local/share/swiftly/toolchains"/*/usr/bin/sourcekit-lsp; do
+        if [[ -x "$candidate" ]]; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+install_swiftly_linux() {
+    if is_installed "swiftly"; then
+        log "swiftly is already installed."
+        return 0
+    fi
+
+    log "Installing Swift via Swiftly (user-local Linux toolchain installer)..."
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    (
+        cd "$tmp_dir" || exit 1
+        curl -fL -O "https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz" &&
+            tar zxf "swiftly-$(uname -m).tar.gz" &&
+            ./swiftly init --quiet-shell-followup
+    ) || {
+        rm -rf "$tmp_dir"
+        log "Failed to install Swiftly." "ERROR"
+        return 1
+    }
+    rm -rf "$tmp_dir"
+
+    if [[ -f "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh" ]]; then
+        # shellcheck disable=SC1090,SC1091
+        . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"
+    fi
+    add_to_shell_rc '. "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"' "Swiftly"
+    log "Swiftly installed successfully." "SUCCESS"
+}
+
+install_swift_support() {
+    log "Installing Swift development tools..."
+
+    if [[ "$OS" == "Darwin" ]]; then
+        if xcrun --find swift > /dev/null 2>&1; then
+            log "Swift is available through Xcode/Xcode Command Line Tools."
+        elif is_installed "brew"; then
+            log "Swift was not found via xcrun; installing Swift via Homebrew..."
+            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.swift" || log "Error with Brewfile.swift" "WARNING"
+        else
+            log "Swift not found. Install Xcode/Xcode Command Line Tools or Homebrew Swift." "WARNING"
+        fi
+    elif [[ "$OS" == "Linux" ]]; then
+        if is_installed "brew"; then
+            log "Installing Swift via Homebrew/Linuxbrew..."
+            brew bundle --file="$GNU_DIR/brewfiles/Brewfile.swift" || log "Error with Brewfile.swift" "WARNING"
+        else
+            install_swiftly_linux || return 1
+        fi
+    fi
+
+    if is_installed "brew"; then
+        local swift_prefix
+        swift_prefix="$(brew --prefix swift 2> /dev/null || true)"
+        if [[ -n "$swift_prefix" ]]; then
+            for bin_dir in \
+                "$swift_prefix/usr/bin" \
+                "$swift_prefix/bin" \
+                "$swift_prefix"/Swift-*.xctoolchain/usr/bin; do
+                if [[ -d "$bin_dir" ]]; then
+                    export PATH="$bin_dir:$PATH"
+                    add_to_path "$bin_dir" "Swift toolchain"
+                fi
+            done
+        fi
+    fi
+
+    if [[ -f "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh" ]]; then
+        # shellcheck disable=SC1090,SC1091
+        . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"
+    elif [[ -f "${SWIFTLY_HOME_DIR:-$HOME/.swiftly}/env.sh" ]]; then
+        # shellcheck disable=SC1090,SC1091
+        . "${SWIFTLY_HOME_DIR:-$HOME/.swiftly}/env.sh"
+    fi
+
+    if command -v swift > /dev/null 2>&1 || xcrun --find swift > /dev/null 2>&1; then
+        log "Swift executable is available." "SUCCESS"
+    else
+        log "Swift executable was not found after installation attempt." "WARNING"
+    fi
+
+    local sourcekit_path
+    sourcekit_path="$(find_sourcekit_lsp || true)"
+    if [[ -n "$sourcekit_path" ]]; then
+        log "sourcekit-lsp found at $sourcekit_path" "SUCCESS"
+    else
+        log "sourcekit-lsp was not found; Spacemacs LSP features need SourceKit-LSP from Xcode, Swiftly, or Homebrew Swift." "WARNING"
+    fi
+
+    log "Swift development tools setup complete." "SUCCESS"
+}
+
 install_starship() {
     log "Setting up Starship prompt..."
 
@@ -2118,6 +2253,7 @@ install_all() {
     install_kubernetes_support
     install_ocaml_support
     install_terraform_support
+    install_swift_support
     install_ai_tools
 }
 
@@ -2154,6 +2290,7 @@ main() {
         "install_ocaml_support"
         "install_terraform_support"
         "install_rust_support"
+        "install_swift_support"
         "install_editor_prereqs"
         "install_codex_cli_native"
         "install_ai_tools"

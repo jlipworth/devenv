@@ -162,6 +162,15 @@ steps:
     commands:
       - make rust
 
+  - name: layer-swift
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make swift
+
   - name: layer-ai-tools
     image: *ci_image
     depends_on: []

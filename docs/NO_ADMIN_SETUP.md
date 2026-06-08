@@ -102,6 +102,7 @@ Legend:
 | `ocaml`       | Conditional  | brew-first; opam itself is user-space; opam sandboxing disabled (bwrap fails in containers/WSL) |
 | `terraform`   | Conditional  | brew-first; apt repo fallback skipped under NO_ADMIN |
 | `rust`        | User-space   | rustup + cargo entirely in user space |
+| `swift`       | User-space   | Linuxbrew when present; otherwise Swiftly installs the Swift toolchain under the user account |
 | `ai-tools`    | Conditional  | Mostly user-space; npm globals depend on nvm setup |
 
 ### Standalone targets

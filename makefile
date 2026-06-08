@@ -2,13 +2,13 @@
 
 .PHONY: spacemacs prereq-layers-all editor-symlinks editor system-prereq node-manual \
         shell-layer git-layer yaml markdown completion vimscript \
-        latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools \
+        latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools \
         whisper whisper_toolchain whisper_audio latex_tooling latex_distribution \
         cli_tools cli_tools_core cli_tools_system starship syntax-highlighting update-deps \
         full-setup noadmin-setup help neovim neovim-source neovim-package windows-terminal-tooling
 
 # Default target to install all prerequisite layers
-prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust ai-tools
+prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools
 
 cli_tools:
 	@echo "Installing CLI tools only..."
@@ -159,6 +159,10 @@ rust:
 	@echo "Installing Rust development tools..."
 	@./prereq_packages.sh install_rust_support
 
+swift:
+	@echo "Installing Swift development tools..."
+	@./prereq_packages.sh install_swift_support
+
 ai-tools:
 	@echo "Installing AI coding assistant tools..."
 	@./prereq_packages.sh install_ai_tools
@@ -228,6 +232,7 @@ help:
 	@echo "  ocaml       - OCaml + opam + merlin"
 	@echo "  terraform   - terraform, terraform-ls"
 	@echo "  rust        - rust-analyzer, cargo tools"
+	@echo "  swift       - Swift toolchain + sourcekit-lsp"
 	@echo "  r           - R/ESS support"
 	@echo ""
 	@echo "Other targets:"
