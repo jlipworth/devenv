@@ -1939,6 +1939,48 @@ install_ai_tools() {
         log "Codex instructions not found at $GNU_DIR/.codex_instructions.md" "WARNING"
     fi
 
+    # Remove the legacy Codex stop hook that was copied from Claude Code settings.
+    # Codex notifications are handled by ~/.codex/config.toml; keeping this hook
+    # makes Codex completion also emit a misleading "Claude Code task finished"
+    # macOS notification. Only delete the exact legacy hook, leaving any user
+    # customized Codex hooks intact.
+    local codex_hooks_target="$HOME/.codex/hooks.json"
+    if [[ -f "$codex_hooks_target" ]] && command -v python3 > /dev/null 2>&1; then
+        if python3 - "$codex_hooks_target" << 'PY'; then
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text())
+except Exception:
+    sys.exit(1)
+
+legacy = {
+    "hooks": {
+        "Stop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": 'ai-notify-if-unfocused "Claude Code task finished"',
+                    }
+                ]
+            }
+        ]
+    }
+}
+
+sys.exit(0 if data == legacy else 1)
+PY
+            rm -f "$codex_hooks_target"
+            log "Removed legacy Codex stop hook that duplicated Claude Code notifications."
+        else
+            log "Codex hooks.json contains custom hooks; leaving it unchanged."
+        fi
+    fi
+
     # Install AI notification helper into a stable PATH location
     log "Setting up AI notification helper..."
     mkdir -p "$HOME/.local/bin"
