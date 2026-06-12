@@ -2073,55 +2073,13 @@ install_neovim_package() {
         nvim --version 2> /dev/null | head -1 | sed -E 's/^NVIM v([0-9]+(\.[0-9]+){1,2}).*/\1/'
     }
 
-    # LazyVim bootstraps itself via git on first launch, so fail fast if git is
-    # not available instead of leaving the user with a broken nvim startup.
-    if ! is_installed "git"; then
-        log "git is required for Neovim/LazyVim bootstrap, but it is not installed." "ERROR"
-        log "Install git first (for example: 'make system-prereq'), then re-run 'make neovim'." "ERROR"
-        return 1
-    fi
+    log_neovim_version_failure() {
+        log "nvim is on PATH at: $(command -v nvim 2> /dev/null || echo '<not found>')" "WARNING"
+        log "nvim --version failed; first lines follow for diagnosis:" "WARNING"
+        nvim --version 2>&1 | head -5 || true
+    }
 
-    # Many Mason-managed Neovim tools in this config are distributed via npm
-    # (bash-language-server, prettier, html/css/emmet LSPs, markdown tooling).
-    # Neovim itself can still run without node/npm, so warn instead of aborting.
-    if ! command -v node &> /dev/null || ! command -v npm &> /dev/null; then
-        log "node/npm are not installed. Neovim will work, but some Mason-managed LSPs/formatters will not auto-install." "WARNING"
-        log "Install Node.js first (for example: 'make system-prereq' or './prereq_packages.sh install_nodejs') for full Neovim language support." "WARNING"
-    fi
-
-    # --- Install Neovim binary ---
-    local installed_neovim_version=""
-    installed_neovim_version="$(get_installed_neovim_version || true)"
-
-    if [[ -n "$installed_neovim_version" ]] && ! neovim_version_lt "$installed_neovim_version" "$neovim_version"; then
-        log "Neovim is already installed: $(nvim --version | head -1)"
-    elif is_installed "nvim"; then
-        if [[ -n "$installed_neovim_version" ]]; then
-            log "Existing Neovim $installed_neovim_version is older than target $neovim_version; upgrading..." "WARNING"
-        else
-            log "Neovim is installed, but its version could not be detected reliably. Reinstalling target $neovim_version..." "WARNING"
-        fi
-
-        if is_installed "brew"; then
-            brew upgrade neovim || brew install neovim || log "Error upgrading Neovim via Homebrew." "WARNING"
-        elif [[ "$DISTRO" == "arch" ]] && ! no_admin_mode; then
-            install_packages "neovim"
-        else
-            log "Package-managed Neovim cannot be trusted to meet target $neovim_version here; installing pinned user-local build instead." "WARNING"
-            installed_neovim_version=""
-        fi
-    fi
-
-    installed_neovim_version="$(get_installed_neovim_version || true)"
-
-    if [[ -n "$installed_neovim_version" ]] && ! neovim_version_lt "$installed_neovim_version" "$neovim_version"; then
-        :
-    elif is_installed "brew"; then
-        log "Installing Neovim via Homebrew..."
-        brew install neovim || log "Error installing Neovim via Homebrew." "WARNING"
-    elif [[ "$DISTRO" == "arch" ]] && ! no_admin_mode; then
-        install_packages "neovim"
-    else
+    install_neovim_release() {
         # Fallback: download from GitHub releases (no admin needed)
         log "Installing Neovim v${neovim_version} from GitHub releases..."
         mkdir -p "$HOME/.local/bin"
@@ -2177,12 +2135,72 @@ install_neovim_package() {
             fi
         fi
 
+        export PATH="$HOME/.local/bin:$PATH"
         add_to_path "$HOME/.local/bin" "Neovim"
         log "Neovim installed to $nvim_dest" "SUCCESS"
+    }
+
+    # LazyVim bootstraps itself via git on first launch, so fail fast if git is
+    # not available instead of leaving the user with a broken nvim startup.
+    if ! is_installed "git"; then
+        log "git is required for Neovim/LazyVim bootstrap, but it is not installed." "ERROR"
+        log "Install git first (for example: 'make system-prereq'), then re-run 'make neovim'." "ERROR"
+        return 1
+    fi
+
+    # Many Mason-managed Neovim tools in this config are distributed via npm
+    # (bash-language-server, prettier, html/css/emmet LSPs, markdown tooling).
+    # Neovim itself can still run without node/npm, so warn instead of aborting.
+    if ! command -v node &> /dev/null || ! command -v npm &> /dev/null; then
+        log "node/npm are not installed. Neovim will work, but some Mason-managed LSPs/formatters will not auto-install." "WARNING"
+        log "Install Node.js first (for example: 'make system-prereq' or './prereq_packages.sh install_nodejs') for full Neovim language support." "WARNING"
+    fi
+
+    # --- Install Neovim binary ---
+    local installed_neovim_version=""
+    installed_neovim_version="$(get_installed_neovim_version || true)"
+
+    if [[ -n "$installed_neovim_version" ]] && ! neovim_version_lt "$installed_neovim_version" "$neovim_version"; then
+        log "Neovim is already installed: $(nvim --version | head -1)"
+    elif is_installed "nvim"; then
+        if [[ -n "$installed_neovim_version" ]]; then
+            log "Existing Neovim $installed_neovim_version is older than target $neovim_version; upgrading..." "WARNING"
+        else
+            log "Neovim is installed, but its version could not be detected reliably. Reinstalling target $neovim_version..." "WARNING"
+        fi
+
+        if is_installed "brew"; then
+            brew upgrade neovim || brew install neovim || log "Error upgrading Neovim via Homebrew." "WARNING"
+        elif [[ "$DISTRO" == "arch" ]] && ! no_admin_mode; then
+            install_packages "neovim"
+        else
+            log "Package-managed Neovim cannot be trusted to meet target $neovim_version here; installing pinned user-local build instead." "WARNING"
+            installed_neovim_version=""
+        fi
+    fi
+
+    installed_neovim_version="$(get_installed_neovim_version || true)"
+
+    if [[ -n "$installed_neovim_version" ]] && ! neovim_version_lt "$installed_neovim_version" "$neovim_version"; then
+        :
+    elif is_installed "brew"; then
+        log "Installing Neovim via Homebrew..."
+        brew install neovim || log "Error installing Neovim via Homebrew." "WARNING"
+        installed_neovim_version="$(get_installed_neovim_version || true)"
+        if [[ -z "$installed_neovim_version" ]]; then
+            log "Homebrew Neovim installed, but it is not runnable in this environment; falling back to pinned user-local release." "WARNING"
+            log_neovim_version_failure
+            install_neovim_release
+        fi
+    elif [[ "$DISTRO" == "arch" ]] && ! no_admin_mode; then
+        install_packages "neovim"
+    else
+        install_neovim_release
     fi
 
     installed_neovim_version="$(get_installed_neovim_version || true)"
     if [[ -z "$installed_neovim_version" ]]; then
+        log_neovim_version_failure
         log "Neovim install completed, but the version could not be determined from 'nvim --version'." "ERROR"
         return 1
     fi
