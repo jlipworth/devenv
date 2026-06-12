@@ -958,7 +958,7 @@ install_ocaml_support() {
     # Install all OCaml tools in one command for optimal dependency resolution
     # Order matters: ocp-indent first (pulls cmdliner) to avoid recompilation cascade
     log "Installing OCaml development tools via opam..."
-    opam install -y ocp-indent merlin ocaml-lsp-server utop ocamlformat ||
+    opam install -y ocp-indent merlin utop ocamlformat ||
         log "Some opam packages failed to install." "WARNING"
     log "OCaml support installed successfully." "SUCCESS"
 }
