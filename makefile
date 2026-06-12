@@ -8,7 +8,7 @@
         full-setup noadmin-setup help neovim neovim-source neovim-package windows-terminal-tooling
 
 # Default target to install all prerequisite layers
-prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools
+prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift whisper ai-tools
 
 cli_tools:
 	@echo "Installing CLI tools only..."
