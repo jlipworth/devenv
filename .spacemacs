@@ -176,9 +176,8 @@ This function should only modify configuration layer settings."
                  typescript-linter 'eslint
                  )
 
-     (react :variables
-            react-backend 'lsp
-            )
+     ;; react has no backend variable of its own; it follows javascript-backend
+     react
 
      (html :variables
            css-enable-lsp t
