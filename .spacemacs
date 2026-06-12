@@ -200,14 +200,7 @@ This function should only modify configuration layer settings."
            )
 
      (swift :variables
-            swift-backend 'lsp
-            swift-lsp-executable-path
-            (or (executable-find "sourcekit-lsp")
-                (let ((xcode-sourcekit
-                       "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/sourcekit-lsp"))
-                  (when (file-executable-p xcode-sourcekit)
-                    xcode-sourcekit))
-                "sourcekit-lsp"))
+            swift-lsp-executable-path "sourcekit-lsp")
 
      (docker :variables
              docker-dockerfile-backend 'lsp
