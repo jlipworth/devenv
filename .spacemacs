@@ -406,8 +406,7 @@ It should only modify the values of Spacemacs settings."
    dotspacemacs-default-font '("MesloLGMDZ Nerd Font Mono"
                                :size 14.0
                                :weight normal
-                               :width normal
-                               :powerline-scale 1.1)
+                               :width normal)
 
    ;; Default icons font, it can be `all-the-icons' or `nerd-icons'.
    dotspacemacs-default-icons-font 'all-the-icons
