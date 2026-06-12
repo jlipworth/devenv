@@ -2295,7 +2295,9 @@ install_all() {
     install_kubernetes_support
     install_ocaml_support
     install_terraform_support
+    install_rust_support
     install_swift_support
+    install_whisper_prereqs
     install_ai_tools
 }
 
