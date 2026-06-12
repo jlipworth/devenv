@@ -798,6 +798,13 @@ before packages are loaded."
   (with-eval-after-load 'lsp-clangd
     (add-to-list 'lsp-clients-clangd-args "--experimental-modules-support"))
 
+  ;; dap-lldb's default points at the long-gone vscode-extension lldb-vscode
+  ;; binary (renamed lldb-dap in LLVM 18). Brew's llvm is keg-only, so it is
+  ;; usually not on PATH; fall back to its install location explicitly.
+  (setq dap-lldb-debug-program
+        (list (or (executable-find "lldb-dap")
+                  "/opt/homebrew/opt/llvm/bin/lldb-dap")))
+
   ;; keybindings global
 
   (setq-default evil-escape-key-sequence "jk")
