@@ -1737,7 +1737,11 @@ install_editor_prereqs() {
 
     # 6. Rebuild font cache once (Linux only)
     if [[ "$need_fc_cache" == true ]]; then
-        fc-cache -fv
+        if command -v fc-cache &> /dev/null; then
+            fc-cache -fv
+        else
+            log "fc-cache not found; skipping font cache refresh." "WARNING"
+        fi
     fi
 }
 
