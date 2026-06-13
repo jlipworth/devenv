@@ -9,6 +9,15 @@ variables:
   - &ci_image "jlipworth/gnu-files-ci:latest"
 
 steps:
+  - name: layer-editor
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make editor
+
   - name: layer-shell
     image: *ci_image
     depends_on: []
@@ -35,6 +44,15 @@ steps:
       DEBIAN_FRONTEND: noninteractive
     commands:
       - make yaml
+
+  - name: layer-completion
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make completion
 
   - name: layer-markdown
     image: *ci_image
@@ -135,6 +153,15 @@ steps:
     commands:
       - make docker
 
+  - name: layer-kubernetes
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make kubernetes
+
   - name: layer-ocaml
     image: *ci_image
     depends_on: []
@@ -170,6 +197,15 @@ steps:
       DEBIAN_FRONTEND: noninteractive
     commands:
       - make swift
+
+  - name: layer-whisper
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make whisper
 
   - name: layer-ai-tools
     image: *ci_image

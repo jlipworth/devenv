@@ -2,16 +2,16 @@
 
 ![CI](https://img.shields.io/github/checks-status/jlipworth/devenv/master)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-blue)
-![Emacs](https://img.shields.io/badge/Emacs-30.1-purple?logo=gnu-emacs)
+![Emacs](https://img.shields.io/badge/Emacs-30.2-purple?logo=gnu-emacs)
 ![License](https://img.shields.io/github/license/jlipworth/devenv)
 
 Personal editor environment, dotfiles, and fonts.
 
-Automated setup for Emacs 30.1 with Spacemacs, plus opt-in Neovim support, language servers for 13+ languages, and cross-platform support on macOS and Linux.
+Automated setup for Emacs 30.2 with Spacemacs, plus opt-in Neovim support, language servers for 13+ languages, and cross-platform support on macOS and Linux.
 
 ## Features
 
-- **Emacs 30.1** compiled from source with native compilation, tree-sitter, and Cairo
+- **Emacs 30.2** compiled from source with native compilation, tree-sitter, and Cairo
 - **Spacemacs** configuration with Evil mode
 - **Neovim** support as an opt-in install path via `make neovim`, grounded in current Spacemacs conventions where practical
 - **Language servers**: Python, JavaScript/TypeScript, C/C++, SQL, Terraform, LaTeX, Docker, OCaml, Swift, and more
@@ -32,7 +32,7 @@ cd ~/GNU_files
 make full-setup
 
 # Or individual components
-make spacemacs          # Build Emacs 30.1 + Spacemacs
+make spacemacs          # Build Emacs 30.2 + Spacemacs
 make editor-symlinks    # Symlinks for .vimrc and .spacemacs
 make prereq-layers-all  # All layer prerequisites (language servers, tooling, etc.)
 ```

@@ -16,7 +16,7 @@ This runbook documents strategies for deploying the GNU_files Emacs environment 
 
 ### Goal
 
-Deploy a complete Emacs 30.1 + Spacemacs environment to any Linux or macOS machine with:
+Deploy a complete Emacs 30.2 + Spacemacs environment to any Linux or macOS machine with:
 - Native GUI performance (fonts, icons, ligatures)
 - All language servers pre-configured
 - Identical configuration across machines

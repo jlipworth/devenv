@@ -4,7 +4,7 @@ Guidance for Claude Code when working with this repository.
 
 ## Overview
 
-Automated setup scripts for Emacs 30.1 + Spacemacs with language server support. Supports macOS and Linux (Debian/Ubuntu).
+Automated setup scripts for Emacs 30.2 + Spacemacs with language server support. Supports macOS and Linux (Debian/Ubuntu).
 
 ## Quick Start
 
@@ -24,7 +24,7 @@ GNU_files/
 ├── prereq_packages.sh       # Language server installation
 ├── common_utils.sh          # Shared utilities
 ├── update_dependencies.sh   # Dependency update helper
-├── versions.conf            # Pinned versions (Emacs, GCC)
+├── versions.conf            # Pinned versions (Emacs, GCC, Node, Alacritty, Neovim)
 ├── requirements.txt         # Python packages (Renovate-tracked)
 ├── renovate.json            # Dependency update config
 ├── .spacemacs               # Spacemacs configuration
@@ -47,8 +47,10 @@ GNU_files/
 │   ├── Brewfile.javascript
 │   ├── Brewfile.kubernetes
 │   ├── Brewfile.latex
+│   ├── Brewfile.neovim-build
 │   ├── Brewfile.ocaml
 │   ├── Brewfile.sql
+│   ├── Brewfile.swift
 │   └── Brewfile.terraform
 ├── ghostty/                 # Ghostty terminal config
 ├── good_fonts/              # Nerd Fonts (Meslo, DejaVu, SourceCodePro)
@@ -62,6 +64,8 @@ GNU_files/
 │   ├── FORGE_SETUP.md
 │   ├── FUTURE_DEPLOYMENT_WORK.md
 │   ├── MACOS_CI_TODO.md
+│   ├── NEOVIM_KEYBINDINGS.md
+│   ├── NO_ADMIN_SETUP.md
 │   ├── SPACEMACS_PRODUCTIVITY.md
 │   ├── SSH_SETUP.md
 │   └── UV_MIGRATION_RUNBOOK.md

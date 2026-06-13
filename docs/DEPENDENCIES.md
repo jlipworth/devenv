@@ -4,7 +4,7 @@ This document describes how dependencies are managed in this repository and how 
 
 ## Overview
 
-This repository manages **80+ dependencies** across multiple package managers to support Emacs 30.1 + Spacemacs with language server support for 13+ programming languages.
+This repository manages **80+ dependencies** across multiple package managers to support Emacs 30.2 + Spacemacs with language server support for 13+ programming languages.
 
 ## Dependency Files
 
@@ -22,7 +22,7 @@ These files are currently managed by Renovate:
 
 These require manual updates:
 
-- **`build_emacs30.sh`** - Emacs 30.1 and build dependencies
+- **`build_emacs30.sh`** - Emacs 30.2 and build dependencies
 - **`prereq_packages.sh`** - apt packages, language-specific tools, Brewfile-driven installs
 - **`common_utils.sh`** - Package manager setup
 
@@ -113,17 +113,16 @@ All pinned versions are managed in `versions.conf`:
 
 ```bash
 # versions.conf
-EMACS_VERSION="30.1"
+EMACS_VERSION="30.2"
 GCC_VERSION="auto"        # "auto" detects highest available, or pin like "14"
 NODE_VERSION="25"         # installed via nvm ("lts" or a major like "22" also work)
 ALACRITTY_VERSION="0.16.1" # Windows portable fallback
 NEOVIM_VERSION="0.12.0"   # default Unix source-build path
 ```
 
-Renovate tracks `versions.conf` via the Dependency Dashboard (no auto-PRs);
-bumps are applied here manually.
+`versions.conf` is currently manual, not Renovate-managed; bumps are applied here by editing the pin and validating the build.
 
-### Emacs (Pinned: 30.1)
+### Emacs (Pinned: 30.2)
 
 **To Change Version**:
 1. Edit `EMACS_VERSION` in `versions.conf`

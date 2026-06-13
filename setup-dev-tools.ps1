@@ -7,13 +7,30 @@
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
-# Version pins / minimums - keep in sync with versions.conf where applicable
+# Version pin fallbacks. After GNU_files is located/cloned, these are refreshed from versions.conf.
 $AlacrittyVersion = "0.16.1"
 $FallbackNeovimVersion = "0.12.0"
 $MinimumNeovimVersion = [version]"0.11.2"
 $GnuFilesRepoUrl = "https://github.com/jlipworth/devenv.git"
 $GnuFilesBootstrapBranch = "master"
 $psmuxVersion = $null
+
+function Get-VersionFromConfig {
+    param(
+        [Parameter(Mandatory = $true)][string]$ConfigPath,
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][string]$Fallback
+    )
+
+    if (Test-Path $ConfigPath) {
+        $match = Select-String -Path $ConfigPath -Pattern "^$Name=`"([^`"]+)`"" -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($match -and $match.Matches[0].Groups[1].Value) {
+            return $match.Matches[0].Groups[1].Value
+        }
+    }
+
+    return $Fallback
+}
 
 function Add-PathOnce {
     param([Parameter(Mandatory = $true)][string]$Dir)
@@ -1166,6 +1183,11 @@ if ($gnuFilesPath) {
 
     Write-Host "GNU_files cloned to $gnuFilesPath from branch '$GnuFilesBootstrapBranch'" -ForegroundColor Green
 }
+
+$versionsConfigPath = Join-Path $gnuFilesPath "versions.conf"
+$AlacrittyVersion = Get-VersionFromConfig -ConfigPath $versionsConfigPath -Name "ALACRITTY_VERSION" -Fallback $AlacrittyVersion
+$FallbackNeovimVersion = Get-VersionFromConfig -ConfigPath $versionsConfigPath -Name "NEOVIM_VERSION" -Fallback $FallbackNeovimVersion
+Write-Host "Using pins from versions.conf where available: Alacritty $AlacrittyVersion, Neovim fallback $FallbackNeovimVersion" -ForegroundColor Green
 
 # --- 7. psmux + config + plugins ---
 Write-Host "`n[7/10] Installing psmux + config..." -ForegroundColor Yellow

@@ -5,7 +5,7 @@ source common_utils.sh
 if [[ -f "versions.conf" ]]; then
     source versions.conf
 fi
-EMACS_VERSION="${EMACS_VERSION:-30.1}"
+EMACS_VERSION="${EMACS_VERSION:-30.2}"
 
 set -e
 EMACS_TAR="emacs-${EMACS_VERSION}.tar.gz"

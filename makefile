@@ -211,7 +211,7 @@ help:
 	@echo "Main targets:"
 	@echo "  full-setup        - Complete system setup (linking + system + all layers + python-env + spacemacs)"
 	@echo "  noadmin-setup     - Full setup without sudo (skips system packages)"
-	@echo "  spacemacs         - Build Emacs 30.1 from source + install Spacemacs"
+	@echo "  spacemacs         - Build Emacs 30.2 from source + install Spacemacs"
 	@echo "  editor-symlinks   - Create symlinks for .vimrc and .spacemacs"
 	@echo "  system-prereq     - Install system packages (git, nodejs, CLI tools)"
 	@echo "  prereq-layers-all - Install all language server prerequisites"
