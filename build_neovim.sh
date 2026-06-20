@@ -81,6 +81,15 @@ set_brew_toolchain_env() {
         log "binutils tools configured from: $binutils_prefix"
     fi
 
+    # macOS must build Neovim with Apple Clang: Apple SDK headers (e.g.
+    # CoreServices' MDItem.h) use Clang block syntax (^) that Homebrew GCC
+    # cannot parse. Forcing CC=gcc-* there breaks the build, so only adopt the
+    # Homebrew GCC toolchain off Darwin (i.e. for Linuxbrew).
+    if [[ "$OS" == "Darwin" ]]; then
+        log "Using Apple Clang toolchain on macOS (skipping Homebrew GCC override)."
+        return 0
+    fi
+
     local gcc_prefix latest_gcc_executable gcc_major
     gcc_prefix="$(brew --prefix gcc 2> /dev/null || true)"
     latest_gcc_executable="$(ls -1 "${brew_prefix}"/bin/gcc-[0-9]* 2> /dev/null | sort -V | tail -n 1 || true)"
