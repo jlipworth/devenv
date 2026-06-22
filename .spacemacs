@@ -791,12 +791,24 @@ before packages are loaded."
   (with-eval-after-load 'lsp-clangd
     (add-to-list 'lsp-clients-clangd-args "--experimental-modules-support"))
 
-  ;; dap-lldb's default points at the long-gone vscode-extension lldb-vscode
-  ;; binary (renamed lldb-dap in LLVM 18). Brew's llvm is keg-only, so it is
-  ;; usually not on PATH; fall back to its install location explicitly.
-  (setq dap-lldb-debug-program
-        (list (or (executable-find "lldb-dap")
-                  "/opt/homebrew/opt/llvm/bin/lldb-dap")))
+  ;; Homebrew's LLVM is keg-only on macOS, so GUI/daemon Emacs may not see
+  ;; tools such as lldb-dap on PATH. Add the LLVM bin directory to Emacs' PATH
+  ;; instead of overriding dap-lldb-debug-program; dap-mode now probes for
+  ;; lldb-dap/lldb-vscode itself.
+  (when (eq system-type 'darwin)
+    (let* ((brew (or (executable-find "brew")
+                     (and (file-executable-p "/opt/homebrew/bin/brew")
+                          "/opt/homebrew/bin/brew")))
+           (llvm-prefix (and brew
+                             (string-trim
+                              (shell-command-to-string
+                               (concat brew " --prefix llvm 2>/dev/null")))))
+           (llvm-bin (and llvm-prefix
+                          (not (string-empty-p llvm-prefix))
+                          (expand-file-name "bin" llvm-prefix))))
+      (when (and llvm-bin (file-directory-p llvm-bin))
+        (add-to-list 'exec-path llvm-bin)
+        (setenv "PATH" (concat llvm-bin path-separator (or (getenv "PATH") ""))))))
 
   ;; keybindings global
 
