@@ -200,7 +200,7 @@ This function should only modify configuration layer settings."
            )
 
      (swift :variables
-            swift-lsp-executable-path "sourcekit-lsp")
+            swift-lsp-executable-path (executable-find "sourcekit-lsp"))
 
      (docker :variables
              docker-dockerfile-backend 'lsp
