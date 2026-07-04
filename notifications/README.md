@@ -51,9 +51,17 @@ In practice, raw OSC notifications emitted on `jumpbox01` over SSH have not
 reliably surfaced as macOS desktop notifications in this setup.
 
 The repo therefore includes a **foreground-only** local relay reached through
-OpenSSH Unix-socket forwarding.  It is intentionally not installed as a daemon
-and does not keep Python resident.  Start it only for an SSH work session and
+OpenSSH Unix-socket forwarding. It is intentionally not installed as a daemon
+and does not keep Python resident. Start it only for an SSH work session and
 stop it with `Ctrl-C` when done.
+
+Once the relay is running and the SSH connection has the `RemoteForward`, any
+Codex/Claude/task hook on the remote host that calls `ai-notify-if-unfocused`
+will automatically use `backends/remote-relay.sh`. No per-agent configuration is
+needed beyond making sure the remote checkout is installed with `make ai-tools`.
+The remote forwarded socket is scoped to the SSH connection; when the SSH
+session closes, the remote socket should disappear. `StreamLocalBindUnlink yes`
+keeps reconnects robust if an unclean disconnect leaves a stale socket behind.
 
 Topology while the relay is running:
 
@@ -103,7 +111,7 @@ paths if they differ:
 ```sshconfig
 Host jumpbox01
   StreamLocalBindUnlink yes
-  RemoteForward /home/malaka/.cache/ai-notify/relay.sock /Users/malaka/.cache/ai-notify/relay.sock
+  RemoteForward /home/malaka/.cache/ai-notify/relay.sock /Users/jlipworth/.cache/ai-notify/relay.sock
   SendEnv AI_NOTIFY_TERMINAL_NAME TERM_PROGRAM
 ```
 
@@ -113,13 +121,20 @@ Before connecting, ensure the remote parent exists at least once:
 ssh jumpbox01 'mkdir -p ~/.cache/ai-notify'
 ```
 
-If the Mac username is not `malaka`, use:
+
+For future Macs, the right-hand side must be that Mac user's local relay socket.
+Check it with:
 
 ```bash
 echo "$HOME/.cache/ai-notify/relay.sock"
 ```
 
-on the Mac and put that exact path on the right-hand side of `RemoteForward`.
+For future remote hosts, the left-hand side should be the remote user's relay
+socket. Check it from the remote account with:
+
+```bash
+echo "$HOME/.cache/ai-notify/relay.sock"
+```
 
 ### 4. Preserve terminal identity
 
