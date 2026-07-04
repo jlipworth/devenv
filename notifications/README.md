@@ -103,13 +103,13 @@ Host jumpbox01
   PermitLocalCommand yes
   LocalCommand /Users/jlipworth/.local/bin/ai-notify-relay-ensure-macos
   RemoteForward 127.0.0.1:31997 /Users/jlipworth/.cache/ai-notify/relay.sock
-  SetEnv TERM=xterm-256color AI_NOTIFY_RELAY_TCP=127.0.0.1:31997
+  SetEnv TERM=xterm-256color
   SendEnv AI_NOTIFY_TERMINAL_NAME TERM_PROGRAM
 ```
 
-This means normal `ssh jumpbox01` is enough. The remote side sees
-`AI_NOTIFY_RELAY_TCP=127.0.0.1:31997`, so `ai-notify-if-unfocused` sends to that
-remote-local TCP listener, and SSH carries it back to the Mac relay socket.
+This means normal `ssh jumpbox01` is enough. The remote helper probes the
+conventional remote-local listener at `127.0.0.1:31997`, and SSH carries matching
+notification traffic back to the Mac relay socket.
 
 For future Macs, the right-hand side of `RemoteForward` must be that Mac user's
 local relay socket. Check it with:

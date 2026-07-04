@@ -90,11 +90,15 @@ detect_terminal() {
 }
 
 remote_relay_available() {
+	local relay_port="${AI_NOTIFY_RELAY_TCP_PORT:-31997}"
 	[[ -n "${SSH_CONNECTION:-}${SSH_CLIENT:-}" ]] || return 1
 	if [[ -n "${AI_NOTIFY_RELAY_TCP:-}" ]]; then
 		return 0
 	fi
-	[[ -S "${AI_NOTIFY_RELAY_SOCKET:-$HOME/.cache/ai-notify/relay.sock}" ]]
+	if [[ -S "${AI_NOTIFY_RELAY_SOCKET:-$HOME/.cache/ai-notify/relay.sock}" ]]; then
+		return 0
+	fi
+	command -v nc >/dev/null 2>&1 && nc -z -w 1 127.0.0.1 "$relay_port" >/dev/null 2>&1
 }
 
 choose_backend() {
