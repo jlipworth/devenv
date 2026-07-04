@@ -37,4 +37,4 @@ terminal="${AI_NOTIFY_TERMINAL_NAME:-}"
     printf 'terminal=%s\n' "$(b64 "$terminal")"
     printf 'title=%s\n' "$(b64 "$title")"
     printf 'body=%s\n' "$(b64 "$body")"
-} | nc -U "$socket_path" > /dev/null 2>&1 || true
+} | nc -U -w 1 "$socket_path" > /dev/null 2>&1 || true
