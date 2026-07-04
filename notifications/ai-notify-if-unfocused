@@ -64,6 +64,11 @@ detect_terminal_from_process_tree() {
 }
 
 detect_terminal() {
+  if [[ -n "${AI_NOTIFY_TERMINAL_NAME:-}" ]]; then
+    lower "${AI_NOTIFY_TERMINAL_NAME:-}"
+    return 0
+  fi
+
   if [[ -n "${GHOSTTY_RESOURCES_DIR:-}" || -n "${GHOSTTY_BIN_DIR:-}" ]]; then
     printf 'ghostty\n'
     return 0
@@ -84,12 +89,22 @@ detect_terminal() {
   detect_terminal_from_process_tree || true
 }
 
+remote_relay_available() {
+  [[ -n "${SSH_CONNECTION:-}${SSH_CLIENT:-}" ]] || return 1
+  [[ -S "${AI_NOTIFY_RELAY_SOCKET:-$HOME/.cache/ai-notify/relay.sock}" ]]
+}
+
 choose_backend() {
   local terminal="$1"
   local override="${AI_NOTIFY_BACKEND:-}"
 
   if [[ -n "$override" ]]; then
     printf '%s\n' "$override"
+    return 0
+  fi
+
+  if remote_relay_available; then
+    printf 'remote-relay\n'
     return 0
   fi
 
