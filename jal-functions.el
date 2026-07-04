@@ -75,6 +75,18 @@ Only activates in non-graphical frames (e.g., Emacs -nw in tmux)."
       (global-clipetty-mode 1)
       (message "Clipetty enabled for terminal clipboard integration"))))
 
+;;;; Evil escape helpers
+
+(defun jal/inhibit-evil-escape-in-magit ()
+  "Return non-nil when `evil-escape' should ignore Magit buffers.
+
+This prevents the global `jk' escape sequence from closing Magit buffers while
+quickly moving down/up with `j' and `k'.  `evil-escape' special-cases Magit by
+turning its escape action into a queued `q', which Magit interprets as
+`magit-mode-bury-buffer'."
+  (or (derived-mode-p 'magit-mode)
+      (string-match-p "\\`magit" (symbol-name major-mode))))
+
 ;;;; Context-aware quit
 
 (defun jal/keyboard-quit-dwim ()

@@ -814,6 +814,13 @@ before packages are loaded."
 
   (setq-default evil-escape-key-sequence "jk")
   (setq-default evil-escape-delay 0.2)
+  ;; Keep the global jk escape everywhere else, but do not let a quick j/k
+  ;; navigation pair close Magit buffers.  evil-escape special-cases Magit by
+  ;; translating its escape action into a queued `q`, which Magit then treats as
+  ;; `magit-mode-bury-buffer`.
+  (with-eval-after-load 'evil-escape
+    (add-to-list 'evil-escape-inhibit-functions
+                 #'jal/inhibit-evil-escape-in-magit))
   (setq evil-respect-visual-line-mode t)
 
   ;; ESC: context-aware quit (jal/keyboard-quit-dwim, in jal-functions.el).
