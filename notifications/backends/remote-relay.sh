@@ -10,6 +10,7 @@ debug_log() {
 
 socket_path="${AI_NOTIFY_RELAY_SOCKET:-$HOME/.cache/ai-notify/relay.sock}"
 relay_tcp="${AI_NOTIFY_RELAY_TCP:-}"
+relay_port="${AI_NOTIFY_RELAY_TCP_PORT:-31997}"
 
 if ! command -v nc > /dev/null 2>&1; then
     debug_log "remote relay skipped: nc missing"
