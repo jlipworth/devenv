@@ -18,8 +18,12 @@ if ! command -v nc > /dev/null 2>&1; then
 fi
 
 if [[ -z "$relay_tcp" && ! -S "$socket_path" ]]; then
-    debug_log "remote relay socket not available: $socket_path"
-    exit 0
+    if nc -z -w 1 127.0.0.1 "$relay_port" > /dev/null 2>&1; then
+        relay_tcp="127.0.0.1:$relay_port"
+    else
+        debug_log "remote relay target not available: $socket_path or 127.0.0.1:$relay_port"
+        exit 0
+    fi
 fi
 
 b64() {
