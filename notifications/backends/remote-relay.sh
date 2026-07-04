@@ -15,26 +15,26 @@ if [[ ! -S "$socket_path" ]]; then
     exit 0
 fi
 
-if ! command -v python3 > /dev/null 2>&1; then
-    debug_log "remote relay skipped: python3 missing"
+if ! command -v nc > /dev/null 2>&1; then
+    debug_log "remote relay skipped: nc missing"
     exit 0
 fi
 
-export AI_NOTIFY_RELAY_SOCKET_PATH="$socket_path"
-python3 - << 'PY' || true
-import json
-import os
-import socket
-
-socket_path = os.environ.get("AI_NOTIFY_RELAY_SOCKET_PATH", "")
-message = {
-    "title": os.environ.get("AI_NOTIFY_TITLE", "Task finished"),
-    "body": os.environ.get("AI_NOTIFY_BODY", "A background task completed."),
-    "terminal": os.environ.get("AI_NOTIFY_TERMINAL_NAME", ""),
+b64() {
+    if base64 --help 2>&1 | grep -q -- '-w'; then
+        printf '%s' "$1" | base64 -w 0
+    else
+        printf '%s' "$1" | base64 | tr -d '\n'
+    fi
 }
 
-with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
-    client.settimeout(1.5)
-    client.connect(socket_path)
-    client.sendall(json.dumps(message, ensure_ascii=False).encode("utf-8") + b"\n")
-PY
+title="${AI_NOTIFY_TITLE:-Task finished}"
+body="${AI_NOTIFY_BODY:-A background task completed.}"
+terminal="${AI_NOTIFY_TERMINAL_NAME:-}"
+
+{
+    printf 'ai-notify-v1\n'
+    printf 'terminal=%s\n' "$(b64 "$terminal")"
+    printf 'title=%s\n' "$(b64 "$title")"
+    printf 'body=%s\n' "$(b64 "$body")"
+} | nc -U "$socket_path" > /dev/null 2>&1 || true

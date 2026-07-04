@@ -1991,7 +1991,7 @@ PY
     add_to_path "$HOME/.local/bin" "Local user binaries"
     if [[ -f "$GNU_DIR/notifications/ai-notify-if-unfocused" ]]; then
         ln -sf "$GNU_DIR/notifications/ai-notify-if-unfocused" "$HOME/.local/bin/ai-notify-if-unfocused"
-        for helper in ai-notify-relay-local ai-notify-relay-install-macos; do
+        for helper in ai-notify-relay-local; do
             if [[ -f "$GNU_DIR/notifications/$helper" ]]; then
                 ln -sf "$GNU_DIR/notifications/$helper" "$HOME/.local/bin/$helper"
             fi
@@ -1999,7 +1999,7 @@ PY
         for helper in "$GNU_DIR"/notifications/ai-notify-if-unfocused "$GNU_DIR"/notifications/backends/*.sh; do
             [[ -f "$helper" ]] && chmod +x "$helper"
         done
-        chmod +x "$GNU_DIR"/notifications/ai-notify-relay-* 2> /dev/null || true
+        chmod +x "$GNU_DIR"/notifications/ai-notify-relay-local 2> /dev/null || true
         log "Symlinked AI notification helpers to ~/.local/bin."
     else
         log "AI notification helper not found at $GNU_DIR/notifications/ai-notify-if-unfocused" "WARNING"
