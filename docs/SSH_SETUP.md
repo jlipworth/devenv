@@ -5,6 +5,9 @@ Quick reference for setting up SSH keys on a new machine.
 `make cli_tools` also sets up a Ghostty-friendly `TERM=xterm-256color`
 override in `~/.ssh/config` when it configures the repo shell tooling.
 
+For AI task-completion notifications from a remote SSH session, use the
+Unix-socket relay documented in [`notifications/README.md`](../notifications/README.md#remote-ssh-notifications).
+
 ## Generate Key
 
 ```bash
