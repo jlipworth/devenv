@@ -188,8 +188,8 @@ if payload:
                 else:
                     body = "finished"
     else:
-        title = "Claude Code"
-        body = "finished"
+        title = "Task finished"
+        body = compact(payload)
 
 print(title)
 print(body)
