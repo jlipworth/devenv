@@ -1,149 +1,120 @@
-#!/usr/bin/env python3
-"""Local macOS relay for AI notifications forwarded from SSH sessions.
+#!/usr/bin/env bash
+# Foreground-only local macOS relay for SSH-forwarded AI notifications.
+# This intentionally does not install a daemon or keep Python resident.
 
-The remote side connects to a Unix socket that is usually exposed through
-OpenSSH RemoteForward.  This process runs on the Mac, receives the already
-parsed title/body, applies the same frontmost-terminal suppression policy, and
-then invokes the repo-managed macOS notification backend.
-"""
+set -euo pipefail
 
-from __future__ import annotations
+socket_path="${AI_NOTIFY_RELAY_LOCAL_SOCKET:-$HOME/.cache/ai-notify/relay.sock}"
+debug="${AI_NOTIFY_DEBUG:-0}"
 
-import argparse
-import json
-import os
-import platform
-import signal
-import socket
-import subprocess
-import sys
-from pathlib import Path
-from typing import Any
+usage() {
+    cat <<USAGE
+Usage: ai-notify-relay-local [--socket PATH]
 
-DEFAULT_SOCKET = Path.home() / ".cache" / "ai-notify" / "relay.sock"
-SCRIPT_DIR = Path(__file__).resolve().parent
-MACOS_BACKEND = SCRIPT_DIR / "backends" / "macos-osascript.sh"
+Runs a foreground macOS Unix-socket relay for SSH AI notifications.
+Stop it with Ctrl-C when you are done with the SSH work session.
+USAGE
+}
 
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --socket)
+            socket_path="${2:?missing value for --socket}"
+            shift 2
+            ;;
+        --debug)
+            debug=1
+            shift
+            ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "unknown argument: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+done
 
-def debug(enabled: bool, message: str) -> None:
-    if enabled:
-        print(f"[ai-notify-relay] {message}", file=sys.stderr, flush=True)
+log_debug() {
+    if [[ "$debug" == "1" ]]; then
+        printf '[ai-notify-relay] %s\n' "$*" >&2
+    fi
+}
 
+if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "ai-notify-relay-local is macOS-only" >&2
+    exit 1
+fi
 
-def frontmost_app() -> str:
-    if platform.system() != "Darwin":
-        return ""
-    try:
-        result = subprocess.run(
-            ["osascript", "-e", 'tell application "System Events" to name of first application process whose frontmost is true'],
-            check=False,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            timeout=2,
-        )
-    except Exception:
-        return ""
-    return result.stdout.strip().lower()
+if ! command -v nc > /dev/null 2>&1; then
+    echo "ai-notify-relay-local requires nc" >&2
+    exit 1
+fi
 
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+backend="$script_dir/backends/macos-osascript.sh"
 
-def normalize_terminal(value: Any) -> str:
-    terminal = str(value or "").strip().lower()
-    if terminal.endswith(".exe"):
-        terminal = terminal[:-4]
-    if terminal in {"ghostty", "alacritty"}:
-        return terminal
-    return ""
+b64_decode() {
+    if base64 --help 2>&1 | grep -q -- '-D'; then
+        printf '%s' "$1" | base64 -D 2> /dev/null || true
+    else
+        printf '%s' "$1" | base64 -d 2> /dev/null || true
+    fi
+}
 
+frontmost_app() {
+    osascript 2> /dev/null <<'APPLESCRIPT' || true
+tell application "System Events"
+  name of first application process whose frontmost is true
+end tell
+APPLESCRIPT
+}
 
-def handle_message(raw: bytes, *, debug_enabled: bool) -> None:
-    try:
-        data = json.loads(raw.decode("utf-8"))
-    except Exception as exc:
-        debug(debug_enabled, f"invalid message ignored: {exc}")
-        return
+handle_payload() {
+    local payload="$1"
+    local version terminal_b64 title_b64 body_b64 terminal title body frontmost
 
-    title = str(data.get("title") or "Task finished")
-    body = str(data.get("body") or "A background task completed.")
-    terminal = normalize_terminal(data.get("terminal"))
+    version="$(printf '%s\n' "$payload" | sed -n '1p')"
+    if [[ "$version" != "ai-notify-v1" ]]; then
+        log_debug "invalid payload ignored"
+        return 0
+    fi
 
-    frontmost = frontmost_app()
-    debug(debug_enabled, f"terminal={terminal or 'unknown'} frontmost_app={frontmost or 'unknown'}")
-    if terminal in {"ghostty", "alacritty"} and frontmost == terminal:
-        debug(debug_enabled, "suppressing notification because terminal is frontmost")
-        return
+    terminal_b64="$(printf '%s\n' "$payload" | sed -n 's/^terminal=//p' | head -1)"
+    title_b64="$(printf '%s\n' "$payload" | sed -n 's/^title=//p' | head -1)"
+    body_b64="$(printf '%s\n' "$payload" | sed -n 's/^body=//p' | head -1)"
 
-    if platform.system() != "Darwin":
-        debug(debug_enabled, "non-macOS relay host; no backend run")
-        return
-    if not MACOS_BACKEND.exists():
-        debug(debug_enabled, f"backend missing: {MACOS_BACKEND}")
-        return
+    terminal="$(b64_decode "$terminal_b64" | tr '[:upper:]' '[:lower:]')"
+    terminal="${terminal%.exe}"
+    title="$(b64_decode "$title_b64")"
+    body="$(b64_decode "$body_b64")"
+    [[ -n "$title" ]] || title="Task finished"
+    [[ -n "$body" ]] || body="A background task completed."
 
-    env = os.environ.copy()
-    env.update(
-        {
-            "AI_NOTIFY_TITLE": title,
-            "AI_NOTIFY_BODY": body,
-            "AI_NOTIFY_TERMINAL_NAME": terminal,
-            "AI_NOTIFY_DEBUG": "1" if debug_enabled else env.get("AI_NOTIFY_DEBUG", "0"),
-        }
-    )
-    subprocess.run([str(MACOS_BACKEND)], env=env, check=False, stdout=subprocess.DEVNULL, stderr=None)
+    frontmost="$(frontmost_app | tr '[:upper:]' '[:lower:]')"
+    log_debug "terminal=${terminal:-unknown} frontmost_app=${frontmost:-unknown}"
+    if [[ ("$terminal" == "ghostty" || "$terminal" == "alacritty") && "$frontmost" == "$terminal" ]]; then
+        log_debug "suppressing notification because terminal is frontmost"
+        return 0
+    fi
 
+    AI_NOTIFY_TITLE="$title" \
+        AI_NOTIFY_BODY="$body" \
+        AI_NOTIFY_TERMINAL_NAME="$terminal" \
+        AI_NOTIFY_DEBUG="$debug" \
+        "$backend" || true
+}
 
-def serve(socket_path: Path, *, debug_enabled: bool) -> int:
-    socket_path.parent.mkdir(parents=True, exist_ok=True)
-    if socket_path.exists():
-        socket_path.unlink()
+mkdir -p "$(dirname "$socket_path")"
+rm -f "$socket_path"
+trap 'rm -f "$socket_path"' EXIT INT TERM
+log_debug "listening on $socket_path"
 
-    stop = False
-
-    def request_stop(_signum: int, _frame: Any) -> None:
-        nonlocal stop
-        stop = True
-
-    signal.signal(signal.SIGTERM, request_stop)
-    signal.signal(signal.SIGINT, request_stop)
-
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
-        server.bind(str(socket_path))
-        os.chmod(socket_path, 0o600)
-        server.listen(8)
-        server.settimeout(1)
-        debug(debug_enabled, f"listening on {socket_path}")
-        while not stop:
-            try:
-                conn, _ = server.accept()
-            except socket.timeout:
-                continue
-            with conn:
-                chunks: list[bytes] = []
-                while True:
-                    chunk = conn.recv(8192)
-                    if not chunk:
-                        break
-                    chunks.append(chunk)
-                    if b"\n" in chunk:
-                        break
-                raw = b"".join(chunks).split(b"\n", 1)[0]
-                if raw:
-                    handle_message(raw, debug_enabled=debug_enabled)
-
-    try:
-        socket_path.unlink()
-    except FileNotFoundError:
-        pass
-    return 0
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Run the local macOS AI notification relay socket.")
-    parser.add_argument("--socket", default=str(DEFAULT_SOCKET), help=f"Unix socket path (default: {DEFAULT_SOCKET})")
-    parser.add_argument("--debug", action="store_true", help="Log relay decisions to stderr.")
-    args = parser.parse_args()
-    return serve(Path(args.socket).expanduser(), debug_enabled=args.debug or os.environ.get("AI_NOTIFY_DEBUG") == "1")
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+while true; do
+    payload="$(nc -lU "$socket_path" || true)"
+    [[ -n "$payload" ]] && handle_payload "$payload"
+    rm -f "$socket_path"
+done

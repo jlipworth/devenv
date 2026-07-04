@@ -48,11 +48,14 @@ Ghostty documents OSC 9 as a desktop-notification sequence, and Ghostty 1.2.0
 release notes recommend avoiding the `OSC 9;4` progress-report collision (the
 `ghostty-osc9` test backend already prefixes messages that would collide).
 In practice, raw OSC notifications emitted on `jumpbox01` over SSH have not
-reliably surfaced as macOS desktop notifications in this setup.  The durable
-remote design is therefore a local Mac relay reached through OpenSSH Unix-socket
-forwarding, not raw terminal escape sequences.
+reliably surfaced as macOS desktop notifications in this setup.
 
-Topology:
+The repo therefore includes a **foreground-only** local relay reached through
+OpenSSH Unix-socket forwarding.  It is intentionally not installed as a daemon
+and does not keep Python resident.  Start it only for an SSH work session and
+stop it with `Ctrl-C` when done.
+
+Topology while the relay is running:
 
 ```text
 Codex/Claude on jumpbox01
@@ -60,31 +63,39 @@ Codex/Claude on jumpbox01
   -> ~/.cache/ai-notify/relay.sock on jumpbox01
   -> SSH RemoteForward
   -> ~/.cache/ai-notify/relay.sock on the Mac
+  -> foreground ai-notify-relay-local
   -> macOS notification backend
 ```
 
-### 1. Install/start the local Mac relay
+### 1. Install repo helper symlinks
 
 On the Mac checkout:
 
 ```bash
 make ai-tools
-ai-notify-relay-install-macos
 ```
 
-That creates a launch agent named `com.jlipworth.ai-notify-relay` and listens on:
+This only symlinks repo-managed helpers into `~/.local/bin`; it does not create
+a LaunchAgent or background service.
 
-```bash
-~/.cache/ai-notify/relay.sock
-```
+### 2. Start the local relay only when needed
 
-Manual foreground debugging on the Mac:
+On the Mac, in a terminal you are willing to leave open during the SSH work
+session:
 
 ```bash
 AI_NOTIFY_DEBUG=1 ai-notify-relay-local
 ```
 
-### 2. Forward the relay socket when SSHing to jumpbox01
+It listens on:
+
+```bash
+~/.cache/ai-notify/relay.sock
+```
+
+Stop it with `Ctrl-C`.
+
+### 3. Forward the relay socket when SSHing to jumpbox01
 
 Add a host-specific `RemoteForward` on the Mac.  Replace the two absolute home
 paths if they differ:
@@ -110,7 +121,7 @@ echo "$HOME/.cache/ai-notify/relay.sock"
 
 on the Mac and put that exact path on the right-hand side of `RemoteForward`.
 
-### 3. Preserve terminal identity
+### 4. Preserve terminal identity
 
 For frontmost-terminal suppression and Ghostty/Alacritty sender hints, export a
 terminal name before SSH if your client does not already send one:
@@ -125,7 +136,7 @@ or:
 export AI_NOTIFY_TERMINAL_NAME=alacritty
 ```
 
-### 4. Test from jumpbox01
+### 5. Test from jumpbox01
 
 Inside the SSH session:
 
