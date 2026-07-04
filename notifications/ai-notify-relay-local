@@ -6,13 +6,15 @@ set -euo pipefail
 
 socket_path="${AI_NOTIFY_RELAY_LOCAL_SOCKET:-$HOME/.cache/ai-notify/relay.sock}"
 debug="${AI_NOTIFY_DEBUG:-0}"
+idle_timeout="0"
 
 usage() {
 	cat <<USAGE
-Usage: ai-notify-relay-local [--socket PATH]
+Usage: ai-notify-relay-local [--socket PATH] [--idle-timeout SECONDS]
 
 Runs a foreground macOS Unix-socket relay for SSH AI notifications.
 Stop it with Ctrl-C when you are done with the SSH work session.
+When --idle-timeout is set, exit after that many seconds without a message.
 USAGE
 }
 
@@ -25,6 +27,10 @@ while [[ $# -gt 0 ]]; do
 	--debug)
 		debug=1
 		shift
+		;;
+	--idle-timeout)
+		idle_timeout="${2:?missing value for --idle-timeout}"
+		shift 2
 		;;
 	-h | --help)
 		usage
@@ -117,14 +123,20 @@ handle_payload() {
 mkdir -p "$(dirname "$socket_path")"
 rm -f "$socket_path"
 tmp_payload="$(mktemp "${TMPDIR:-/tmp}/ai-notify-relay.XXXXXX")"
+timeout_marker="$(mktemp "${TMPDIR:-/tmp}/ai-notify-relay-timeout.XXXXXX")"
 nc_pid=""
+watchdog_pid=""
 
 cleanup() {
+	if [[ -n "$watchdog_pid" ]]; then
+		kill "$watchdog_pid" >/dev/null 2>&1 || true
+		wait "$watchdog_pid" >/dev/null 2>&1 || true
+	fi
 	if [[ -n "$nc_pid" ]]; then
 		kill "$nc_pid" >/dev/null 2>&1 || true
 		wait "$nc_pid" >/dev/null 2>&1 || true
 	fi
-	rm -f "$socket_path" "$tmp_payload"
+	rm -f "$socket_path" "$tmp_payload" "$timeout_marker"
 }
 
 trap cleanup EXIT
@@ -132,12 +144,26 @@ trap 'cleanup; exit 0' INT TERM
 log_debug "listening on $socket_path"
 
 while true; do
-	rm -f "$socket_path"
+	rm -f "$socket_path" "$timeout_marker"
 	: >"$tmp_payload"
 	nc -lU "$socket_path" >"$tmp_payload" &
 	nc_pid="$!"
+	if [[ "$idle_timeout" != "0" ]]; then
+		(sleep "$idle_timeout" && : >"$timeout_marker" && kill "$nc_pid" >/dev/null 2>&1) &
+		watchdog_pid="$!"
+	fi
 	wait "$nc_pid" || true
 	nc_pid=""
+	if [[ -n "$watchdog_pid" ]]; then
+		kill "$watchdog_pid" >/dev/null 2>&1 || true
+		wait "$watchdog_pid" >/dev/null 2>&1 || true
+		watchdog_pid=""
+	fi
 	payload="$(cat "$tmp_payload")"
-	[[ -n "$payload" ]] && handle_payload "$payload"
+	if [[ -n "$payload" ]]; then
+		handle_payload "$payload"
+	elif [[ -f "$timeout_marker" ]]; then
+		log_debug "idle timeout reached; exiting"
+		exit 0
+	fi
 done
