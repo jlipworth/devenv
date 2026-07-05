@@ -72,6 +72,15 @@ steps:
     commands:
       - make vimscript
 
+  - name: layer-elisp
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - make elisp
+
   - name: layer-latex
     image: *ci_image
     depends_on: []

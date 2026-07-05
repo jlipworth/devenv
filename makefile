@@ -1,14 +1,14 @@
 # Makefile for JAL Emacs Installation
 
 .PHONY: spacemacs prereq-layers-all editor-symlinks editor system-prereq node-manual \
-        shell-layer git-layer yaml markdown completion vimscript \
+        shell-layer git-layer yaml markdown completion vimscript elisp \
         latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools \
         whisper whisper_toolchain whisper_audio latex_tooling latex_distribution \
         cli_tools cli_tools_core cli_tools_system starship syntax-highlighting update-deps \
         full-setup noadmin-setup help neovim neovim-source neovim-package windows-terminal-tooling
 
 # Default target to install all prerequisite layers
-prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift whisper ai-tools
+prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript elisp latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift whisper ai-tools
 
 cli_tools:
 	@echo "Installing CLI tools only..."
@@ -98,6 +98,10 @@ completion:
 vimscript:
 	@echo "Installing Vimscript language server..."
 	@./prereq_packages.sh install_vimscript_lsp
+
+elisp:
+	@echo "Installing Emacs Lisp tools..."
+	@./prereq_packages.sh install_elisp_support
 
 latex:
 	@echo "Installing LaTeX tools..."
@@ -225,6 +229,7 @@ help:
 	@echo "  python-env  - uv package manager + global tools"
 	@echo "  c_cpp       - clangd/LLVM for C/C++"
 	@echo "  js          - TypeScript, Prettier, ESLint"
+	@echo "  elisp       - Eask for Emacs Lisp package tooling"
 	@echo "  sql         - sqls language server"
 	@echo "  latex       - texlab, TeXLive/MacTeX"
 	@echo "  docker      - dockerfile-language-server, hadolint"

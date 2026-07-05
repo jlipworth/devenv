@@ -496,6 +496,31 @@ install_vimscript_lsp() {
     $NODE_CMD install -g vim-language-server || log "Error installing vim-language-server." "WARNING"
 }
 
+install_elisp_support() {
+    log "Installing Emacs Lisp development tools..."
+
+    if is_installed "eask"; then
+        log "Eask is already installed. Skipping."
+        return 0
+    fi
+
+    if is_installed "brew"; then
+        log "Installing Eask via Homebrew..."
+        brew bundle --file="$GNU_DIR/brewfiles/Brewfile.elisp" || log "Error with Brewfile.elisp" "WARNING"
+    fi
+
+    if ! is_installed "eask"; then
+        log "Installing Eask via npm..."
+        $NODE_CMD install -g @emacs-eask/cli || log "Error installing Eask via npm." "WARNING"
+    fi
+
+    if is_installed "eask"; then
+        log "Emacs Lisp development tools installed successfully." "SUCCESS"
+    else
+        log "Eask was not found after installation attempts." "WARNING"
+    fi
+}
+
 texlive_platform() {
     if [[ "$OS" == "Darwin" ]]; then
         echo "universal-darwin"
@@ -2312,6 +2337,7 @@ install_all() {
     install_markdown_support
     install_yaml_support
     install_vimscript_lsp
+    install_elisp_support
     install_latex_tools
     install_python_prereqs
     install_r_support
@@ -2347,6 +2373,7 @@ main() {
         "install_yaml_support"
         "create_snippet_symlink"
         "install_vimscript_lsp"
+        "install_elisp_support"
         "install_latex_tooling"
         "install_latex_distribution"
         "install_latex_tools"
