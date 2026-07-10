@@ -1833,10 +1833,34 @@ remove_codex_npm_shim() {
         return 0
     fi
 
-    if npm list -g --depth=0 @openai/codex &> /dev/null; then
-        log "Removing npm-installed @openai/codex so the native binary wins PATH resolution..."
-        npm uninstall -g @openai/codex || log "Failed to remove npm-installed @openai/codex." "WARNING"
+    # common_utils.sh exports npm_config_prefix on Linux to a script-local dir
+    # ($HOME/.npm-global), but an npm-installed codex shim usually lives in
+    # npm's *default* global prefix (the active nvm node, where an interactive
+    # `npm install -g` lands). Query/uninstall against both prefixes so the
+    # native binary always wins PATH resolution regardless of where the shim
+    # was installed, then restore the script's override for later npm calls.
+    local saved_npm_config_prefix="${npm_config_prefix-}"
+    local saved_NPM_CONFIG_PREFIX="${NPM_CONFIG_PREFIX-}"
+    local prefix
+    for prefix in default "$saved_npm_config_prefix"; do
+        case "$prefix" in
+            default) unset npm_config_prefix NPM_CONFIG_PREFIX ;;
+            "") continue ;;
+            *) export npm_config_prefix="$prefix" ;;
+        esac
+
+        if npm list -g --depth=0 @openai/codex &> /dev/null; then
+            log "Removing npm-installed @openai/codex so the native binary wins PATH resolution..."
+            npm uninstall -g @openai/codex || log "Failed to remove npm-installed @openai/codex." "WARNING"
+        fi
+    done
+
+    if [[ -n "$saved_npm_config_prefix" ]]; then
+        export npm_config_prefix="$saved_npm_config_prefix"
+    else
+        unset npm_config_prefix
     fi
+    [[ -n "$saved_NPM_CONFIG_PREFIX" ]] && export NPM_CONFIG_PREFIX="$saved_NPM_CONFIG_PREFIX"
 }
 
 install_codex_cli_native() {
