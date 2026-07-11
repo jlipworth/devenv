@@ -30,6 +30,37 @@ is_wsl() {
 	[[ -r /proc/version ]] && grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null
 }
 
+is_codex_desktop() {
+	local pid ppid command
+
+	# The macOS app-server inherits these private app markers.  The standalone
+	# CLI does not, so this keeps the repo notification hook CLI-only even when
+	# the desktop app and CLI share ~/.codex/config.toml.
+	if [[ -n "${BROWSER_USE_CODEX_APP_VERSION:-}" || -n "${BROWSER_USE_CODEX_APP_BUILD_FLAVOR:-}" ]]; then
+		return 0
+	fi
+	if [[ "${CODEX_CLI_PATH:-}" == */Contents/Resources/codex ]]; then
+		return 0
+	fi
+
+	# Retain a process-tree fallback in case the desktop app stops exporting its
+	# current marker variables.
+	pid=$$
+	while [[ -n "$pid" && "$pid" -gt 1 ]]; do
+		command="$(ps -o command= -p "$pid" 2>/dev/null || true)"
+		case "$command" in
+		*/Applications/ChatGPT.app/Contents/* | */Applications/Codex.app/Contents/*)
+			return 0
+			;;
+		esac
+		ppid="$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d '[:space:]')"
+		[[ -z "$ppid" || "$ppid" == "$pid" ]] && break
+		pid="$ppid"
+	done
+
+	return 1
+}
+
 frontmost_app() {
 	if ! is_macos || ! command -v osascript >/dev/null 2>&1; then
 		return 1
@@ -131,6 +162,11 @@ choose_backend() {
 
 	printf 'noop\n'
 }
+
+if is_codex_desktop; then
+	debug_log "suppressing repo notification inside Codex desktop app"
+	exit 0
+fi
 
 terminal_name="$(detect_terminal || true)"
 backend_name="$(choose_backend "$terminal_name")"

@@ -22,6 +22,8 @@ ai-notify-if-unfocused
 The top-level dispatcher:
 
 - detects the current environment/terminal
+- suppresses its CLI notification hook inside the Codex desktop app (including
+  sub-agent completions), leaving desktop notification policy to the app
 - suppresses notifications when the terminal is frontmost
 - selects a backend
 - exits cleanly when no supported backend is available
@@ -36,6 +38,9 @@ Current backend mapping:
 
 Suppression behavior differs by platform:
 
+- The Codex macOS desktop app is always suppressed. The app and standalone CLI
+  share `~/.codex/config.toml`, but this notification shim is intended for CLI
+  terminal sessions only.
 - macOS suppression happens in the dispatcher for terminals that identify as Ghostty or Alacritty.
 - WSL2 suppression happens inside `backends/wsl2-toast.sh` by querying the
   Windows foreground process and suppressing when it is `alacritty.exe`.
