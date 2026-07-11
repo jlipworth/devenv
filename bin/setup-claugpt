@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+CI="${CI:-false}"
+export CI
+# Resolved relative to this script at runtime.
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/../common_utils.sh"
+
+if [[ "${OS}" != "Darwin" ]]; then
+    log "setup-claugpt currently supports macOS/Homebrew only." "ERROR"
+    exit 1
+fi
+
+if ! command -v claude >/dev/null 2>&1; then
+    log "Install Claude Code first; the claugpt command reuses its harness." "ERROR"
+    exit 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+    log "Installing jq..."
+    brew install jq
+fi
+
+if ! is_installed "cliproxyapi"; then
+    log "Installing CLIProxyAPI..."
+    brew install cliproxyapi
+fi
+
+config_file="$(brew --prefix)/etc/cliproxyapi.conf"
+auth_dir="${HOME}/.cli-proxy-api"
+key_file="${auth_dir}/claugpt-key"
+launcher="${HOME}/.local/bin/claugpt"
+launcher_yolo="${HOME}/.local/bin/claudgpy"
+mkdir -p "${auth_dir}" "$(dirname -- "${launcher}")"
+
+if [[ ! -s "${key_file}" ]]; then
+    umask 077
+    printf 'claugpt-%s\n' "$(openssl rand -hex 24)" >"${key_file}"
+fi
+chmod 600 "${key_file}"
+proxy_key="$(<"${key_file}")"
+
+if [[ -f "${config_file}" ]] && ! grep -q 'Managed by setup-claugpt' "${config_file}"; then
+    backup="${config_file}.backup.$(date +%Y%m%d%H%M%S)"
+    cp "${config_file}" "${backup}"
+    log "Backed up the existing proxy configuration to ${backup}." "WARNING"
+fi
+
+cat >"${config_file}" <<EOF
+# Managed by setup-claugpt from GNU_files.
+host: "127.0.0.1"
+port: 8317
+auth-dir: "~/.cli-proxy-api"
+api-keys:
+  - "${proxy_key}"
+
+oauth-model-alias:
+  codex:
+    - name: "gpt-5.6-sol"
+      alias: "gpt-5.6-sol-fast"
+      fork: true
+
+payload:
+  override:
+    - models:
+        - name: "gpt-5.6-sol-fast"
+          protocol: "codex"
+      params:
+        service_tier: "priority"
+EOF
+
+cat >"${launcher}" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+key_file="${HOME}/.cli-proxy-api/claugpt-key"
+if [[ ! -r "${key_file}" ]]; then
+    printf 'claugpt: missing local proxy key: %s\n' "${key_file}" >&2
+    exit 1
+fi
+
+export ANTHROPIC_BASE_URL="http://127.0.0.1:8317"
+ANTHROPIC_AUTH_TOKEN="$(<"${key_file}")"
+export ANTHROPIC_AUTH_TOKEN
+
+# Claude Code only shows built-in slots in /model. Haiku selects OpenAI's
+# priority tier; Opus and Sonnet select standard GPT-5.6 Sol.
+export ANTHROPIC_DEFAULT_OPUS_MODEL="gpt-5.6-sol"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="gpt-5.6-sol"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="gpt-5.6-sol-fast"
+export ANTHROPIC_MODEL="gpt-5.6-sol"
+export ANTHROPIC_SMALL_FAST_MODEL="gpt-5.6-sol-fast"
+export CLAUDE_CODE_MAX_CONTEXT_TOKENS="353400"
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1"
+export CLAUDE_CODE_SKIP_FAST_MODE_NETWORK_ERRORS="1"
+
+exec claude --model gpt-5.6-sol "$@"
+EOF
+chmod 755 "${launcher}"
+
+cat >"${launcher_yolo}" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+exec "${HOME}/.local/bin/claugpt" --dangerously-skip-permissions "$@"
+EOF
+chmod 755 "${launcher_yolo}"
+
+if ! compgen -G "${auth_dir}/codex-*.json" >/dev/null; then
+    log "A browser will open for OpenAI/Codex OAuth. Complete the login there."
+    cliproxyapi -codex-login
+else
+    log "Reusing the existing CLIProxyAPI Codex OAuth credential."
+fi
+
+brew services restart cliproxyapi >/dev/null
+sleep 2
+
+models="$(curl -fsS -H "Authorization: Bearer ${proxy_key}" \
+    http://127.0.0.1:8317/v1/models | jq -r '.data[]?.id')"
+for model in gpt-5.6-sol gpt-5.6-sol-fast; do
+    if ! grep -qx "${model}" <<<"${models}"; then
+        log "Expected model ${model} is unavailable for this account." "ERROR"
+        exit 1
+    fi
+done
+
+log "claugpt is ready at ${launcher}." "SUCCESS"
+log "claudgpy (YOLO mode) is ready at ${launcher_yolo}." "SUCCESS"
+log "Use /model haiku for priority mode; /model opus for standard mode."
