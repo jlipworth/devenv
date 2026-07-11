@@ -1770,64 +1770,6 @@ install_editor_prereqs() {
     fi
 }
 
-codex_native_asset_name() {
-    local os_name arch_name
-    os_name="$(uname -s)"
-    arch_name="$(uname -m)"
-
-    case "$os_name:$arch_name" in
-        Darwin:arm64 | Darwin:aarch64) echo "codex-aarch64-apple-darwin.tar.gz" ;;
-        Darwin:x86_64) echo "codex-x86_64-apple-darwin.tar.gz" ;;
-        Linux:x86_64 | Linux:amd64) echo "codex-x86_64-unknown-linux-musl.tar.gz" ;;
-        Linux:arm64 | Linux:aarch64) echo "codex-aarch64-unknown-linux-musl.tar.gz" ;;
-        *)
-            log "Unsupported Codex native platform: $os_name/$arch_name" "WARNING"
-            return 1
-            ;;
-    esac
-}
-
-install_codex_cli_native_from_github() {
-    local asset archive extract_dir extracted_bin target_bin
-
-    asset="$(codex_native_asset_name)" || return 1
-    archive="$(mktemp "${TMPDIR:-/tmp}/codex-native.XXXXXX.tar.gz")"
-    extract_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-native.XXXXXX")"
-    target_bin="$HOME/.local/bin/codex"
-
-    mkdir -p "$HOME/.local/bin"
-    add_to_path "$HOME/.local/bin" "Local user binaries"
-
-    log "Downloading Codex native release asset: $asset"
-    if ! curl -fL "https://github.com/openai/codex/releases/latest/download/$asset" -o "$archive"; then
-        rm -f "$archive"
-        rm -rf "$extract_dir"
-        log "Failed to download Codex native release asset: $asset" "WARNING"
-        return 1
-    fi
-
-    if ! tar -xzf "$archive" -C "$extract_dir"; then
-        rm -f "$archive"
-        rm -rf "$extract_dir"
-        log "Failed to extract Codex native release asset: $asset" "WARNING"
-        return 1
-    fi
-
-    extracted_bin="$(find "$extract_dir" -type f -name 'codex*' 2> /dev/null | head -n 1)"
-
-    if [[ -z "$extracted_bin" ]]; then
-        rm -f "$archive"
-        rm -rf "$extract_dir"
-        log "Codex native archive did not contain a codex binary." "WARNING"
-        return 1
-    fi
-
-    install -m 0755 "$extracted_bin" "$target_bin"
-    rm -f "$archive"
-    rm -rf "$extract_dir"
-    log "Installed Codex native binary to $target_bin." "SUCCESS"
-}
-
 remove_codex_npm_shim() {
     if ! command -v npm &> /dev/null; then
         return 0
@@ -1864,32 +1806,39 @@ remove_codex_npm_shim() {
 }
 
 install_codex_cli_native() {
-    log "Installing Codex CLI via native binary/package..."
+    log "Installing Codex CLI via the official standalone installer..."
 
-    local installed_native=false
+    local installer
+    installer="$(mktemp "${TMPDIR:-/tmp}/codex-install.XXXXXX")"
 
-    if [[ "$OS" == "Darwin" ]] && command -v brew &> /dev/null; then
-        if brew list --cask codex &> /dev/null; then
-            log "Codex Homebrew cask is already installed; upgrading if a newer cask exists..."
-            brew upgrade --cask codex || log "Codex cask is already current or upgrade failed." "WARNING"
-        else
-            $CASK_CMD codex || log "Error installing Codex CLI via Homebrew cask." "WARNING"
-        fi
-
-        if brew list --cask codex &> /dev/null; then
-            installed_native=true
-        fi
+    if ! curl -fsSL https://chatgpt.com/codex/install.sh -o "$installer"; then
+        rm -f "$installer"
+        log "Failed to download the official Codex standalone installer." "WARNING"
+        return 1
     fi
 
-    if [[ "$installed_native" != true ]]; then
-        install_codex_cli_native_from_github && installed_native=true
+    if ! CODEX_NON_INTERACTIVE=1 sh "$installer"; then
+        rm -f "$installer"
+        log "Codex CLI standalone installation failed." "WARNING"
+        return 1
+    fi
+    rm -f "$installer"
+
+    add_to_path "$HOME/.local/bin" "Local user binaries"
+    remove_codex_npm_shim
+
+    # Migrate older setups to one user-facing Codex installation. The copy
+    # embedded in ChatGPT.app is app-owned and intentionally left untouched.
+    if [[ "$OS" == "Darwin" ]] && command -v brew &> /dev/null && brew list --cask codex &> /dev/null; then
+        log "Removing the redundant Homebrew Codex cask; standalone Codex owns ~/.local/bin/codex..."
+        brew uninstall --cask codex || log "Failed to remove the redundant Codex cask." "WARNING"
     fi
 
-    if [[ "$installed_native" == true ]]; then
-        remove_codex_npm_shim
-        log "Codex CLI native install complete." "SUCCESS"
+    if [[ -x "$HOME/.local/bin/codex" ]]; then
+        log "Codex CLI $($HOME/.local/bin/codex --version) standalone install complete." "SUCCESS"
     else
-        log "Codex CLI native install failed." "WARNING"
+        log "Codex CLI installer completed but ~/.local/bin/codex is unavailable." "WARNING"
+        return 1
     fi
 }
 
@@ -1900,7 +1849,7 @@ install_ai_tools() {
     log "Installing Claude Code via native installer..."
     curl -fsSL https://claude.ai/install.sh | bash || log "Error installing Claude Code." "WARNING"
 
-    # Codex CLI - native binary/package (needed for native app-server/remote-control flows)
+    # Codex CLI - official standalone installer
     install_codex_cli_native
 
     # Other AI tools via npm
