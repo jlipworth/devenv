@@ -72,6 +72,19 @@ effective Codex window for GPT-5.6 Sol (372,000 raw tokens at 95%) and applies
 only to processes launched through `claugpt` or `claudgpy`; normal `claude`
 sessions retain Claude Code's standard model-specific context settings.
 
+The launchers also match the tested Claude Code gateway setup by setting:
+
+```text
+CLAUDE_CODE_SUBAGENT_MODEL=gpt-5.6-sol
+CLAUDE_CODE_ALWAYS_ENABLE_EFFORT=1
+CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY=3
+ENABLE_TOOL_SEARCH=false
+```
+
+This keeps spawned subagents on GPT-5.6 Sol, exposes effort controls, limits
+parallel read-only tool/subagent work to three, and loads MCP tools up front
+instead of relying on proxy support for deferred `tool_reference` blocks.
+
 ## Permission modes
 
 Permission handling remains entirely inside the Claude Code harness, so every
