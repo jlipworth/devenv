@@ -67,8 +67,8 @@ CLIProxyAPI translates Claude's `output_config.effort` into OpenAI's
 Anthropic's `speed: fast`, whereas the proxy alias explicitly injects OpenAI's
 `service_tier: priority`.
 
-Both launchers set `CLAUDE_CODE_MAX_CONTEXT_TOKENS=353400`. This matches the
-effective Codex window for GPT-5.6 Sol (372,000 raw tokens at 95%) and applies
+Both launchers set `CLAUDE_CODE_MAX_CONTEXT_TOKENS=258400`. This matches the
+effective Codex window for GPT-5.6 Sol (272,000 raw tokens at 95%) and applies
 only to processes launched through `claugpt` or `claudgpy`; normal `claude`
 sessions retain Claude Code's standard model-specific context settings.
 
