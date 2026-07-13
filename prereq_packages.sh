@@ -26,8 +26,6 @@ translate_arch_pkg() {
         python3-pip) echo "python-pip" ;;
         lldb) echo "lldb" ;;
         xclip) echo "xclip" ;;
-        # Audio (Whisper)
-        libasound2-plugins) echo "alsa-plugins" ;;
         *) echo "$pkg" ;;
     esac
 }
@@ -388,57 +386,6 @@ install_git_prereqs() {
     if is_installed "brew"; then
         log "Installing git tools via Homebrew..."
         brew bundle --file="$GNU_DIR/brewfiles/Brewfile.git" || log "Error with Brewfile.git" "WARNING"
-    fi
-}
-
-install_whisper_toolchain() {
-    if [[ "$OS" == "Darwin" ]]; then
-        # ffmpeg for recording (avfoundation) + whisper.cpp build deps
-        install_packages "ffmpeg" "cmake" "pkg-config"
-        # Optional convenience tools
-        install_packages "sox"
-    elif is_installed "brew"; then
-        log "Installing Whisper prerequisites via Homebrew/Linuxbrew..."
-        brew install ffmpeg cmake pkg-config sox make gcc || log "Error installing Whisper tools via Homebrew." "WARNING"
-    elif [[ "$DISTRO" == "arch" ]]; then
-        install_packages_translated \
-            "ffmpeg" "cmake" "make" "gcc" "sox"
-    else
-        install_packages_translated \
-            "ffmpeg" "cmake" "make" "g++" "sox"
-    fi
-}
-
-install_whisper_audio_integration() {
-    if [[ "$OS" == "Darwin" ]]; then
-        log "Audio integration for Whisper uses native macOS devices; no extra system packages needed."
-    elif [[ "$DISTRO" == "arch" ]]; then
-        # Prefer PipeWire Pulse compatibility on modern Arch installs
-        install_packages_translated "alsa-utils" "libasound2-plugins" "pipewire-pulse"
-    else
-        # Debian/Ubuntu: ensure whisper.el selects PulseAudio input backend by default
-        install_packages_translated "alsa-utils" "libasound2-plugins" "pulseaudio" "pulseaudio-utils"
-    fi
-}
-
-install_whisper_prereqs() {
-    log "Installing Whisper (Spacemacs whisper layer) prerequisites..."
-    local partial_setup=false
-
-    install_whisper_toolchain
-
-    if [[ "$OS" == "Linux" ]] && no_admin_mode; then
-        log "NO_ADMIN=true: skipping distro-level audio backend setup for Whisper." "WARNING"
-        log "WSL/desktop audio integration (PulseAudio/PipeWire/ALSA bridging) must already be available." "WARNING"
-        partial_setup=true
-    else
-        install_whisper_audio_integration
-    fi
-
-    if [[ "$partial_setup" == "true" ]]; then
-        log "Whisper toolchain installed, but audio integration was not configured automatically." "WARNING"
-    else
-        log "Whisper prerequisites installed successfully." "SUCCESS"
     fi
 }
 
@@ -2367,7 +2314,6 @@ install_all() {
     install_terraform_support
     install_rust_support
     install_swift_support
-    install_whisper_prereqs
     install_ai_tools
 }
 
@@ -2382,9 +2328,6 @@ main() {
         "install_askpass"
         "install_shell_prereqs"
         "install_git_prereqs"
-        "install_whisper_toolchain"
-        "install_whisper_audio_integration"
-        "install_whisper_prereqs"
         "install_markdown_support"
         "install_yaml_support"
         "create_snippet_symlink"

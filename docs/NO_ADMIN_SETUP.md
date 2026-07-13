@@ -113,9 +113,6 @@ Legend:
 | `cli_tools_system`    | Admin-only   | Printing, clipboard, libtool |
 | `starship`            | Conditional  | brew or curl installer to `~/.local/bin` |
 | `syntax-highlighting` | Conditional  | zsh plugins via brew; blesh needs gawk |
-| `whisper`             | Conditional  | Toolchain via brew; audio integration skipped under NO_ADMIN |
-| `whisper_toolchain`   | Conditional  | ffmpeg, cmake, sox via brew |
-| `whisper_audio`       | Admin-only   | PulseAudio/PipeWire/ALSA integration |
 | `latex_tooling`       | Conditional  | texlab, aspell via brew; okular skipped under NO_ADMIN |
 | `latex_distribution`  | Conditional  | User-local TeX Live under NO_ADMIN |
 
@@ -125,7 +122,6 @@ These are inherently system-level and cannot be moved to user space:
 
 - **WSL config** — `/etc/wsl.conf` modifications (manual instructions printed)
 - **Printing** — CUPS/lpr integration
-- **Audio backends** — PulseAudio/PipeWire/ALSA system integration
 - **Docker runtime** — daemon access and container group membership
 - **apt repo/key management** — HashiCorp, etc. (only in non-brew fallback paths)
 
@@ -135,7 +131,6 @@ The `noadmin` CI pipeline (`.woodpecker/noadmin.yml`) runs smoke tests in a
 non-root Debian container with Linuxbrew pre-installed and no sudo. It validates:
 
 - `cli_tools` — core tools install, system extras skipped
-- `whisper` — toolchain installs, audio integration skipped
 - `r` — R installs via Linuxbrew
 - `latex_tooling` — texlab available
 - `system-prereq` — Node present, syntax highlighting validated, starship present, ksshaskpass skipped

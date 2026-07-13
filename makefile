@@ -3,12 +3,12 @@
 .PHONY: spacemacs prereq-layers-all editor-symlinks editor system-prereq node-manual \
         shell-layer git-layer yaml markdown completion vimscript elisp \
         latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools \
-        whisper whisper_toolchain whisper_audio latex_tooling latex_distribution \
+        latex_tooling latex_distribution \
         cli_tools cli_tools_core cli_tools_system starship syntax-highlighting update-deps \
         full-setup noadmin-setup help neovim neovim-source neovim-package windows-terminal-tooling
 
 # Default target to install all prerequisite layers
-prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript elisp latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift whisper ai-tools
+prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript elisp latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools
 
 cli_tools:
 	@echo "Installing CLI tools only..."
@@ -70,18 +70,6 @@ shell-layer:
 git-layer:
 	@echo "Installing git-layer prerequisites..."
 	@./prereq_packages.sh install_git_prereqs
-
-whisper:
-	@echo "Installing Whisper (speech-to-text) prerequisites..."
-	@./prereq_packages.sh install_whisper_prereqs
-
-whisper_toolchain:
-	@echo "Installing Whisper toolchain only..."
-	@./prereq_packages.sh install_whisper_toolchain
-
-whisper_audio:
-	@echo "Installing Whisper audio integration prerequisites..."
-	@./prereq_packages.sh install_whisper_audio_integration
 
 yaml:
 	@echo "Installing YAML language server..."
@@ -242,9 +230,6 @@ help:
 	@echo ""
 	@echo "Other targets:"
 	@echo "  editor          - Install fonts and vim-plug"
-	@echo "  whisper         - Install Whisper prerequisites (toolchain + audio integration unless NO_ADMIN=true)"
-	@echo "  whisper_toolchain - Install Whisper toolchain only"
-	@echo "  whisper_audio   - Install Whisper audio integration prerequisites"
 	@echo "  cli_tools       - Install general CLI tools only (core + system extras unless NO_ADMIN=true)"
 	@echo "  cli_tools_core  - Install core user-space CLI tools"
 	@echo "  cli_tools_system - Install optional CLI system-integration extras"

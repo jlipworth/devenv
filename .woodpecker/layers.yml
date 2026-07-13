@@ -207,15 +207,6 @@ steps:
     commands:
       - make swift
 
-  - name: layer-whisper
-    image: *ci_image
-    depends_on: []
-    environment:
-      CI: "true"
-      DEBIAN_FRONTEND: noninteractive
-    commands:
-      - make whisper
-
   - name: layer-ai-tools
     image: *ci_image
     depends_on: []
