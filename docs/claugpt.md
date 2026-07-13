@@ -26,9 +26,9 @@ The script is idempotent. It:
 
 1. Installs CLIProxyAPI with Homebrew when necessary.
 2. Creates a random localhost-only proxy key.
-3. configures `gpt-5.6-sol` and the `gpt-5.6-sol-fast` priority alias.
+3. Configures standard `gpt-5.6-sol` routing and an explicit priority alias.
 4. Performs Codex OAuth when no existing CLIProxyAPI credential is present.
-5. Installs `~/.local/bin/claugpt`.
+5. Installs the `claugpt`, `claudgpy`, and `claugptf` launchers.
 6. Starts CLIProxyAPI as a Homebrew service and verifies both model names.
 
 Existing unmanaged CLIProxyAPI configuration is timestamp-backed-up before the
@@ -49,7 +49,7 @@ built-in slots are mapped as follows:
 | --- | --- |
 | `/model opus` | `gpt-5.6-sol` (standard) |
 | `/model sonnet` | `gpt-5.6-sol` (standard) |
-| `/model haiku` | `gpt-5.6-sol-fast` (`service_tier: priority`) |
+| `/model haiku` | `gpt-5.6-sol` (standard) |
 
 Reasoning effort is independent of the service tier and can be changed using
 Claude Code's native command:
@@ -63,11 +63,11 @@ Claude Code's native command:
 ```
 
 CLIProxyAPI translates Claude's `output_config.effort` into OpenAI's
-`reasoning.effort`. Claude Code's native `/fast` is not used: it emits
-Anthropic's `speed: fast`, whereas the proxy alias explicitly injects OpenAI's
-`service_tier: priority`.
+`reasoning.effort`. The fast/priority alias is deliberately absent from every
+Claude model slot and subagent setting, so Haiku and background agents remain
+on standard GPT-5.6 Sol.
 
-Both launchers set `CLAUDE_CODE_MAX_CONTEXT_TOKENS=258400`. This matches the
+All three launchers set `CLAUDE_CODE_MAX_CONTEXT_TOKENS=258400`. This matches the
 effective Codex window for GPT-5.6 Sol (272,000 raw tokens at 95%) and applies
 only to processes launched through `claugpt` or `claudgpy`; normal `claude`
 sessions retain Claude Code's standard model-specific context settings.
@@ -101,20 +101,27 @@ claugpt --permission-mode auto
 # YOLO: bypass all permission prompts and checks
 claugpt --dangerously-skip-permissions
 
-# Convenience launcher with YOLO mode enabled by default
+# Standard model with YOLO mode enabled by default
 claudgpy
+
+# Priority-tier main model with YOLO mode enabled by default
+claugptf
 ```
 
 YOLO mode is appropriate only in a trusted repository or, preferably, an
 isolated sandbox: it permits model-generated shell commands and file changes
 without review. The setup script deliberately leaves manual mode as the default
-for `claugpt`; the explicitly named `claudgpy` launcher enables YOLO mode.
+for `claugpt`. The explicitly named `claudgpy` launcher enables YOLO mode on the
+standard model. `claugptf` is the only generated launcher that opts the main
+session into the `gpt-5.6-sol-fast` priority alias, and it always enables YOLO
+mode. Its spawned subagents still use standard `gpt-5.6-sol`.
 
 ## Files created outside the repository
 
 ```text
 ~/.local/bin/claugpt
 ~/.local/bin/claudgpy
+~/.local/bin/claugptf
 ~/.cli-proxy-api/claugpt-key
 ~/.cli-proxy-api/codex-*.json
 $(brew --prefix)/etc/cliproxyapi.conf
