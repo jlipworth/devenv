@@ -1805,6 +1805,47 @@ remove_codex_npm_shim() {
     [[ -n "$saved_NPM_CONFIG_PREFIX" ]] && export NPM_CONFIG_PREFIX="$saved_NPM_CONFIG_PREFIX"
 }
 
+codex_remote_control_enabled() {
+    local settings="$HOME/.codex/app-server-daemon/settings.json"
+
+    [[ -f "$settings" ]] || return 1
+    grep -q '"remoteControlEnabled"[[:space:]]*:[[:space:]]*true' "$settings"
+}
+
+restart_codex_app_server_daemon() {
+    command -v codex &> /dev/null || return 0
+    codex_remote_control_enabled || return 0
+
+    # The installer swaps ~/.codex/packages/standalone/current out from under any
+    # running app-server, leaving a daemon on the old binary still holding the
+    # control socket. Worse, an IDE/SSH `codex app-server proxy` spawns its own
+    # app-server *without* --remote-control whenever it reaches a free socket
+    # first, and that squatter makes `codex remote-control start` fail for good.
+    # Clear both (plus the updater loop, which outlives `remote-control stop`),
+    # then reclaim the socket with a remote-control-enabled daemon.
+    log "Restarting the Codex app-server daemon on the freshly installed binary..."
+    codex remote-control stop &> /dev/null || true
+    pkill -f 'codex .*app-server --listen' 2> /dev/null || true
+    pkill -f 'app-server daemon pid-update-loop' 2> /dev/null || true
+    sleep 1
+    rm -f "$HOME/.codex/app-server-control/app-server-control.sock"
+    rm -f "$HOME"/.codex/app-server-daemon/*.pid
+
+    # A daemon restarted this abruptly can come up before its backend connection
+    # re-registers, so the first start reports "the connection is errored". That
+    # settles on its own; give it one retry before warning.
+    local attempt
+    for attempt in 1 2; do
+        if codex remote-control start; then
+            log "Codex remote-control daemon restarted." "SUCCESS"
+            return 0
+        fi
+        [[ "$attempt" == 1 ]] && sleep 15
+    done
+
+    log "Failed to restart Codex remote control; run 'codex remote-control start' by hand." "WARNING"
+}
+
 install_codex_cli_native() {
     log "Installing Codex CLI via the official standalone installer..."
 
@@ -1840,6 +1881,8 @@ install_codex_cli_native() {
         log "Codex CLI installer completed but ~/.local/bin/codex is unavailable." "WARNING"
         return 1
     fi
+
+    restart_codex_app_server_daemon
 }
 
 install_ai_tools() {
