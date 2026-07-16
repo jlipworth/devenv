@@ -1,10 +1,10 @@
-# Claude Code with GPT-5.6 Sol (`claugpt`)
+# Claude Code with GPT-5.6 through CLIProxyAPI
 
 `claugpt` keeps the Claude Code interface and agent harness while sending model
-requests to GPT-5.6 Sol through CLIProxyAPI and OpenAI Codex OAuth.
+requests to GPT-5.6 models through CLIProxyAPI and OpenAI Codex OAuth.
 
 ```text
-Claude Code -> Anthropic Messages API -> CLIProxyAPI -> Codex OAuth -> GPT-5.6 Sol
+Claude Code -> Anthropic Messages API -> CLIProxyAPI -> Codex OAuth -> GPT-5.6 Sol/Terra
 ```
 
 ## Install on another Mac
@@ -14,7 +14,7 @@ Prerequisites:
 - Homebrew
 - Claude Code (`claude` must be on `PATH`)
 - `jq`
-- An OpenAI account with Codex access to `gpt-5.6-sol`
+- An OpenAI account with Codex access to `gpt-5.6-sol` and `gpt-5.6-terra`
 
 From this repository, run:
 
@@ -29,7 +29,7 @@ The script is idempotent. It:
 3. Configures standard `gpt-5.6-sol` routing and an explicit priority alias.
 4. Performs Codex OAuth when no existing CLIProxyAPI credential is present.
 5. Installs the `claugpt`, `claudgpy`, and `claugptf` launchers.
-6. Starts CLIProxyAPI as a Homebrew service and verifies both model names.
+6. Starts CLIProxyAPI as a Homebrew service and verifies all configured models.
 
 Existing unmanaged CLIProxyAPI configuration is timestamp-backed-up before the
 script replaces it. OAuth credentials and local proxy keys are never stored in
@@ -49,7 +49,7 @@ built-in slots are mapped as follows:
 | --- | --- |
 | `/model opus` | `gpt-5.6-sol` (standard) |
 | `/model sonnet` | `gpt-5.6-sol` (standard) |
-| `/model haiku` | `gpt-5.6-sol` (standard) |
+| `/model haiku` | `gpt-5.6-terra` (standard) |
 
 Reasoning effort is independent of the service tier and can be changed using
 Claude Code's native command:
@@ -64,13 +64,13 @@ Claude Code's native command:
 
 CLIProxyAPI translates Claude's `output_config.effort` into OpenAI's
 `reasoning.effort`. The fast/priority alias is deliberately absent from every
-Claude model slot and subagent setting, so Haiku and background agents remain
-on standard GPT-5.6 Sol.
+Claude model slot and subagent setting. Haiku and small/background tasks use
+standard Terra; explicit subagents remain on standard Sol.
 
 All three launchers set `CLAUDE_CODE_MAX_CONTEXT_TOKENS=258400`. This matches the
-effective Codex window for GPT-5.6 Sol (272,000 raw tokens at 95%) and applies
-only to processes launched through `claugpt` or `claudgpy`; normal `claude`
-sessions retain Claude Code's standard model-specific context settings.
+effective Codex OAuth window for GPT-5.6 Sol and Terra (272,000 raw tokens at
+95%) and applies only to these custom launchers; normal `claude` sessions retain
+Claude Code's standard model-specific context settings.
 
 The launchers also match the tested Claude Code gateway setup by setting:
 
