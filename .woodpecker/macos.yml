@@ -6,7 +6,7 @@ when:
 labels:
   platform: darwin/arm64
   backend: local
-  purpose: gnu-files
+  purpose: mac-ci
 
 steps:
   - name: isolated-full-setup
