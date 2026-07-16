@@ -5,7 +5,7 @@
         latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools \
         latex_tooling latex_distribution \
         cli_tools cli_tools_core cli_tools_system starship syntax-highlighting update-deps \
-        full-setup noadmin-setup help neovim neovim-source neovim-package windows-terminal-tooling
+        full-setup noadmin-setup macos-ci-setup macos-ci-preflight help neovim neovim-source neovim-package windows-terminal-tooling
 
 # Default target to install all prerequisite layers
 prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript elisp latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools
@@ -196,6 +196,14 @@ full-setup:
 noadmin-setup:
 	@NO_ADMIN=true $(MAKE) full-setup
 
+# Native macOS CI runs through a guard wrapper. It uses a disposable HOME and
+# refuses package-manager or sudo changes to the runner host.
+macos-ci-setup:
+	@./ci/macos-full-setup.sh
+
+macos-ci-preflight:
+	@./ci/macos-full-setup.sh --preflight
+
 # Help target
 help:
 	@echo "JAL Emacs Installation Makefile"
@@ -203,6 +211,8 @@ help:
 	@echo "Main targets:"
 	@echo "  full-setup        - Complete system setup (linking + system + all layers + python-env + spacemacs)"
 	@echo "  noadmin-setup     - Full setup without sudo (skips system packages)"
+	@echo "  macos-ci-setup    - Isolated native macOS full setup + Spacemacs smoke"
+	@echo "  macos-ci-preflight - Check the runner's preinstalled macOS prerequisites"
 	@echo "  spacemacs         - Build Emacs 30.2 from source + install Spacemacs"
 	@echo "  editor-symlinks   - Create symlinks for .vimrc and .spacemacs"
 	@echo "  system-prereq     - Install system packages (git, nodejs, CLI tools)"

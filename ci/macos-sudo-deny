@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+log_file="${MACOS_CI_GUARD_LOG:?MACOS_CI_GUARD_LOG is required}"
+printf 'blocked sudo command: sudo %s\n' "$*" >> "$log_file"
+printf 'macOS CI guard: sudo is forbidden: %s\n' "$*" >&2
+exit 77

@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Read-only Homebrew facade for native macOS CI. Package installation belongs
+# to runner provisioning, never to a repository pipeline.
+set -euo pipefail
+
+real_brew="${MACOS_CI_REAL_BREW:?MACOS_CI_REAL_BREW is required}"
+log_file="${MACOS_CI_GUARD_LOG:?MACOS_CI_GUARD_LOG is required}"
+
+note_failure() {
+    printf '%s\n' "$*" >> "$log_file"
+    printf 'macOS CI Homebrew guard: %s\n' "$*" >&2
+}
+
+command_name="${1:-}"
+[[ $# -gt 0 ]] && shift
+
+case "$command_name" in
+    bundle)
+        # `bundle check` is read-only. Convert install-oriented calls in the
+        # setup scripts to a verification of runner-provisioned dependencies.
+        args=("$@")
+        filtered=()
+        skip_next=false
+        for arg in "${args[@]}"; do
+            if [[ "$skip_next" == true ]]; then
+                filtered+=("$arg")
+                skip_next=false
+                continue
+            fi
+            case "$arg" in
+                check) ;;
+                --file) filtered+=("$arg"); skip_next=true ;;
+                --file=*) filtered+=("$arg") ;;
+                *) filtered+=("$arg") ;;
+            esac
+        done
+        if ! "$real_brew" bundle check "${filtered[@]}"; then
+            note_failure "missing dependency from: brew bundle ${filtered[*]}"
+            exit 69
+        fi
+        ;;
+    install)
+        cask=false
+        packages=()
+        for arg in "$@"; do
+            case "$arg" in
+                --cask) cask=true ;;
+                -*) ;;
+                *) packages+=("$arg") ;;
+            esac
+        done
+        for package in "${packages[@]}"; do
+            list_args=(list --versions)
+            [[ "$cask" == true ]] && list_args=(list --cask --versions)
+            if ! "$real_brew" "${list_args[@]}" "$package" >/dev/null 2>&1; then
+                note_failure "missing preinstalled Homebrew package: $package"
+                exit 69
+            fi
+        done
+        printf 'macOS CI Homebrew guard: dependencies already installed: %s\n' "${packages[*]:-(none)}"
+        ;;
+    tap)
+        if [[ $# -eq 0 ]]; then
+            exec "$real_brew" tap
+        fi
+        existing="$($real_brew tap)"
+        for tap_name in "$@"; do
+            if ! grep -Fxq "$tap_name" <<< "$existing"; then
+                note_failure "missing preconfigured Homebrew tap: $tap_name"
+                exit 69
+            fi
+        done
+        ;;
+    update | upgrade | uninstall | reinstall | cleanup | autoremove | link | unlink | pin | unpin | services)
+        note_failure "blocked mutating Homebrew command: brew $command_name $*"
+        exit 77
+        ;;
+    "")
+        exec "$real_brew"
+        ;;
+    *)
+        # Queries used by the setup scripts (`--prefix`, `list`, `shellenv`,
+        # `config`, `outdated`, etc.) are delegated unchanged.
+        exec "$real_brew" "$command_name" "$@"
+        ;;
+esac

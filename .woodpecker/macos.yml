@@ -1,0 +1,15 @@
+# Native macOS local-backend validation. This is deliberately manual-only until
+# the labelled Mac runner has been provisioned and validated.
+when:
+  event: [manual]
+
+labels:
+  platform: darwin/arm64
+  backend: local
+  purpose: gnu-files
+
+steps:
+  - name: isolated-full-setup
+    image: bash
+    commands:
+      - ./ci/macos-full-setup.sh

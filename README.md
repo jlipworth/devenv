@@ -107,7 +107,7 @@ CI is split across Woodpecker pipeline files under `.woodpecker/`.
 - `lint.yml` runs formatting and lint checks
 
 Neovim coverage includes a Linux headless smoke script at `ci/neovim-smoke.sh`.
-macOS validation is still manual for now.
+macOS has a guarded native pipeline that remains manual-only until the labelled runner is enrolled; see `docs/MACOS_CI.md`.
 
 ## Documentation
 
@@ -117,7 +117,7 @@ macOS validation is still manual for now.
 | [docs/ALIASES.md](docs/ALIASES.md)           | Shell aliases for modern CLI tools         |
 | [docs/BASH_TO_ZSH_MIGRATION_RUNBOOK.md](docs/BASH_TO_ZSH_MIGRATION_RUNBOOK.md) | Bash to zsh migration runbook |
 | [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md) | Dependency management and Renovate         |
-| [docs/MACOS_CI_TODO.md](docs/MACOS_CI_TODO.md) | macOS CI future work and gaps            |
+| [docs/MACOS_CI.md](docs/MACOS_CI.md) | Native macOS CI safety and operations            |
 | [docs/NEOVIM_KEYBINDINGS.md](docs/NEOVIM_KEYBINDINGS.md) | Neovim-specific shortcuts and notes |
 | [docs/NO_ADMIN_SETUP.md](docs/NO_ADMIN_SETUP.md) | NO_ADMIN setup guide: target compatibility, prerequisites, troubleshooting |
 | [docs/SSH_SETUP.md](docs/SSH_SETUP.md)       | SSH key setup on a new machine             |
