@@ -10,4 +10,8 @@ steps:
     commands:
       - shellcheck --source-path=SCRIPTDIR -x *.sh
       - ./check_codex_config.sh
+
+  - name: macos-runner-policy
+    image: python:3.14-alpine
+    commands:
       - python3 ci/validate-macos-pipeline.py .woodpecker/macos.yml --default-branch master
