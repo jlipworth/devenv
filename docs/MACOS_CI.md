@@ -13,10 +13,11 @@ for these runner labels:
 ```yaml
 platform: darwin/arm64
 backend: local
-purpose: gnu-files
+purpose: mac-ci
 ```
 
-The pipeline should remain manual-only until the Mac runner is provisioned and
+The pipeline is also restricted to the repository's `master` branch. It should
+remain manual-only until the Mac runner is provisioned and
 the repository is explicitly approved as a trusted workload. The GitHub repo is
 public, so fork pull requests must never run on this local backend. Enabling
 owner-controlled push runs is a separate post-enrollment change.
@@ -42,6 +43,13 @@ the runner-provisioning workflow, not by weakening the CI guard.
 This protects the normal `ci` account's home and the shared Homebrew prefix. It
 does not make the local backend a security sandbox; that is why repository
 trust and event gating remain mandatory.
+
+`ci/validate-macos-pipeline.py` enforces the three exact runner labels, a
+manual-only event, and the default branch. It is run by portable lint CI, so a
+change cannot silently weaken the native workflow during review. This is not
+an agent-side event filter: Woodpecker must continue to require approval for
+fork pipelines, and fork pipelines must never be approved while the native
+agent is eligible.
 
 ## Runner preflight
 

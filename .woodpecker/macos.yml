@@ -2,6 +2,7 @@
 # the labelled Mac runner has been provisioned and validated.
 when:
   event: [manual]
+  branch: master
 
 labels:
   platform: darwin/arm64

@@ -45,6 +45,8 @@ grep -q 'blocked mutating Homebrew command' "$tmp/guard.log"
 grep -q 'event: \[manual\]' "$repo_root/.woodpecker/macos.yml"
 grep -q 'platform: darwin/arm64' "$repo_root/.woodpecker/macos.yml"
 grep -q 'backend: local' "$repo_root/.woodpecker/macos.yml"
+python3 "$repo_root/ci/validate-macos-pipeline.py" \
+    "$repo_root/.woodpecker/macos.yml" --default-branch master
 grep -q 'MACOS_CI_WORKSPACE' "$repo_root/ci/macos-full-setup.sh"
 grep -q 'EMACS_PREFIX=' "$repo_root/ci/macos-full-setup.sh"
 

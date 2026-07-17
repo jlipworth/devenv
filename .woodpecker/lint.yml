@@ -10,3 +10,4 @@ steps:
     commands:
       - shellcheck --source-path=SCRIPTDIR -x *.sh
       - ./check_codex_config.sh
+      - python3 ci/validate-macos-pipeline.py .woodpecker/macos.yml --default-branch master
