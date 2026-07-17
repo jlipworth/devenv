@@ -1823,7 +1823,7 @@ install_codex_cli_native() {
     fi
 
     if [[ -x "$HOME/.local/bin/codex" ]]; then
-        log "Codex CLI $($HOME/.local/bin/codex --version) standalone install complete." "SUCCESS"
+        log "Codex CLI $("$HOME/.local/bin/codex" --version) standalone install complete." "SUCCESS"
     else
         log "Codex CLI installer completed but ~/.local/bin/codex is unavailable." "WARNING"
         return 1
