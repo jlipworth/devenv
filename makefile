@@ -4,7 +4,7 @@
         shell-layer git-layer yaml markdown completion vimscript elisp \
         latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools \
         latex_tooling latex_distribution \
-        cli_tools cli_tools_core cli_tools_system starship syntax-highlighting update-deps \
+        cli_tools cli_tools_core cli_tools_system step-cli starship syntax-highlighting update-deps \
         full-setup noadmin-setup macos-ci-setup macos-ci-preflight help neovim neovim-source neovim-package windows-terminal-tooling
 
 # Default target to install all prerequisite layers
@@ -21,6 +21,10 @@ cli_tools_core:
 cli_tools_system:
 	@echo "Installing CLI system-integration extras..."
 	@./prereq_packages.sh install_cli_tools_system
+
+step-cli:
+	@echo "Installing the generic Smallstep CLI..."
+	@./prereq_packages.sh install_step_cli
 
 starship:
 	@echo "Installing Starship prompt..."

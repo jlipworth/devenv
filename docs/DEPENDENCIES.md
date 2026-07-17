@@ -107,6 +107,19 @@ brew outdated                  # Check for updates
 sudo apt update && sudo apt upgrade
 ```
 
+### Smallstep CLI
+
+```bash
+make step-cli
+step version
+```
+
+`GNU_files` owns only portable installation and verification of the generic
+`step` client. macOS and Linuxbrew use Homebrew; Debian/Ubuntu use Smallstep's
+signed package repository; Arch uses its community `step-cli` package. CA
+names, fingerprints, provisioners, SSH host patterns, and enrollment policy
+must remain in the consuming infrastructure repository.
+
 ## Version Pinning
 
 All pinned versions are managed in `versions.conf`:

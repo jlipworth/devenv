@@ -1391,6 +1391,60 @@ _install_zsh_vi_mode_from_source() {
     log "zsh-vi-mode installed to $zvm_dir" "SUCCESS"
 }
 
+# Install only the generic Smallstep CLI. CA names, fingerprints, provisioners,
+# and enrollment policy belong to the consuming infrastructure repository.
+install_step_cli() {
+    if command -v step &> /dev/null; then
+        log "Smallstep CLI is already installed: $(step version | head -n 1)"
+        return 0
+    fi
+
+    if is_installed "brew"; then
+        brew install step || {
+            log "Failed to install Smallstep CLI through Homebrew." "ERROR"
+            return 1
+        }
+    elif [[ "$DISTRO" == "debian" ]]; then
+        if no_admin_mode; then
+            log "NO_ADMIN=true: Smallstep CLI requires Homebrew or an administrator-installed step-cli package." "WARNING"
+            return 0
+        fi
+
+        local key_file
+        key_file=$(mktemp)
+        install_packages "curl" "gpg" "ca-certificates"
+        curl -fsSL https://packages.smallstep.com/keys/apt/repo-signing-key.gpg -o "$key_file"
+        sudo install -d -m 0755 /etc/apt/keyrings
+        sudo install -m 0644 "$key_file" /etc/apt/keyrings/smallstep.asc
+        rm -f "$key_file"
+        printf '%s\n' \
+            'Types: deb' \
+            'URIs: https://packages.smallstep.com/stable/debian' \
+            'Suites: debs' \
+            'Components: main' \
+            'Signed-By: /etc/apt/keyrings/smallstep.asc' |
+            sudo tee /etc/apt/sources.list.d/smallstep.sources > /dev/null
+        sudo apt-get update
+        sudo apt-get install -y step-cli
+    elif [[ "$DISTRO" == "arch" ]]; then
+        install_packages "step-cli"
+        if ! command -v step &> /dev/null && command -v step-cli &> /dev/null; then
+            mkdir -p "$HOME/.local/bin"
+            ln -sf "$(command -v step-cli)" "$HOME/.local/bin/step"
+            export PATH="$HOME/.local/bin:$PATH"
+        fi
+    else
+        log "Smallstep CLI installation is not implemented for $DISTRO without Homebrew." "WARNING"
+        return 0
+    fi
+
+    if ! command -v step &> /dev/null; then
+        log "Smallstep CLI installation completed but 'step' is not on PATH." "ERROR"
+        return 1
+    fi
+    step version
+}
+
 install_cli_tools_core() {
     log "Installing core CLI tools..."
 
@@ -1428,6 +1482,8 @@ install_cli_tools_core() {
             install_packages "htop" "gpg" "cloc" "cmake" "tmux" "fzf" "ripgrep" "zoxide"
         fi
     fi
+
+    install_step_cli
 }
 
 install_cli_tools_system() {
@@ -2354,6 +2410,7 @@ main() {
         "install_ai_tools"
         "install_starship"
         "install_syntax_highlighting"
+        "install_step_cli"
         "install_cli_tools_core"
         "install_cli_tools_system"
         "install_cli_tools"
