@@ -49,5 +49,35 @@ python3 "$repo_root/ci/validate-macos-pipeline.py" \
     "$repo_root/.woodpecker/macos.yml" --default-branch master
 grep -q 'MACOS_CI_WORKSPACE' "$repo_root/ci/macos-full-setup.sh"
 grep -q 'EMACS_PREFIX=' "$repo_root/ci/macos-full-setup.sh"
+grep -q '^brew "libgccjit"$' "$repo_root/brewfiles/Brewfile.emacs-30"
+grep -q 'ts_language_version=ts_language_abi_version' "$repo_root/build_emacs30.sh"
+grep -q 'managed snippets-only ~/.emacs.d skeleton' "$repo_root/build_emacs30.sh"
+grep -q 'Existing non-Spacemacs ~/.emacs.d requires interactive review' "$repo_root/build_emacs30.sh"
+grep -q 'EMACS_REDOWNLOAD:-false' "$repo_root/build_emacs30.sh"
+if grep -q 'Redownload & replace?' "$repo_root/build_emacs30.sh"; then
+    echo "existing Emacs sources must be reused without prompting during a resume" >&2
+    exit 1
+fi
+grep -q 'EMACS_APP_DIR:-/Applications' "$repo_root/build_emacs30.sh"
+grep -q 'ditto "$EMACS_APP_SOURCE" "$EMACS_APP_DESTINATION"' "$repo_root/build_emacs30.sh"
+if grep -q -- '--disable-ns-self-contained' "$repo_root/build_emacs30.sh"; then
+    echo "the installed macOS app must be self-contained" >&2
+    exit 1
+fi
+grep -q 'bin/emacs-macos-wrapper' "$repo_root/build_emacs30.sh"
+grep -q 'exec "${EMACS_APP_DIR:-/Applications}/Emacs.app/Contents/MacOS/Emacs"' "$repo_root/bin/emacs-macos-wrapper"
+grep -q 'brew trust --formula hashicorp/tap/terraform' "$repo_root/prereq_packages.sh"
+grep -q 'brew trust --formula oven-sh/bun/bun' "$repo_root/prereq_packages.sh"
+grep -q 'uv already installed; updates are managed by Homebrew' "$repo_root/prereq_packages.sh"
+grep -q '^NODE_VERSION="24"$' "$repo_root/versions.conf"
+grep -q 'uv tool install --force ipython --with ipykernel' "$repo_root/prereq_packages.sh"
+if grep -q 'uv tool install ipykernel' "$repo_root/prereq_packages.sh"; then
+    echo "ipykernel must be injected into a tool environment, not installed as a standalone uv tool" >&2
+    exit 1
+fi
+if grep -Eq '(^|[[:space:]])tac([[:space:]]|$)' "$repo_root/prereq_packages.sh"; then
+    echo "prereq_packages.sh must not require GNU tac on macOS" >&2
+    exit 1
+fi
 
 echo "macOS CI guard tests passed"

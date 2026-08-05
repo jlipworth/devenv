@@ -3,6 +3,7 @@
 
 # Core build tools
 brew "gcc"
+brew "libgccjit"
 brew "autoconf"
 brew "automake"
 brew "cmake"
@@ -26,10 +27,10 @@ brew "librsvg"
 brew "harfbuzz"
 
 # Linux-only: libraries that apt normally provides as -dev packages.
-# On macOS these come via Xcode/system frameworks or are pulled in by
-# the formulas above. On Linuxbrew they have bottles and allow building
-# Emacs without sudo.
-brew "libgccjit" if OS.linux?
+# On macOS these come via Xcode/system frameworks or are pulled in by the
+# formulas above. On Linuxbrew they have bottles and allow building Emacs
+# without sudo. libgccjit is cross-platform because native compilation needs
+# it on macOS as well.
 brew "gtk+3"     if OS.linux?
 brew "ncurses"   if OS.linux?
 brew "libx11"    if OS.linux?

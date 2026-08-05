@@ -1,0 +1,4 @@
+#!/bin/sh
+# A symlink to a self-contained Emacs.app loses the bundle path that Emacs
+# uses to find native Lisp and other resources. Execute the real app path.
+exec "${EMACS_APP_DIR:-/Applications}/Emacs.app/Contents/MacOS/Emacs" "$@"

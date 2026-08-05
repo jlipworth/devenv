@@ -726,15 +726,23 @@ install_python_prereqs() {
     # Jupyter CLI tooling via uv (matches setup-dev-tools.ps1 behavior on Windows).
     if command -v uv > /dev/null 2>&1; then
         for tool in jupytext ipython; do
-            if ! uv tool list 2> /dev/null | grep -q "^${tool}\b"; then
+            if ! command -v "$tool" > /dev/null 2>&1; then
                 log "Installing ${tool} via uv tool install..." "INFO"
                 uv tool install "${tool}"
             fi
         done
-        if ! uv tool list 2> /dev/null | grep -q "^ipykernel\b"; then
-            log "Installing ipykernel via uv tool install..." "INFO"
-            uv tool install ipykernel --with ipython
+
+        # ipykernel is a library without its own executable, so it cannot be
+        # installed as a standalone uv tool. Inject it into the IPython tool
+        # environment and register that interpreter as a user kernel.
+        uv_tool_root="$(uv tool dir)"
+        ipython_python="${uv_tool_root}/ipython/bin/python3"
+        if [[ ! -x "$ipython_python" ]] || ! "$ipython_python" -c 'import ipykernel' > /dev/null 2>&1; then
+            log "Adding ipykernel to the uv-managed IPython environment..." "INFO"
+            uv tool install --force ipython --with ipykernel
         fi
+        ipython_python="$(uv tool dir)/ipython/bin/python3"
+        "$ipython_python" -m ipykernel install --user --name uv-ipython --display-name "Python (uv IPython)"
     else
         log "WARNING: uv not found; skipping Jupyter CLI install. Run bootstrap.sh first." "WARNING"
     fi
@@ -836,6 +844,13 @@ install_js_tools() {
     # Install nvm, bun, pnpm via Homebrew
     if is_installed "brew"; then
         log "Installing JavaScript tools via Homebrew..."
+        if brew help trust &> /dev/null; then
+            log "Trusting the reviewed Bun formula..."
+            brew trust --formula oven-sh/bun/bun || {
+                log "Error trusting oven-sh/bun/bun." "ERROR"
+                return 1
+            }
+        fi
         brew bundle --file="$GNU_DIR/brewfiles/Brewfile.javascript" || log "Error with Brewfile.javascript" "WARNING"
     else
         log "Homebrew not found. Please install Homebrew first." "WARNING"
@@ -993,6 +1008,17 @@ install_terraform_support() {
     elif [[ $OS == "Darwin" ]]; then
         log "Adding HashiCorp tap to Homebrew..."
         brew tap hashicorp/tap || log "Error adding hashicorp/tap." "WARNING"
+
+        # Homebrew 5 requires third-party tap content to be trusted. Scope the
+        # trust grant to the one reviewed formula instead of trusting every
+        # current and future formula in the tap or disabling trust checks.
+        if brew help trust &> /dev/null; then
+            log "Trusting the reviewed HashiCorp Terraform formula..."
+            brew trust --formula hashicorp/tap/terraform || {
+                log "Error trusting hashicorp/tap/terraform." "ERROR"
+                return 1
+            }
+        fi
 
         install_packages "terraform" "terraform-ls" "ansible" "jq"
 
@@ -1639,8 +1665,7 @@ EOF
         # Remove existing sourcing block and trailing blank lines (portable, no sed -i)
         if grep -v '# Load custom shell aliases\|# Source shell aliases' "$shell_rc" |
             awk '/if \[ -f ~\/.shell_aliases \]/{skip=1} skip && /^fi$/{skip=0; next} !skip' |
-            awk 'NF{found=1} found' |
-            tac | awk 'NF{found=1} found' | tac \
+            awk 'NF{last=NR} {lines[NR]=$0} END{for(i=1;i<=last;i++) print lines[i]}' \
             > "${shell_rc}.tmp"; then
             mv "${shell_rc}.tmp" "$shell_rc"
         else
@@ -1675,14 +1700,20 @@ install_python_env() {
         }
         log "uv installed successfully." "SUCCESS"
     else
-        log "uv already installed, updating..."
-        uv self update || log "Failed to update uv." "WARNING"
+        if brew list --formula uv > /dev/null 2>&1; then
+            log "uv already installed; updates are managed by Homebrew."
+        else
+            log "uv already installed, updating..."
+            uv self update || log "Failed to update uv." "WARNING"
+        fi
     fi
 
     # Install global tools via uv
     log "Installing global Python tools via uv..."
-    uv tool install ipython || log "Failed to install ipython." "WARNING"
-    uv tool install jupyterlab || log "Failed to install jupyterlab." "WARNING"
+    command -v ipython > /dev/null 2>&1 ||
+        uv tool install ipython --with ipykernel || log "Failed to install ipython." "WARNING"
+    command -v jupyter-lab > /dev/null 2>&1 ||
+        uv tool install jupyterlab || log "Failed to install jupyterlab." "WARNING"
 
     log "Python environment setup complete." "SUCCESS"
 }

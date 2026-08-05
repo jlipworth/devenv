@@ -288,7 +288,22 @@ elif [[ "$OS" == "Darwin" ]]; then
     # Ensure Homebrew binaries (giflib-config, tiffinfo, etc.) are on PATH
     export PATH="$(brew --prefix)/bin:$(brew --prefix)/sbin:$PATH"
 
-    # Let configure find libgccjit
+    # Tree-sitter 0.25+ renamed ts_language_version to
+    # ts_language_abi_version. Emacs 30.2 still uses the old API name.
+    TREE_SITTER_VERSION="$(brew list --versions tree-sitter 2> /dev/null | awk '{print $2}' | head -n 1)"
+    if [[ -n "$TREE_SITTER_VERSION" ]] && [[ "$(printf '%s\n' '0.25.0' "$TREE_SITTER_VERSION" | sort -V | head -n 1)" == '0.25.0' ]]; then
+        export CPPFLAGS="-Dts_language_version=ts_language_abi_version ${CPPFLAGS:-}"
+        log "Using tree-sitter 0.25+ compatibility define for Emacs 30"
+    fi
+
+    # Let configure find libgccjit. It is a separate Homebrew formula on
+    # current macOS rather than part of the gcc formula's library tree.
+    LIBGCCJIT_PREFIX="$(brew --prefix libgccjit)"
+    export PKG_CONFIG_PATH="${LIBGCCJIT_PREFIX}/lib/gcc/current/pkgconfig:${PKG_CONFIG_PATH:-}"
+    export LIBRARY_PATH="${LIBGCCJIT_PREFIX}/lib/gcc/current:${LIBRARY_PATH:-}"
+    export DYLD_FALLBACK_LIBRARY_PATH="${LIBGCCJIT_PREFIX}/lib/gcc/current:${DYLD_FALLBACK_LIBRARY_PATH:-}"
+    log "libgccjit paths configured: $LIBGCCJIT_PREFIX"
+
     # Find the latest versioned gcc executable (e.g., /opt/homebrew/bin/gcc-15)
     LATEST_GCC_EXECUTABLE=$(ls -1 /opt/homebrew/bin/gcc-[0-9]* | sort -V | tail -n 1)
 
@@ -297,8 +312,8 @@ elif [[ "$OS" == "Darwin" ]]; then
 
     # Now, set the paths using the dynamically found information
     HOMEBREW_GCC_PREFIX="$(brew --prefix gcc)"
-    export PKG_CONFIG_PATH="${HOMEBREW_GCC_PREFIX}/lib/gcc/${LATEST_GCC_MAJOR_VERSION}/pkgconfig:$PKG_CONFIG_PATH"
-    export LIBRARY_PATH="${HOMEBREW_GCC_PREFIX}/lib/gcc/${LATEST_GCC_MAJOR_VERSION}:$LIBRARY_PATH"
+    export PKG_CONFIG_PATH="${HOMEBREW_GCC_PREFIX}/lib/gcc/${LATEST_GCC_MAJOR_VERSION}/pkgconfig:${PKG_CONFIG_PATH:-}"
+    export LIBRARY_PATH="${HOMEBREW_GCC_PREFIX}/lib/gcc/${LATEST_GCC_MAJOR_VERSION}:${LIBRARY_PATH:-}"
 fi
 
 # -----------------------------------------------------------------------------
@@ -310,18 +325,15 @@ if [[ -d "$EMACS_DIR" ]]; then
         # In CI, always start fresh
         log "CI mode: Removing existing source directory for clean build" "INFO"
         rm -rf "$EMACS_DIR" "$EMACS_TAR"
-    elif [[ ! -t 0 ]]; then
-        log "Non-interactive shell detected. Reusing '$EMACS_DIR' and cleaning previous build outputs…" "INFO"
-        make -C "$EMACS_DIR" distclean > /dev/null 2>&1 || make -C "$EMACS_DIR" clean > /dev/null 2>&1 || true
+    elif [[ "${EMACS_REDOWNLOAD:-false}" == "true" ]]; then
+        log "EMACS_REDOWNLOAD=true: Removing old source…" "INFO"
+        rm -rf "$EMACS_DIR" "$EMACS_TAR"
     else
-        read -p "Directory '$EMACS_DIR' exists. Redownload & replace? [y/N] " resp
-        if [[ "$resp" =~ ^[Yy]$ ]]; then
-            log "Removing old source…" "INFO"
-            rm -rf "$EMACS_DIR" "$EMACS_TAR"
-        else
-            log "Reusing '$EMACS_DIR'. Cleaning previous build…" "INFO"
-            make -C "$EMACS_DIR" distclean > /dev/null 2>&1 || make -C "$EMACS_DIR" clean > /dev/null 2>&1 || true
-        fi
+        # Reuse sources by default so an interrupted setup resumes without an
+        # avoidable prompt or download. Set EMACS_REDOWNLOAD=true explicitly
+        # when a pristine source tree is required outside CI.
+        log "Reusing '$EMACS_DIR' and cleaning previous build outputs…" "INFO"
+        make -C "$EMACS_DIR" distclean > /dev/null 2>&1 || make -C "$EMACS_DIR" clean > /dev/null 2>&1 || true
     fi
 fi
 
@@ -362,8 +374,7 @@ if [[ "$OS" == "Darwin" ]]; then
         --with-xml2 \
         --with-webp \
         --with-lcms2 \
-        --with-ns \
-        --disable-ns-self-contained
+        --with-ns
 else
     ./configure \
         --prefix="$EMACS_PREFIX" \
@@ -408,34 +419,62 @@ log "Compilation finished at: $(date)" "SUCCESS"
 if [[ "$CI" == "true" && "$CI_INSTALL" != "true" ]]; then
     log "CI mode: Skipping 'make install' (set CI_INSTALL=true to install)" "INFO"
 else
-    log "Installing Emacs to $EMACS_PREFIX..."
-    mkdir -p "$EMACS_PREFIX" 2> /dev/null || true
-    # Determine if sudo is needed based on prefix writability
-    if [[ -w "$EMACS_PREFIX" ]] || [[ "$CI" == "true" ]] || [[ $(id -u) -eq 0 ]]; then
+    if [[ "$OS" == "Darwin" ]]; then
+        # A self-contained NS build is assembled in nextstep/Emacs.app. The
+        # configured prefix is intentionally not used by upstream for this
+        # build type.
+        log "Assembling self-contained Emacs.app bundle…"
         make install
     else
-        log "Prefix $EMACS_PREFIX is not writable, using sudo..." "WARNING"
-        sudo make install
+        log "Installing Emacs to $EMACS_PREFIX..."
+        mkdir -p "$EMACS_PREFIX" 2> /dev/null || true
+        # Determine if sudo is needed based on prefix writability
+        if [[ -w "$EMACS_PREFIX" ]] || [[ "$CI" == "true" ]] || [[ $(id -u) -eq 0 ]]; then
+            make install
+        else
+            log "Prefix $EMACS_PREFIX is not writable, using sudo..." "WARNING"
+            sudo make install
+        fi
+
+        # Recompile org .elc files to prevent version mismatch warnings.
+        # Fresh compilation ensures .elc files match the installed .el sources.
+        ORG_LISP_DIR="${EMACS_PREFIX}/share/emacs/${EMACS_VERSION}/lisp/org"
+        if [[ -d "$ORG_LISP_DIR" ]]; then
+            log "Recompiling org-mode to ensure .elc files are fresh..."
+            if [[ -w "$ORG_LISP_DIR" ]] || [[ "$CI" == "true" ]] || [[ $(id -u) -eq 0 ]]; then
+                emacs --batch -L "$ORG_LISP_DIR" --eval "(byte-recompile-directory \"$ORG_LISP_DIR\" 0 t)" 2> /dev/null
+            else
+                sudo emacs --batch -L "$ORG_LISP_DIR" --eval "(byte-recompile-directory \"$ORG_LISP_DIR\" 0 t)" 2> /dev/null
+            fi
+            log "Org-mode recompilation complete" "SUCCESS"
+        fi
     fi
     log "Installation complete" "SUCCESS"
 
-    # Recompile org .elc files to prevent version mismatch warnings
-    # Fresh compilation ensures .elc files match the installed .el sources
-    ORG_LISP_DIR="${EMACS_PREFIX}/share/emacs/${EMACS_VERSION}/lisp/org"
-    if [[ -d "$ORG_LISP_DIR" ]]; then
-        log "Recompiling org-mode to ensure .elc files are fresh..."
-        if [[ -w "$ORG_LISP_DIR" ]] || [[ "$CI" == "true" ]] || [[ $(id -u) -eq 0 ]]; then
-            emacs --batch -L "$ORG_LISP_DIR" --eval "(byte-recompile-directory \"$ORG_LISP_DIR\" 0 t)" 2> /dev/null
-        else
-            sudo emacs --batch -L "$ORG_LISP_DIR" --eval "(byte-recompile-directory \"$ORG_LISP_DIR\" 0 t)" 2> /dev/null
-        fi
-        log "Org-mode recompilation complete" "SUCCESS"
-    fi
-
     if [[ "$OS" == "Darwin" ]]; then
-        log "Building Emacs.app bundle…"
-        make -C nextstep install
-        log "Emacs.app created in nextstep/" "SUCCESS"
+        EMACS_APP_SOURCE="$PWD/nextstep/Emacs.app"
+        EMACS_APP_DESTINATION="${EMACS_APP_DIR:-/Applications}/Emacs.app"
+        if [[ ! -d "$EMACS_APP_SOURCE" ]]; then
+            log "Expected app bundle was not created at $EMACS_APP_SOURCE" "ERROR"
+            exit 1
+        fi
+        log "Installing Emacs.app at $EMACS_APP_DESTINATION…"
+        if [[ -w "$(dirname "$EMACS_APP_DESTINATION")" ]] || [[ $(id -u) -eq 0 ]]; then
+            ditto "$EMACS_APP_SOURCE" "$EMACS_APP_DESTINATION"
+        else
+            sudo ditto "$EMACS_APP_SOURCE" "$EMACS_APP_DESTINATION"
+        fi
+        EMACS_CLI_DESTINATION="$EMACS_PREFIX/bin/emacs"
+        EMACSCLIENT_SOURCE="$EMACS_APP_DESTINATION/Contents/MacOS/bin/emacsclient"
+        if [[ -w "$EMACS_PREFIX/bin" ]] || [[ $(id -u) -eq 0 ]]; then
+            install -m 755 "$GNU_DIR/bin/emacs-macos-wrapper" "$EMACS_CLI_DESTINATION"
+            [[ ! -x "$EMACSCLIENT_SOURCE" ]] || ln -sfn "$EMACSCLIENT_SOURCE" "$EMACS_PREFIX/bin/emacsclient"
+        else
+            sudo mkdir -p "$EMACS_PREFIX/bin"
+            sudo install -m 755 "$GNU_DIR/bin/emacs-macos-wrapper" "$EMACS_CLI_DESTINATION"
+            [[ ! -x "$EMACSCLIENT_SOURCE" ]] || sudo ln -sfn "$EMACSCLIENT_SOURCE" "$EMACS_PREFIX/bin/emacsclient"
+        fi
+        log "Emacs.app installed at $EMACS_APP_DESTINATION" "SUCCESS"
     fi
 fi
 
@@ -487,18 +526,49 @@ if [[ "$CI" == "true" ]]; then
     exit 0
 fi
 
-if [ -d "$HOME/.emacs.d" ]; then
-    log "Existing ~/.emacs.d detected." "WARNING"
-    read -p "Replace with Spacemacs? [y/N] " answer
-    [[ "$answer" == "y" ]] || {
-        log "Skipping Spacemacs install."
-        exit 0
-    }
-    rm -rf "$HOME/.emacs.d"
+SPACEMACS_DIR="$HOME/.emacs.d"
+SPACEMACS_REPO="https://github.com/jlipworth/spacemacs"
+
+if [[ -d "$SPACEMACS_DIR/.git" ]]; then
+    existing_remote="$(git -C "$SPACEMACS_DIR" remote get-url origin 2> /dev/null || true)"
+    if [[ "$existing_remote" != "$SPACEMACS_REPO" && "$existing_remote" != "${SPACEMACS_REPO}.git" ]]; then
+        log "Existing ~/.emacs.d checkout has an unexpected origin: $existing_remote" "ERROR"
+        exit 1
+    fi
+    log "Updating existing Spacemacs checkout..."
+    git -C "$SPACEMACS_DIR" pull --ff-only origin develop
+    log "Spacemacs checkout is current." "SUCCESS"
+    install_all_the_icons_fonts
+    exit 0
+fi
+
+if [[ -d "$SPACEMACS_DIR" ]]; then
+    # create_snippet_symlink creates this exact managed skeleton before Emacs
+    # is built. It is safe to remove only when nothing else is present.
+    unexpected_entry="$(find "$SPACEMACS_DIR" -mindepth 1 \
+        ! -path "$SPACEMACS_DIR/private" \
+        ! -path "$SPACEMACS_DIR/private/snippets" -print -quit)"
+    if [[ -z "$unexpected_entry" && -L "$SPACEMACS_DIR/private/snippets" &&
+        "$(readlink "$SPACEMACS_DIR/private/snippets")" == "$GNU_DIR/snippets/" ]]; then
+        log "Removing the managed snippets-only ~/.emacs.d skeleton before cloning Spacemacs."
+        rm "$SPACEMACS_DIR/private/snippets"
+        rmdir "$SPACEMACS_DIR/private" "$SPACEMACS_DIR"
+    elif [[ ! -t 0 ]]; then
+        log "Existing non-Spacemacs ~/.emacs.d requires interactive review; refusing to replace it." "ERROR"
+        exit 1
+    else
+        log "Existing ~/.emacs.d detected." "WARNING"
+        read -p "Replace with Spacemacs? [y/N] " answer
+        [[ "$answer" == "y" ]] || {
+            log "Skipping Spacemacs install."
+            exit 0
+        }
+        rm -rf "$SPACEMACS_DIR"
+    fi
 fi
 
 log "Cloning Spacemacs repository (develop branch)..."
-git clone --depth 100 --branch develop https://github.com/jlipworth/spacemacs "$HOME/.emacs.d" &&
+git clone --depth 100 --branch develop "$SPACEMACS_REPO" "$SPACEMACS_DIR" &&
     log "Spacemacs installed." "SUCCESS" ||
     {
         log "Failed to clone Spacemacs." "ERROR"
