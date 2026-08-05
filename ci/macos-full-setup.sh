@@ -87,6 +87,7 @@ ln -s "$repo_root/ci/macos-sudo-deny" "$guard_bin/sudo"
 export HOME="$ci_home"
 export GNU_DIR="$repo_root"
 export EMACS_PREFIX="$HOME/.local/emacs"
+export EMACS_APP_DIR="$HOME/Applications"
 export MACOS_CI=true
 export NO_ADMIN=true
 export CI=true

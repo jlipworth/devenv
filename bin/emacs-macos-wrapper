@@ -1,4 +1,12 @@
 #!/bin/sh
-# A symlink to a self-contained Emacs.app loses the bundle path that Emacs
-# uses to find native Lisp and other resources. Execute the real app path.
-exec "${EMACS_APP_DIR:-/Applications}/Emacs.app/Contents/MacOS/Emacs" "$@"
+# A symlink to a self-contained Emacs.app loses the bundle path that Emacs uses
+# to find native Lisp and other resources. The installer records its resolved
+# app path beside this wrapper so later shells do not need EMACS_APP_DIR.
+wrapper_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
+path_file="$wrapper_dir/emacs-app-path"
+if [ -r "$path_file" ]; then
+    IFS= read -r emacs_app <"$path_file"
+else
+    emacs_app="${EMACS_APP_DIR:-/Applications}/Emacs.app"
+fi
+exec "$emacs_app/Contents/MacOS/Emacs" "$@"

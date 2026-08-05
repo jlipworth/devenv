@@ -1666,7 +1666,7 @@ EOF
         if grep -v '# Load custom shell aliases\|# Source shell aliases' "$shell_rc" |
             awk '/if \[ -f ~\/.shell_aliases \]/{skip=1} skip && /^fi$/{skip=0; next} !skip' |
             awk 'NF{last=NR} {lines[NR]=$0} END{for(i=1;i<=last;i++) print lines[i]}' \
-            > "${shell_rc}.tmp"; then
+                > "${shell_rc}.tmp"; then
             mv "${shell_rc}.tmp" "$shell_rc"
         else
             rm -f "${shell_rc}.tmp"

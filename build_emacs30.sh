@@ -453,27 +453,58 @@ else
 
     if [[ "$OS" == "Darwin" ]]; then
         EMACS_APP_SOURCE="$PWD/nextstep/Emacs.app"
-        EMACS_APP_DESTINATION="${EMACS_APP_DIR:-/Applications}/Emacs.app"
+        EMACS_APP_PARENT="${EMACS_APP_DIR:-/Applications}"
+        EMACS_APP_DESTINATION="$EMACS_APP_PARENT/Emacs.app"
         if [[ ! -d "$EMACS_APP_SOURCE" ]]; then
             log "Expected app bundle was not created at $EMACS_APP_SOURCE" "ERROR"
             exit 1
         fi
-        log "Installing Emacs.app at $EMACS_APP_DESTINATION…"
-        if [[ -w "$(dirname "$EMACS_APP_DESTINATION")" ]] || [[ $(id -u) -eq 0 ]]; then
-            ditto "$EMACS_APP_SOURCE" "$EMACS_APP_DESTINATION"
+
+        if [[ -d "$EMACS_APP_PARENT" && -w "$EMACS_APP_PARENT" ]]; then
+            app_admin=()
+        elif [[ ! -e "$EMACS_APP_PARENT" ]] && mkdir -p "$EMACS_APP_PARENT" 2> /dev/null; then
+            app_admin=()
         else
-            sudo ditto "$EMACS_APP_SOURCE" "$EMACS_APP_DESTINATION"
+            sudo mkdir -p "$EMACS_APP_PARENT"
+            app_admin=(sudo)
         fi
+
+        app_stage="$EMACS_APP_PARENT/.Emacs.app.new.$$"
+        app_backup="$EMACS_APP_PARENT/.Emacs.app.previous.$$"
+        log "Installing Emacs.app at $EMACS_APP_DESTINATION…"
+        "${app_admin[@]}" rm -rf -- "$app_stage" "$app_backup"
+        "${app_admin[@]}" ditto "$EMACS_APP_SOURCE" "$app_stage"
+        if [[ ! -x "$app_stage/Contents/MacOS/Emacs" ]]; then
+            "${app_admin[@]}" rm -rf -- "$app_stage"
+            log "Staged Emacs.app is missing its executable" "ERROR"
+            exit 1
+        fi
+
+        if [[ -e "$EMACS_APP_DESTINATION" ]]; then
+            "${app_admin[@]}" mv "$EMACS_APP_DESTINATION" "$app_backup"
+        fi
+        if ! "${app_admin[@]}" mv "$app_stage" "$EMACS_APP_DESTINATION"; then
+            [[ ! -e "$app_backup" ]] || "${app_admin[@]}" mv "$app_backup" "$EMACS_APP_DESTINATION"
+            log "Failed to replace $EMACS_APP_DESTINATION; the previous app was restored" "ERROR"
+            exit 1
+        fi
+        [[ ! -e "$app_backup" ]] || "${app_admin[@]}" rm -rf -- "$app_backup"
+
         EMACS_CLI_DESTINATION="$EMACS_PREFIX/bin/emacs"
         EMACSCLIENT_SOURCE="$EMACS_APP_DESTINATION/Contents/MacOS/bin/emacsclient"
-        if [[ -w "$EMACS_PREFIX/bin" ]] || [[ $(id -u) -eq 0 ]]; then
-            install -m 755 "$GNU_DIR/bin/emacs-macos-wrapper" "$EMACS_CLI_DESTINATION"
-            [[ ! -x "$EMACSCLIENT_SOURCE" ]] || ln -sfn "$EMACSCLIENT_SOURCE" "$EMACS_PREFIX/bin/emacsclient"
+        if [[ -d "$EMACS_PREFIX/bin" && -w "$EMACS_PREFIX/bin" ]]; then
+            cli_admin=()
+        elif [[ ! -e "$EMACS_PREFIX/bin" ]] && mkdir -p "$EMACS_PREFIX/bin" 2> /dev/null; then
+            cli_admin=()
         else
             sudo mkdir -p "$EMACS_PREFIX/bin"
-            sudo install -m 755 "$GNU_DIR/bin/emacs-macos-wrapper" "$EMACS_CLI_DESTINATION"
-            [[ ! -x "$EMACSCLIENT_SOURCE" ]] || sudo ln -sfn "$EMACSCLIENT_SOURCE" "$EMACS_PREFIX/bin/emacsclient"
+            cli_admin=(sudo)
         fi
+        "${cli_admin[@]}" install -m 755 "$GNU_DIR/bin/emacs-macos-wrapper" "$EMACS_CLI_DESTINATION"
+        printf '%s\n' "$EMACS_APP_DESTINATION" > "$PWD/emacs-app-path"
+        "${cli_admin[@]}" install -m 644 "$PWD/emacs-app-path" "$EMACS_PREFIX/bin/emacs-app-path"
+        rm "$PWD/emacs-app-path"
+        [[ ! -x "$EMACSCLIENT_SOURCE" ]] || "${cli_admin[@]}" ln -sfn "$EMACSCLIENT_SOURCE" "$EMACS_PREFIX/bin/emacsclient"
         log "Emacs.app installed at $EMACS_APP_DESTINATION" "SUCCESS"
     fi
 fi
@@ -530,14 +561,30 @@ SPACEMACS_DIR="$HOME/.emacs.d"
 SPACEMACS_REPO="https://github.com/jlipworth/spacemacs"
 
 if [[ -d "$SPACEMACS_DIR/.git" ]]; then
-    existing_remote="$(git -C "$SPACEMACS_DIR" remote get-url origin 2> /dev/null || true)"
-    if [[ "$existing_remote" != "$SPACEMACS_REPO" && "$existing_remote" != "${SPACEMACS_REPO}.git" ]]; then
-        log "Existing ~/.emacs.d checkout has an unexpected origin: $existing_remote" "ERROR"
+    spacemacs_remote=""
+    while IFS= read -r remote_name; do
+        remote_url="$(git -C "$SPACEMACS_DIR" remote get-url "$remote_name" 2> /dev/null || true)"
+        normalized_remote="${remote_url%.git}"
+        normalized_remote="${normalized_remote#https://github.com/}"
+        normalized_remote="${normalized_remote#git@github.com:}"
+        normalized_remote="${normalized_remote#ssh://git@github.com/}"
+        if [[ "$normalized_remote" == "jlipworth/spacemacs" ]]; then
+            spacemacs_remote="$remote_name"
+            break
+        fi
+    done < <(git -C "$SPACEMACS_DIR" remote)
+    if [[ -z "$spacemacs_remote" ]]; then
+        log "Existing ~/.emacs.d checkout has no remote for jlipworth/spacemacs" "ERROR"
         exit 1
     fi
     log "Updating existing Spacemacs checkout..."
-    git -C "$SPACEMACS_DIR" pull --ff-only origin develop
+    if ! git -C "$SPACEMACS_DIR" rev-parse --abbrev-ref '@{upstream}' > /dev/null 2>&1; then
+        log "Existing Spacemacs branch has no upstream; refusing to guess a branch." "ERROR"
+        exit 1
+    fi
+    git -C "$SPACEMACS_DIR" pull --ff-only
     log "Spacemacs checkout is current." "SUCCESS"
+    "$GNU_DIR/prereq_packages.sh" create_snippet_symlink
     install_all_the_icons_fonts
     exit 0
 fi
@@ -575,4 +622,5 @@ git clone --depth 100 --branch develop "$SPACEMACS_REPO" "$SPACEMACS_DIR" &&
         exit 1
     }
 
+"$GNU_DIR/prereq_packages.sh" create_snippet_symlink
 install_all_the_icons_fonts

@@ -128,7 +128,7 @@ All pinned versions are managed in `versions.conf`:
 # versions.conf
 EMACS_VERSION="30.2"
 GCC_VERSION="auto"        # "auto" detects highest available, or pin like "14"
-NODE_VERSION="24"         # installed via nvm ("lts" or a major like "22" also work)
+NODE_VERSION="26"         # installed via nvm ("lts" or a major like "22" also work)
 ALACRITTY_VERSION="0.16.1" # Windows portable fallback
 NEOVIM_VERSION="0.12.0"   # default Unix source-build path
 ```
@@ -150,7 +150,7 @@ NEOVIM_VERSION="0.12.0"   # default Unix source-build path
 
 ### Also Pinned (in `versions.conf`)
 
-- Node.js (`NODE_VERSION`, currently `24` LTS)
+- Node.js (`NODE_VERSION`, currently `26`)
 - Neovim (`NEOVIM_VERSION`, currently `0.12.0`)
 - Alacritty (`ALACRITTY_VERSION`, currently `0.16.1`)
 
