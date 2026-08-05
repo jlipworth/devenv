@@ -83,7 +83,7 @@ cat > "$mock_app/Contents/MacOS/Emacs" << 'EOF'
 printf 'mock-emacs:%s\n' "$*"
 EOF
 chmod +x "$wrapper_root/emacs" "$mock_app/Contents/MacOS/Emacs"
-[[ "$($wrapper_root/emacs --batch smoke)" == 'mock-emacs:--batch smoke' ]]
+[[ "$("$wrapper_root"/emacs --batch smoke)" == 'mock-emacs:--batch smoke' ]]
 grep -q 'brew trust --formula hashicorp/tap/terraform' "$repo_root/prereq_packages.sh"
 grep -q 'brew trust --formula oven-sh/bun/bun' "$repo_root/prereq_packages.sh"
 grep -q 'uv already installed; updates are managed by Homebrew' "$repo_root/prereq_packages.sh"
