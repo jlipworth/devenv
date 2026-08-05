@@ -235,7 +235,7 @@ help:
 	@echo "  sql         - sqls language server"
 	@echo "  latex       - texlab, TeXLive/MacTeX"
 	@echo "  docker      - dockerfile-language-server, hadolint"
-	@echo "  kubernetes  - kubectl, argocd, k9s, kubectx, stern"
+	@echo "  kubernetes  - kubectl, kubelogin, argocd, k9s, kubectx, stern"
 	@echo "  ocaml       - OCaml + opam + merlin"
 	@echo "  terraform   - terraform, terraform-ls"
 	@echo "  rust        - rust-analyzer, cargo tools"

@@ -120,6 +120,10 @@ signed package repository; Arch uses its community `step-cli` package. CA
 names, fingerprints, provisioners, SSH host patterns, and enrollment policy
 must remain in the consuming infrastructure repository.
 
+The Kubernetes layer likewise owns only generic `kubectl` and `kubelogin`
+installation. Issuer URLs, client IDs, contexts, roles, and cached credentials
+remain in the environment-specific repository.
+
 ## Version Pinning
 
 All pinned versions are managed in `versions.conf`:

@@ -2,6 +2,7 @@
 # Install: brew bundle --file=brewfiles/Brewfile.kubernetes
 
 brew "kubernetes-cli"
+brew "kubelogin"
 brew "argocd"
 brew "k9s"
 brew "kubectx"
