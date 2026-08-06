@@ -28,6 +28,21 @@ guard="$repo_root/ci/macos-brew-readonly"
 [[ "$($guard --prefix)" == /opt/homebrew ]]
 [[ ! -s "$tmp/guard.log" ]]
 
+cat > "$tmp/uname" << 'EOF'
+#!/usr/bin/env bash
+printf 'Darwin\n'
+EOF
+cat > "$tmp/present" << 'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$tmp/uname" "$tmp/present"
+PATH="$tmp:$PATH" MACOS_CI=true CI=true GNU_DIR="$repo_root" \
+    bash -c 'source "$GNU_DIR/common_utils.sh"; install_packages present' \
+    > "$tmp/install-packages.log"
+grep -q 'using runner-provisioned Homebrew metadata' "$tmp/install-packages.log"
+grep -q 'skipping host upgrades in macOS CI' "$tmp/install-packages.log"
+
 if "$guard" install missing; then
     echo "missing package should fail" >&2
     exit 1
@@ -50,6 +65,9 @@ python3 "$repo_root/ci/validate-macos-pipeline.py" \
 grep -q 'MACOS_CI_WORKSPACE' "$repo_root/ci/macos-full-setup.sh"
 grep -q 'EMACS_PREFIX=' "$repo_root/ci/macos-full-setup.sh"
 grep -q 'EMACS_APP_DIR="$HOME/Applications"' "$repo_root/ci/macos-full-setup.sh"
+grep -q 'vterm-always-compile-module t' "$repo_root/ci/macos-full-setup.sh"
+grep -q "advice-add 'pdf-tools-install" "$repo_root/ci/macos-full-setup.sh"
+grep -q 'chmod -R u+w "$workspace"' "$repo_root/ci/macos-full-setup.sh"
 grep -q '^brew "libgccjit"$' "$repo_root/brewfiles/Brewfile.emacs-30"
 grep -q 'ts_language_version=ts_language_abi_version' "$repo_root/build_emacs30.sh"
 grep -q 'managed snippets-only ~/.emacs.d skeleton' "$repo_root/build_emacs30.sh"

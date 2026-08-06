@@ -73,6 +73,9 @@ cleanup() {
     if [[ "$keep_workspace" == "true" ]]; then
         echo "Keeping macOS CI workspace: $workspace" >&2
     else
+        # Go module caches are intentionally read-only. Restore owner write
+        # permission inside this disposable tree so cleanup cannot leak it.
+        chmod -R u+w "$workspace" 2> /dev/null || true
         rm -rf "$workspace"
     fi
     exit "$status"
@@ -106,12 +109,33 @@ emacs_bin="$EMACS_PREFIX/bin/emacs"
     exit 1
 }
 
+# `full-setup` installs the tracked snippets link before the Emacs build. In a
+# disposable CI home this is the only valid pre-existing Spacemacs content;
+# remove that managed skeleton so `git clone` receives an empty destination.
+spacemacs_dir="$HOME/.emacs.d"
+if [[ -d "$spacemacs_dir" ]]; then
+    unexpected_entry="$(find "$spacemacs_dir" -mindepth 1 \
+        ! -path "$spacemacs_dir/private" \
+        ! -path "$spacemacs_dir/private/snippets" -print -quit)"
+    if [[ -z "$unexpected_entry" && -L "$spacemacs_dir/private/snippets" &&
+        "$(readlink "$spacemacs_dir/private/snippets")" == "$repo_root/snippets/" ]]; then
+        rm "$spacemacs_dir/private/snippets"
+        rmdir "$spacemacs_dir/private" "$spacemacs_dir"
+    else
+        echo "unexpected content in isolated Spacemacs destination: $spacemacs_dir" >&2
+        exit 1
+    fi
+fi
+
 git clone --depth 100 --branch develop \
-    https://github.com/jlipworth/spacemacs "$HOME/.emacs.d"
+    https://github.com/jlipworth/spacemacs "$spacemacs_dir"
 
 # Batch mode normally suppresses user init, so load Spacemacs explicitly. This
 # exercises the actual tracked .spacemacs symlink created by `full-setup`.
-"$emacs_bin" --batch --load "$HOME/.emacs.d/init.el" \
+"$emacs_bin" --batch \
+    --eval '(setq vterm-always-compile-module t)' \
+    --eval "(advice-add 'pdf-tools-install :filter-args (lambda (args) (cons t (cdr args))))" \
+    --load "$spacemacs_dir/init.el" \
     --eval '(progn (message "GNU_files macOS Spacemacs smoke passed") (kill-emacs 0))'
 
 if [[ -s "$guard_log" ]]; then

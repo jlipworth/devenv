@@ -372,6 +372,8 @@ install_packages() {
     if [[ "$updated" == "false" ]]; then
         if [[ "$DISTRO" == "arch" ]]; then
             log "Skipping metadata-only refresh on Arch (avoid partial-upgrade state)"
+        elif [[ "$OS" == "Darwin" && "${MACOS_CI:-false}" == "true" ]]; then
+            log "MACOS_CI=true: using runner-provisioned Homebrew metadata"
         else
             log "Checking for new repositories..."
             $UPDATE_CMD
@@ -404,8 +406,10 @@ install_packages() {
                     log "$package is up-to-date."
                 fi
             elif [[ "$OS" == "Darwin" ]]; then
+                if [[ "${MACOS_CI:-false}" == "true" ]]; then
+                    log "$package is runner-provisioned; skipping host upgrades in macOS CI."
                 # Check if package is in brew outdated list
-                if brew outdated 2> /dev/null | grep -q "^${package}$"; then
+                elif brew outdated 2> /dev/null | grep -q "^${package}$"; then
                     log "$package has an update available. Updating..."
                     brew upgrade "$package" || echo "Error updating $package."
                 else
