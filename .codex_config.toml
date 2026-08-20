@@ -19,3 +19,12 @@ status_line = ["current-dir", "git-branch", "model-with-reasoning", "context-use
 # Native Codex TUI notifications are disabled because terminal-specific routing
 # is handled by the repo-managed `ai-notify-if-unfocused` dispatcher above.
 notifications = false
+
+# macOS-only: install_codex_config omits this table on other operating systems.
+# Restart Codex after installation or any allowlist change. page_interactions is
+# permitted only for the exact visible "Load more results…" control; keep
+# scripting, dialog, console, and network inspection tools outside this allowlist.
+[mcp_servers.safari-mcp]
+command = "/usr/bin/safaridriver"
+args = ["--mcp"]
+enabled_tools = ["create_tab", "list_tabs", "switch_tab", "page_info", "get_page_content", "screenshot", "wait_for_navigation", "page_interactions", "close_tab"]

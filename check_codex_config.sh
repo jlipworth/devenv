@@ -24,4 +24,28 @@ EOF
     exit 1
 fi
 
-echo "Codex config guard passed: no local [projects.*] blocks found."
+tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-config-guard.XXXXXX")"
+trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
+
+cat > "$tmp_dir/expected" << 'EOF'
+command = "/usr/bin/safaridriver"
+args = ["--mcp"]
+enabled_tools = ["create_tab", "list_tabs", "switch_tab", "page_info", "get_page_content", "screenshot", "wait_for_navigation", "page_interactions", "close_tab"]
+EOF
+
+if ! awk '
+    $0 == "[mcp_servers.safari-mcp]" {
+        count++
+        capture = 1
+        next
+    }
+    capture && /^\[/ { capture = 0 }
+    capture { print }
+    END { if (count != 1) exit 1 }
+' "$config_file" > "$tmp_dir/actual" || ! cmp -s "$tmp_dir/expected" "$tmp_dir/actual"; then
+    echo "ERROR: [mcp_servers.safari-mcp] must contain only the approved safaridriver" >&2
+    echo "command, --mcp argument, and navigation/read-only tool allowlist." >&2
+    exit 1
+fi
+
+echo "Codex config guard passed: shared-only config and restricted Safari MCP allowlist verified."

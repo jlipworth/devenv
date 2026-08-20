@@ -1919,6 +1919,65 @@ install_codex_cli_native() {
     restart_codex_app_server_daemon
 }
 
+install_codex_config() {
+    # Copy Codex config (not symlink) — preserves local [projects.*] trust entries
+    log "Setting up Codex config..."
+    mkdir -p "$HOME/.codex"
+    if [[ -f "$GNU_DIR/.codex_config.toml" ]]; then
+        local codex_target="$HOME/.codex/config.toml"
+        local codex_tmp
+        local codex_config_os="${CODEX_CONFIG_OS:-$OS}"
+        codex_tmp="$(mktemp "$HOME/.codex/config.toml.XXXXXX")"
+
+        # Extract only local [projects.*] blocks from the existing config. Do not
+        # retain other tables: repo-managed sections (including MCP allowlists)
+        # must replace stale local copies without producing duplicate TOML tables.
+        local project_blocks=""
+        if [[ -f "$codex_target" ]] && [[ -s "$codex_target" ]]; then
+            project_blocks="$(awk '
+                /^\[projects\./ { in_projects = 1 }
+                /^\[/ && !/^\[projects\./ { in_projects = 0 }
+                in_projects { print }
+            ' "$codex_target")"
+        fi
+
+        # Remove existing symlink if present (prevents writing through to repo)
+        [[ -L "$codex_target" ]] && rm -f "$codex_target"
+
+        # Write the shared base config. Safari's MCP transport exists only on
+        # macOS, so omit its table elsewhere rather than leaving Codex to spawn
+        # a missing /usr/bin/safaridriver executable at startup.
+        sed '/^\[projects\./,$d' "$GNU_DIR/.codex_config.toml" |
+            awk -v install_safari="$([[ "$codex_config_os" == "Darwin" ]] && printf 1 || printf 0)" '
+                $0 == "[mcp_servers.safari-mcp]" && !install_safari {
+                    skip_safari = 1
+                    next
+                }
+                skip_safari && /^\[/ { skip_safari = 0 }
+                !skip_safari { print }
+            ' |
+            # Strip trailing blank lines from base to ensure idempotent output.
+            awk '{a[NR]=$0} END{e=NR; while(e>0&&a[e]=="")e--; for(i=1;i<=e;i++)print a[i]}' > "$codex_tmp"
+
+        # Append preserved local project blocks with single blank separator
+        if [[ -n "$project_blocks" ]]; then
+            printf '\n\n%s\n' "$project_blocks" >> "$codex_tmp"
+        fi
+
+        # Atomic move
+        mv "$codex_tmp" "$codex_target"
+        log "Copied Codex config (base settings synced, local project trust preserved)."
+    else
+        log "Codex config not found at $GNU_DIR/.codex_config.toml" "WARNING"
+    fi
+    if [[ -f "$GNU_DIR/.codex_instructions.md" ]]; then
+        ln -sf "$GNU_DIR/.codex_instructions.md" "$HOME/.codex/instructions.md"
+        log "Symlinked Codex instructions (tool preferences)."
+    else
+        log "Codex instructions not found at $GNU_DIR/.codex_instructions.md" "WARNING"
+    fi
+}
+
 install_ai_tools() {
     log "Installing AI coding assistant tools..."
 
@@ -1978,45 +2037,7 @@ install_ai_tools() {
         log "Claude statusline script not found at $GNU_DIR/.claude_statusline.sh" "WARNING"
     fi
 
-    # Copy Codex config (not symlink) — preserves local [projects.*] trust entries
-    log "Setting up Codex config..."
-    mkdir -p "$HOME/.codex"
-    if [[ -f "$GNU_DIR/.codex_config.toml" ]]; then
-        local codex_target="$HOME/.codex/config.toml"
-        local codex_tmp
-        codex_tmp="$(mktemp "$HOME/.codex/config.toml.XXXXXX")"
-
-        # Extract local [projects.*] blocks from existing config (if any)
-        local project_blocks=""
-        if [[ -f "$codex_target" ]] && [[ -s "$codex_target" ]]; then
-            project_blocks="$(sed -n '/^\[projects\./,$p' "$codex_target")"
-        fi
-
-        # Remove existing symlink if present (prevents writing through to repo)
-        [[ -L "$codex_target" ]] && rm -f "$codex_target"
-
-        # Write base config (everything before first [projects. line in tracked file)
-        # Strip trailing blank lines from base to ensure idempotent output
-        sed '/^\[projects\./,$d' "$GNU_DIR/.codex_config.toml" |
-            awk '{a[NR]=$0} END{e=NR; while(e>0&&a[e]=="")e--; for(i=1;i<=e;i++)print a[i]}' > "$codex_tmp"
-
-        # Append preserved local project blocks with single blank separator
-        if [[ -n "$project_blocks" ]]; then
-            printf '\n\n%s\n' "$project_blocks" >> "$codex_tmp"
-        fi
-
-        # Atomic move
-        mv "$codex_tmp" "$codex_target"
-        log "Copied Codex config (base settings synced, local project trust preserved)."
-    else
-        log "Codex config not found at $GNU_DIR/.codex_config.toml" "WARNING"
-    fi
-    if [[ -f "$GNU_DIR/.codex_instructions.md" ]]; then
-        ln -sf "$GNU_DIR/.codex_instructions.md" "$HOME/.codex/instructions.md"
-        log "Symlinked Codex instructions (tool preferences)."
-    else
-        log "Codex instructions not found at $GNU_DIR/.codex_instructions.md" "WARNING"
-    fi
+    install_codex_config
 
     # Remove the legacy Codex stop hook that was copied from Claude Code settings.
     # Codex notifications are handled by ~/.codex/config.toml; keeping this hook
@@ -2438,6 +2459,7 @@ main() {
         "install_swift_support"
         "install_editor_prereqs"
         "install_codex_cli_native"
+        "install_codex_config"
         "install_ai_tools"
         "install_starship"
         "install_syntax_highlighting"

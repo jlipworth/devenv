@@ -214,6 +214,7 @@ steps:
       CI: "true"
       DEBIAN_FRONTEND: noninteractive
     commands:
+      - ./tests/codex_config_spec.sh
       - make ai-tools
 
   - name: layer-cli_tools
