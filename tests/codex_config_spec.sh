@@ -75,5 +75,6 @@ fi
 # full-setup reaches prereq-layers-all, whose ai-tools layer invokes this installer.
 make -C "$repo_root" -n full-setup > "$tmp/full-setup-dry-run.log"
 grep -q './prereq_packages.sh install_ai_tools' "$tmp/full-setup-dry-run.log"
+grep -q 'make neovim' "$tmp/full-setup-dry-run.log"
 
 echo "Codex config install tests passed"

@@ -2,7 +2,9 @@
 # Update all dependencies after merging Renovate MRs
 # Run this after pulling/merging dependency updates from git
 
-source common_utils.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck source=common_utils.sh
+source "$SCRIPT_DIR/common_utils.sh"
 set -e
 
 log "Starting dependency update process..." "INFO"

@@ -1,5 +1,7 @@
 #!/bin/bash
-source common_utils.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck source=common_utils.sh
+source "$SCRIPT_DIR/common_utils.sh"
 
 if [[ -f "$GNU_DIR/versions.conf" ]]; then
     source "$GNU_DIR/versions.conf"

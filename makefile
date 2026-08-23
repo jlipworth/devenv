@@ -193,6 +193,7 @@ full-setup:
 	@echo "Foundations complete. Starting sequential layer installation..."
 	@$(MAKE) prereq-layers-all
 	@$(MAKE) python-env
+	@$(MAKE) neovim
 	@$(MAKE) spacemacs
 	@echo "Completed full system setup."
 
@@ -213,7 +214,7 @@ help:
 	@echo "JAL Emacs Installation Makefile"
 	@echo ""
 	@echo "Main targets:"
-	@echo "  full-setup        - Complete system setup (linking + system + all layers + python-env + spacemacs)"
+	@echo "  full-setup        - Complete system setup (linking + system + all layers + Python, Neovim, and Spacemacs)"
 	@echo "  noadmin-setup     - Full setup without sudo (skips system packages)"
 	@echo "  macos-ci-setup    - Isolated native macOS full setup + Spacemacs smoke"
 	@echo "  macos-ci-preflight - Check the runner's preinstalled macOS prerequisites"

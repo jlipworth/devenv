@@ -1,9 +1,11 @@
 #!/bin/bash
-source common_utils.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck source=common_utils.sh
+source "$SCRIPT_DIR/common_utils.sh"
 
 # Source pinned versions
-if [[ -f "versions.conf" ]]; then
-    source versions.conf
+if [[ -f "$SCRIPT_DIR/versions.conf" ]]; then
+    source "$SCRIPT_DIR/versions.conf"
 fi
 EMACS_VERSION="${EMACS_VERSION:-30.2}"
 

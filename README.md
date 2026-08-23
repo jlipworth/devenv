@@ -7,13 +7,13 @@
 
 Personal editor environment, dotfiles, and fonts.
 
-Automated setup for Emacs 30.2 with Spacemacs, plus opt-in Neovim support, language servers for 13+ languages, and cross-platform support on macOS and Linux.
+Automated setup for Emacs 30.2 with Spacemacs and Neovim, language servers for 13+ languages, and cross-platform support on macOS and Linux.
 
 ## Features
 
 - **Emacs 30.2** compiled from source with native compilation, tree-sitter, and Cairo
 - **Spacemacs** configuration with Evil mode
-- **Neovim** support as an opt-in install path via `make neovim`, grounded in current Spacemacs conventions where practical
+- **Neovim** support included in `make full-setup` and available independently via `make neovim`, grounded in current Spacemacs conventions where practical
 - **Language servers**: Python, JavaScript/TypeScript, C/C++, SQL, Terraform, LaTeX, Docker, OCaml, Swift, and more
 - **Modern CLI tools**: eza, bat, ripgrep, fd, fzf, zoxide, lazygit
 - **Fonts**: Nerd Font versions of Meslo, DejaVu Sans Mono, Source Code Pro
@@ -33,6 +33,7 @@ make full-setup
 
 # Or individual components
 make spacemacs          # Build Emacs 30.2 + Spacemacs
+make neovim             # Install/configure Neovim independently
 make editor-symlinks    # Symlinks for .vimrc and .spacemacs
 make prereq-layers-all  # All layer prerequisites (language servers, tooling, etc.)
 ```
@@ -84,7 +85,7 @@ make latex      # texlab
 make docker     # dockerfile-language-server, hadolint
 make ocaml      # opam, merlin, utop
 make cli_tools  # eza, bat, ripgrep, fd, fzf, zoxide, lazygit
-make neovim     # Install/configure Neovim (opt-in)
+make neovim     # Install/configure Neovim independently
 ```
 
 ## Requirements

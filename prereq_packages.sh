@@ -1,6 +1,8 @@
 #!/bin/bash
 
-source common_utils.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck source=common_utils.sh
+source "$SCRIPT_DIR/common_utils.sh"
 
 # =============================================================================
 # Arch Linux Package Mappings
@@ -422,6 +424,38 @@ create_snippet_symlink() {
     log "Creating symbolic link for Yasnippet directory..."
     EMACS_SNIPPETS_DIR="$HOME/.emacs.d/private/snippets"
     TARGET_DIR="$GNU_DIR/snippets/"
+
+    # Spacemacs tracks a placeholder README in private/snippets. Replacing that
+    # directory with one symlink makes an otherwise clean checkout permanently
+    # dirty, so link each repo-managed mode directory when Spacemacs is present.
+    if [[ -d "$HOME/.emacs.d/.git" ]]; then
+        if [[ -L "$EMACS_SNIPPETS_DIR" ]]; then
+            log "Replacing the legacy whole-directory snippets symlink."
+            rm "$EMACS_SNIPPETS_DIR"
+        fi
+        mkdir -p "$EMACS_SNIPPETS_DIR"
+
+        if [[ ! -e "$EMACS_SNIPPETS_DIR/README.md" ]] &&
+            git -C "$HOME/.emacs.d" cat-file -e HEAD:private/snippets/README.md 2> /dev/null; then
+            git -C "$HOME/.emacs.d" show HEAD:private/snippets/README.md > "$EMACS_SNIPPETS_DIR/README.md"
+        fi
+
+        for snippet_dir in "$TARGET_DIR"*/; do
+            [[ -d "$snippet_dir" ]] || continue
+            snippet_name="$(basename "$snippet_dir")"
+            snippet_link="$EMACS_SNIPPETS_DIR/$snippet_name"
+            if [[ -L "$snippet_link" && "$(readlink "$snippet_link")" == "$snippet_dir" ]]; then
+                continue
+            fi
+            if [[ -e "$snippet_link" || -L "$snippet_link" ]]; then
+                log "Existing snippet path requires manual review: $snippet_link" "WARNING"
+                continue
+            fi
+            ln -s "$snippet_dir" "$snippet_link"
+        done
+        log "Repo-managed Yasnippet mode directories linked into $EMACS_SNIPPETS_DIR."
+        return
+    fi
 
     mkdir -p "$(dirname "$EMACS_SNIPPETS_DIR")"
 
