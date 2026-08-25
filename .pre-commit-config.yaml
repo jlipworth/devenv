@@ -10,6 +10,12 @@ repos:
         language: system
         pass_filenames: false
         files: ^(\.codex_config\.toml|prereq_packages\.sh|makefile|tests/codex_config_spec\.sh)$
+      - id: check-ai-tools-install
+        name: check AI tools package-manager ownership
+        entry: ./tests/ai_tools_spec.sh
+        language: system
+        pass_filenames: false
+        files: ^(common_utils\.sh|prereq_packages\.sh|brewfiles/Brewfile\.ai_tools|tests/ai_tools_spec\.sh)$
 
   # General file formatting hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks

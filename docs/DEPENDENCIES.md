@@ -71,7 +71,7 @@ make python      # Updates Python packages
 
 ### Non-Integrated Layers
 
-These use npm global installs, Brewfiles, or platform package managers and are updated manually:
+These use npm global installs, Brewfiles, native installers, or platform package managers and are updated manually:
 - JavaScript, Shell, YAML, Vimscript, HTML/CSS, AI Tools
 - LaTeX, C/C++, SQL, OCaml, Terraform, Swift
 - Homebrew packages under `brewfiles/Brewfile.*`; Swift may also be installed by Swiftly on Linux when Homebrew is unavailable
@@ -100,6 +100,12 @@ brew bundle install            # Install from Brewfile
 brew update && brew upgrade    # Update all
 brew outdated                  # Check for updates
 ```
+
+### OpenCode
+
+`make ai-tools` installs OpenCode from `anomalyco/tap` on macOS and with its
+native installer on Linux. This keeps OpenCode independent of the active nvm
+version and allows `opencode upgrade` to identify its installation method.
 
 ### apt Packages (Linux)
 

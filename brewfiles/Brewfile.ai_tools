@@ -1,0 +1,6 @@
+# AI tools layer
+# Install: brew bundle --file=brewfiles/Brewfile.ai_tools
+
+tap "anomalyco/tap"
+
+brew "anomalyco/tap/opencode"

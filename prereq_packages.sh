@@ -2012,6 +2012,84 @@ install_codex_config() {
     fi
 }
 
+remove_legacy_opencode_npm_installations() {
+    local prefix
+    local prefixes=()
+
+    if [[ -n "${OPENCODE_LEGACY_NPM_PREFIX:-}" ]]; then
+        prefixes+=("$OPENCODE_LEGACY_NPM_PREFIX")
+    else
+        prefixes=(
+            "/opt/homebrew"
+            "/usr/local"
+            "$HOME/.npm-global"
+        )
+
+        if [[ -d "$HOME/.nvm/versions/node" ]]; then
+            for prefix in "$HOME"/.nvm/versions/node/*; do
+                [[ -d "$prefix" ]] && prefixes+=("$prefix")
+            done
+        fi
+    fi
+
+    for prefix in "${prefixes[@]}"; do
+        if [[ ! -d "$prefix/lib/node_modules/opencode-ai" ]]; then
+            continue
+        fi
+
+        log "Removing legacy npm-managed OpenCode from $prefix..."
+        if ! "$NODE_CMD" uninstall -g --prefix "$prefix" opencode-ai; then
+            log "Failed to remove legacy OpenCode from $prefix." "ERROR"
+            return 1
+        fi
+    done
+}
+
+install_opencode() {
+    log "Installing OpenCode with a self-updater-compatible package manager..."
+
+    remove_legacy_opencode_npm_installations || return 1
+
+    if [[ "$OS" == "Darwin" ]]; then
+        if ! command -v brew &> /dev/null; then
+            log "Homebrew is required to install OpenCode on macOS." "ERROR"
+            return 1
+        fi
+
+        log "Adding the OpenCode Homebrew tap..."
+        brew tap anomalyco/tap || {
+            log "Error adding anomalyco/tap." "ERROR"
+            return 1
+        }
+
+        # Homebrew 5+ requires explicit trust for third-party formulae. Keep the
+        # grant scoped to the reviewed OpenCode formula rather than the full tap.
+        if brew help trust &> /dev/null; then
+            log "Trusting the reviewed OpenCode formula..."
+            brew trust --formula anomalyco/tap/opencode || {
+                log "Error trusting anomalyco/tap/opencode." "ERROR"
+                return 1
+            }
+        fi
+
+        brew bundle --file="$GNU_DIR/brewfiles/Brewfile.ai_tools" || {
+            log "Error with Brewfile.ai_tools." "ERROR"
+            return 1
+        }
+    else
+        # The native installer keeps OpenCode independent of nvm versions and
+        # user-local npm prefix overrides, both of which can defeat detection by
+        # `opencode upgrade`.
+        curl -fsSL https://opencode.ai/install | bash || {
+            log "Error installing OpenCode via its native installer." "ERROR"
+            return 1
+        }
+        add_to_path "$HOME/.opencode/bin" "OpenCode"
+    fi
+
+    log "OpenCode installation complete." "SUCCESS"
+}
+
 install_ai_tools() {
     log "Installing AI coding assistant tools..."
 
@@ -2022,12 +2100,15 @@ install_ai_tools() {
     # Codex CLI - official standalone installer
     install_codex_cli_native
 
-    # Other AI tools via npm
-    ai_packages=("@google/gemini-cli" "opencode-ai")
+    # Gemini CLI via npm. OpenCode is intentionally installed separately below
+    # so its self-updater can identify the owning package manager reliably.
+    ai_packages=("@google/gemini-cli")
     for pkg in "${ai_packages[@]}"; do
         log "Installing $pkg via npm..."
         $NODE_CMD install -g "$pkg" || log "Error installing $pkg." "WARNING"
     done
+
+    install_opencode || return 1
 
     # Create Claude Code config links/defaults. Keep mutable settings local:
     # Claude Code rewrites settings.json, so symlinking it into the repo causes
@@ -2494,6 +2575,7 @@ main() {
         "install_editor_prereqs"
         "install_codex_cli_native"
         "install_codex_config"
+        "install_opencode"
         "install_ai_tools"
         "install_starship"
         "install_syntax_highlighting"

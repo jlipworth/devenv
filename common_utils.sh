@@ -129,8 +129,14 @@ if [[ "$OS" == "Linux" ]]; then
 fi
 
 activate_default_node() {
-    if command -v npm &> /dev/null && command -v node &> /dev/null; then
-        return 0
+    # A system/Homebrew Node being present does not mean the configured nvm
+    # default is active. Standalone make targets run in fresh shells, so prefer
+    # nvm whenever it is installed instead of silently using whichever npm was
+    # inherited from PATH.
+    if [[ -n "${NVM_BIN:-}" ]] && command -v npm &> /dev/null && command -v node &> /dev/null; then
+        if [[ "$(command -v npm)" == "$NVM_BIN/"* && "$(command -v node)" == "$NVM_BIN/"* ]]; then
+            return 0
+        fi
     fi
 
     local nvm_dir="${NVM_DIR:-$HOME/.nvm}"

@@ -103,7 +103,7 @@ Legend:
 | `terraform`   | Conditional  | brew-first; apt repo fallback skipped under NO_ADMIN |
 | `rust`        | User-space   | rustup + cargo entirely in user space |
 | `swift`       | User-space   | Linuxbrew when present; otherwise Swiftly installs the Swift toolchain under the user account |
-| `ai-tools`    | Conditional  | Mostly user-space; npm globals depend on nvm setup |
+| `ai-tools`    | Conditional  | Mostly user-space; OpenCode uses Homebrew on macOS and its native installer on Linux |
 
 ### Standalone targets
 
