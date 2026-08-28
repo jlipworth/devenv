@@ -77,6 +77,14 @@ cat > "$install_bin/brew" << EOF
 printf 'brew %s\n' "\$*" >> "$install_log"
 exit 0
 EOF
+cat > "$install_bin/uname" << 'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-s" || $# -eq 0 ]]; then
+    printf 'Darwin\n'
+else
+    /usr/bin/uname "$@"
+fi
+EOF
 cat > "$install_bin/curl" << 'EOF'
 #!/usr/bin/env bash
 echo "curl must not install OpenCode on macOS" >&2
