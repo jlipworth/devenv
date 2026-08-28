@@ -745,6 +745,11 @@ This function is called immediately after `dotspacemacs/init', before layer
 configuration.
 It is mostly for variables that should be set before packages are loaded.
 If you are unsure, try setting them in `dotspacemacs/user-config' first."
+  ;; Prevent macOS tar from adding AppleDouble (._*) metadata to Quelpa
+  ;; archives.  Emacs 30's package-tar-file-info mistakes the first metadata
+  ;; entry for the package directory, so recipe packages fail every startup.
+  (setenv "COPYFILE_DISABLE" "1")
+
   (setq network-security-level 'high)
   (setq tls-checktrust t)
 
