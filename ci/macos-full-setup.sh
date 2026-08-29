@@ -127,7 +127,7 @@ if [[ -d "$spacemacs_dir" ]]; then
     fi
 fi
 
-git clone --depth 100 --branch develop \
+git clone --depth 100 --branch working \
     https://github.com/jlipworth/spacemacs "$spacemacs_dir"
 
 # Batch mode normally suppresses user init, so load Spacemacs explicitly. This

@@ -78,7 +78,7 @@ make macos-ci-setup
 
 That target performs the existing `make full-setup` inside the disposable
 environment, builds and installs Emacs under the temporary prefix, clones the
-`jlipworth/spacemacs` `develop` branch into the temporary home, and explicitly
+`jlipworth/spacemacs` `working` branch into the temporary home, and explicitly
 loads Spacemacs in batch mode. The final smoke therefore exercises both the
 Emacs binary and the tracked `.spacemacs` configuration without touching the
 runner user's personal editor environment.

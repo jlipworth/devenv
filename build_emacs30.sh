@@ -561,6 +561,7 @@ fi
 
 SPACEMACS_DIR="$HOME/.emacs.d"
 SPACEMACS_REPO="https://github.com/jlipworth/spacemacs"
+SPACEMACS_BRANCH="working"
 
 if [[ -d "$SPACEMACS_DIR/.git" ]]; then
     spacemacs_remote=""
@@ -579,11 +580,30 @@ if [[ -d "$SPACEMACS_DIR/.git" ]]; then
         log "Existing ~/.emacs.d checkout has no remote for jlipworth/spacemacs" "ERROR"
         exit 1
     fi
-    log "Updating existing Spacemacs checkout..."
-    if ! git -C "$SPACEMACS_DIR" rev-parse --abbrev-ref '@{upstream}' > /dev/null 2>&1; then
-        log "Existing Spacemacs branch has no upstream; refusing to guess a branch." "ERROR"
+    if [[ -n "$(git -C "$SPACEMACS_DIR" status --porcelain)" ]]; then
+        log "Existing Spacemacs checkout is dirty; refusing to switch to $SPACEMACS_BRANCH." "ERROR"
         exit 1
     fi
+    log "Updating existing Spacemacs checkout from $spacemacs_remote/$SPACEMACS_BRANCH..."
+    branch_refspec="+refs/heads/$SPACEMACS_BRANCH:refs/remotes/$spacemacs_remote/$SPACEMACS_BRANCH"
+    wildcard_refspec="+refs/heads/*:refs/remotes/$spacemacs_remote/*"
+    if ! git -C "$SPACEMACS_DIR" config --get-all "remote.$spacemacs_remote.fetch" |
+        grep -Fqx -e "$branch_refspec" -e "$wildcard_refspec"; then
+        # A --single-branch/--branch clone fetches only its original branch.
+        # Teach an existing shallow checkout that working is also a real
+        # remote-tracking branch before asking `git switch --track` to use it.
+        git -C "$SPACEMACS_DIR" config --add "remote.$spacemacs_remote.fetch" "$branch_refspec"
+    fi
+    git -C "$SPACEMACS_DIR" fetch "$spacemacs_remote" \
+        "refs/heads/$SPACEMACS_BRANCH:refs/remotes/$spacemacs_remote/$SPACEMACS_BRANCH"
+    if git -C "$SPACEMACS_DIR" show-ref --verify --quiet "refs/heads/$SPACEMACS_BRANCH"; then
+        git -C "$SPACEMACS_DIR" switch "$SPACEMACS_BRANCH"
+    else
+        git -C "$SPACEMACS_DIR" switch --track \
+            -c "$SPACEMACS_BRANCH" "$spacemacs_remote/$SPACEMACS_BRANCH"
+    fi
+    git -C "$SPACEMACS_DIR" branch --set-upstream-to="$spacemacs_remote/$SPACEMACS_BRANCH" \
+        "$SPACEMACS_BRANCH"
     git -C "$SPACEMACS_DIR" pull --ff-only
     log "Spacemacs checkout is current." "SUCCESS"
     "$GNU_DIR/prereq_packages.sh" create_snippet_symlink
@@ -616,8 +636,8 @@ if [[ -d "$SPACEMACS_DIR" ]]; then
     fi
 fi
 
-log "Cloning Spacemacs repository (develop branch)..."
-git clone --depth 100 --branch develop "$SPACEMACS_REPO" "$SPACEMACS_DIR" &&
+log "Cloning Spacemacs repository ($SPACEMACS_BRANCH branch)..."
+git clone --depth 100 --branch "$SPACEMACS_BRANCH" "$SPACEMACS_REPO" "$SPACEMACS_DIR" &&
     log "Spacemacs installed." "SUCCESS" ||
     {
         log "Failed to clone Spacemacs." "ERROR"

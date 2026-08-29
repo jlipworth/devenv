@@ -473,7 +473,7 @@ RUN mkdir -p /usr/share/fonts/truetype/custom && \
     fc-cache -fv
 
 # Install Spacemacs
-RUN git clone --depth 1 --branch develop \
+RUN git clone --depth 1 --branch working \
     https://github.com/jlipworth/spacemacs /root/.emacs.d
 
 # Copy user config
