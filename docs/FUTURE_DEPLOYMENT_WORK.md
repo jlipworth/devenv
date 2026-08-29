@@ -474,7 +474,11 @@ RUN mkdir -p /usr/share/fonts/truetype/custom && \
 
 # Install Spacemacs
 RUN git clone --depth 1 --branch working \
-    https://github.com/jlipworth/spacemacs /root/.emacs.d
+    https://github.com/jlipworth/spacemacs /root/.emacs.d && \
+    git -C /root/.emacs.d config --add remote.origin.fetch \
+      '+refs/heads/develop:refs/remotes/origin/develop' && \
+    git -C /root/.emacs.d fetch --depth 1 origin \
+      'refs/heads/develop:refs/remotes/origin/develop'
 
 # Copy user config
 COPY .spacemacs /root/.spacemacs

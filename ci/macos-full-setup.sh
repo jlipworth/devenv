@@ -129,6 +129,10 @@ fi
 
 git clone --depth 100 --branch working \
     https://github.com/jlipworth/spacemacs "$spacemacs_dir"
+git -C "$spacemacs_dir" config --add remote.origin.fetch \
+    '+refs/heads/develop:refs/remotes/origin/develop'
+git -C "$spacemacs_dir" fetch --depth 100 origin \
+    'refs/heads/develop:refs/remotes/origin/develop'
 
 # Batch mode normally suppresses user init, so load Spacemacs explicitly. This
 # exercises the actual tracked .spacemacs symlink created by `full-setup`.

@@ -108,9 +108,11 @@ grep -q 'uv already installed; updates are managed by Homebrew' "$repo_root/prer
 grep -q '^NODE_VERSION="26"$' "$repo_root/versions.conf"
 grep -q 'normalized_remote#git@github.com:' "$repo_root/build_emacs30.sh"
 grep -q '^SPACEMACS_BRANCH="working"$' "$repo_root/build_emacs30.sh"
+grep -q '^SPACEMACS_FETCH_BRANCHES=(develop working)$' "$repo_root/build_emacs30.sh"
 grep -q -- '--branch "$SPACEMACS_BRANCH" "$SPACEMACS_REPO"' "$repo_root/build_emacs30.sh"
-grep -q 'remote\.\$spacemacs_remote\.fetch' "$repo_root/build_emacs30.sh"
+grep -q 'remote\.\$remote_name\.fetch' "$repo_root/build_emacs30.sh"
 grep -q -- '--branch working' "$repo_root/ci/macos-full-setup.sh"
+grep -q 'refs/heads/develop:refs/remotes/origin/develop' "$repo_root/ci/macos-full-setup.sh"
 [[ "$(grep -c 'prereq_packages.sh.*create_snippet_symlink' "$repo_root/build_emacs30.sh")" -ge 2 ]]
 grep -q 'uv tool install --force ipython --with ipykernel' "$repo_root/prereq_packages.sh"
 if grep -q 'uv tool install ipykernel' "$repo_root/prereq_packages.sh"; then

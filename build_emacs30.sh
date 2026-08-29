@@ -562,6 +562,25 @@ fi
 SPACEMACS_DIR="$HOME/.emacs.d"
 SPACEMACS_REPO="https://github.com/jlipworth/spacemacs"
 SPACEMACS_BRANCH="working"
+SPACEMACS_FETCH_BRANCHES=(develop working)
+
+configure_spacemacs_fetch_branches() {
+    local remote_name="$1"
+    local branch branch_refspec wildcard_refspec
+    wildcard_refspec="+refs/heads/*:refs/remotes/$remote_name/*"
+
+    for branch in "${SPACEMACS_FETCH_BRANCHES[@]}"; do
+        branch_refspec="+refs/heads/$branch:refs/remotes/$remote_name/$branch"
+        if ! git -C "$SPACEMACS_DIR" config --get-all "remote.$remote_name.fetch" |
+            grep -Fqx -e "$branch_refspec" -e "$wildcard_refspec"; then
+            git -C "$SPACEMACS_DIR" config --add "remote.$remote_name.fetch" "$branch_refspec"
+        fi
+    done
+
+    git -C "$SPACEMACS_DIR" fetch --depth 100 "$remote_name" \
+        "refs/heads/develop:refs/remotes/$remote_name/develop" \
+        "refs/heads/working:refs/remotes/$remote_name/working"
+}
 
 if [[ -d "$SPACEMACS_DIR/.git" ]]; then
     spacemacs_remote=""
@@ -585,17 +604,9 @@ if [[ -d "$SPACEMACS_DIR/.git" ]]; then
         exit 1
     fi
     log "Updating existing Spacemacs checkout from $spacemacs_remote/$SPACEMACS_BRANCH..."
-    branch_refspec="+refs/heads/$SPACEMACS_BRANCH:refs/remotes/$spacemacs_remote/$SPACEMACS_BRANCH"
-    wildcard_refspec="+refs/heads/*:refs/remotes/$spacemacs_remote/*"
-    if ! git -C "$SPACEMACS_DIR" config --get-all "remote.$spacemacs_remote.fetch" |
-        grep -Fqx -e "$branch_refspec" -e "$wildcard_refspec"; then
-        # A --single-branch/--branch clone fetches only its original branch.
-        # Teach an existing shallow checkout that working is also a real
-        # remote-tracking branch before asking `git switch --track` to use it.
-        git -C "$SPACEMACS_DIR" config --add "remote.$spacemacs_remote.fetch" "$branch_refspec"
-    fi
-    git -C "$SPACEMACS_DIR" fetch "$spacemacs_remote" \
-        "refs/heads/$SPACEMACS_BRANCH:refs/remotes/$spacemacs_remote/$SPACEMACS_BRANCH"
+    # Keep both the upstream-aligned develop branch and the personalized
+    # working branch available, while always leaving working checked out.
+    configure_spacemacs_fetch_branches "$spacemacs_remote"
     if git -C "$SPACEMACS_DIR" show-ref --verify --quiet "refs/heads/$SPACEMACS_BRANCH"; then
         git -C "$SPACEMACS_DIR" switch "$SPACEMACS_BRANCH"
     else
@@ -643,6 +654,7 @@ git clone --depth 100 --branch "$SPACEMACS_BRANCH" "$SPACEMACS_REPO" "$SPACEMACS
         log "Failed to clone Spacemacs." "ERROR"
         exit 1
     }
+configure_spacemacs_fetch_branches origin
 
 "$GNU_DIR/prereq_packages.sh" create_snippet_symlink
 install_all_the_icons_fonts
