@@ -137,12 +137,6 @@ elif [[ "$OS" == "Linux" ]]; then
             log "binutils tools configured from: $BINUTILS_PREFIX"
         fi
 
-        TREE_SITTER_VERSION="$(brew list --versions tree-sitter 2> /dev/null | awk '{print $2}' | head -n 1)"
-        if [[ -n "$TREE_SITTER_VERSION" ]] && [[ "$(printf '%s\n' '0.25.0' "$TREE_SITTER_VERSION" | sort -V | head -n 1)" == '0.25.0' ]]; then
-            export CPPFLAGS="-Dts_language_version=ts_language_abi_version ${CPPFLAGS:-}"
-            log "Using tree-sitter 0.25+ compatibility define for Emacs 30"
-        fi
-
         # ncurses is keg-only; explicitly expose its headers and libs
         NCURSES_PREFIX="$(brew --prefix ncurses 2> /dev/null || true)"
         if [[ -n "$NCURSES_PREFIX" && -d "$NCURSES_PREFIX" ]]; then
@@ -290,14 +284,6 @@ elif [[ "$OS" == "Darwin" ]]; then
     # Ensure Homebrew binaries (giflib-config, tiffinfo, etc.) are on PATH
     export PATH="$(brew --prefix)/bin:$(brew --prefix)/sbin:$PATH"
 
-    # Tree-sitter 0.25+ renamed ts_language_version to
-    # ts_language_abi_version. Emacs 30.2 still uses the old API name.
-    TREE_SITTER_VERSION="$(brew list --versions tree-sitter 2> /dev/null | awk '{print $2}' | head -n 1)"
-    if [[ -n "$TREE_SITTER_VERSION" ]] && [[ "$(printf '%s\n' '0.25.0' "$TREE_SITTER_VERSION" | sort -V | head -n 1)" == '0.25.0' ]]; then
-        export CPPFLAGS="-Dts_language_version=ts_language_abi_version ${CPPFLAGS:-}"
-        log "Using tree-sitter 0.25+ compatibility define for Emacs 30"
-    fi
-
     # Let configure find libgccjit. It is a separate Homebrew formula on
     # current macOS rather than part of the gcc formula's library tree.
     LIBGCCJIT_PREFIX="$(brew --prefix libgccjit)"
@@ -316,6 +302,39 @@ elif [[ "$OS" == "Darwin" ]]; then
     HOMEBREW_GCC_PREFIX="$(brew --prefix gcc)"
     export PKG_CONFIG_PATH="${HOMEBREW_GCC_PREFIX}/lib/gcc/${LATEST_GCC_MAJOR_VERSION}/pkgconfig:${PKG_CONFIG_PATH:-}"
     export LIBRARY_PATH="${HOMEBREW_GCC_PREFIX}/lib/gcc/${LATEST_GCC_MAJOR_VERSION}:${LIBRARY_PATH:-}"
+fi
+
+# -----------------------------------------------------------------------------
+# 1b) Tree-sitter API compatibility
+#
+# tree-sitter 0.25 renamed ts_language_version to ts_language_abi_version.
+# Emacs 30.x still calls the old name, so any tree-sitter >= 0.25 fails to
+# compile src/treesit.c. Map the old name onto the new one when needed.
+#
+# This runs after every per-distro dependency branch above, because those
+# branches are what install tree-sitter and populate PKG_CONFIG_PATH. The
+# version is read from pkg-config so the guard covers every install path
+# (pacman, apt, dnf, Homebrew, Linuxbrew) rather than only the brew-backed
+# ones. Fall back to the brew query when pkg-config is missing or has no
+# tree-sitter entry, so macOS keeps working if pkg-config is not wired up.
+# -----------------------------------------------------------------------------
+TREE_SITTER_VERSION=""
+if command -v pkg-config &> /dev/null; then
+    TREE_SITTER_VERSION="$(pkg-config --modversion tree-sitter 2> /dev/null || true)"
+fi
+
+if [[ -z "$TREE_SITTER_VERSION" ]] && command -v brew &> /dev/null; then
+    TREE_SITTER_VERSION="$(brew list --versions tree-sitter 2> /dev/null | awk '{print $2}' | head -n 1)"
+fi
+
+if [[ -n "$TREE_SITTER_VERSION" ]]; then
+    log "Detected tree-sitter version: $TREE_SITTER_VERSION"
+    if [[ "$(printf '%s\n' '0.25.0' "$TREE_SITTER_VERSION" | sort -V | head -n 1)" == '0.25.0' ]]; then
+        export CPPFLAGS="-Dts_language_version=ts_language_abi_version ${CPPFLAGS:-}"
+        log "Using tree-sitter 0.25+ compatibility define for Emacs 30"
+    fi
+else
+    log "Could not determine the tree-sitter version; building without the 0.25+ compatibility define." "WARNING"
 fi
 
 # -----------------------------------------------------------------------------
