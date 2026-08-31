@@ -750,6 +750,11 @@ If you are unsure, try setting them in `dotspacemacs/user-config' first."
   ;; entry for the package directory, so recipe packages fail every startup.
   (setenv "COPYFILE_DISABLE" "1")
 
+  ;; Let macOS tiling window managers size graphical frames to exact pixels.
+  ;; Without this, Emacs rounds the frame to whole character rows/columns and
+  ;; can leave a visible strip along the bottom or right edge of a tile.
+  (setq frame-resize-pixelwise t)
+
   (setq network-security-level 'high)
   (setq tls-checktrust t)
 
