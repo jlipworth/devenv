@@ -3,12 +3,15 @@
 
 local map = vim.keymap.set
 
--- Ghostty forwards Command-1..9 to Neovim (rather than using them for tabs).
--- Match Spacemacs/AeroSpace by selecting the corresponding visible window.
+-- Match Spacemacs/AeroSpace by selecting a numbered visible window. <D-n>
+-- covers direct GUI/CSI-u input; Ghostty encodes Cmd-n as <M-n> so it also
+-- survives tmux, whose extended-key protocol cannot represent Super.
 for number = 1, 9 do
-  map("n", "<D-" .. number .. ">", number .. "<C-w>w", {
-    desc = "Go to window " .. number,
-  })
+  for _, modifier in ipairs({ "D", "M" }) do
+    map("n", "<" .. modifier .. "-" .. number .. ">", number .. "<C-w>w", {
+      desc = "Go to window " .. number,
+    })
+  end
 end
 
 -- Match current Spacemacs `evil-escape` usage.
