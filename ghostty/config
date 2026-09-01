@@ -44,6 +44,26 @@ confirm-close-surface = false
 # Keybindings - keep minimal to not conflict with tmux
 # Ghostty uses super (cmd on mac) for its bindings by default
 # which works well with tmux's ctrl-b prefix
+# Forward Cmd-1..9 to terminal applications instead of selecting Ghostty tabs.
+# Neovim's CSI-u support exposes these as <D-1>..<D-9>.
+keybind = super+1=unbind
+keybind = super+digit_1=unbind
+keybind = super+2=unbind
+keybind = super+digit_2=unbind
+keybind = super+3=unbind
+keybind = super+digit_3=unbind
+keybind = super+4=unbind
+keybind = super+digit_4=unbind
+keybind = super+5=unbind
+keybind = super+digit_5=unbind
+keybind = super+6=unbind
+keybind = super+digit_6=unbind
+keybind = super+7=unbind
+keybind = super+digit_7=unbind
+keybind = super+8=unbind
+keybind = super+digit_8=unbind
+keybind = super+9=unbind
+keybind = super+digit_9=unbind
 keybind = super+t=new_tab
 keybind = super+w=close_surface
 keybind = super+n=new_window

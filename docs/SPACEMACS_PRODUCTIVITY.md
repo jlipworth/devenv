@@ -284,7 +284,7 @@ SPC x d w  Delete trailing whitespace
 
 ### Windows
 ```
-M-1..9     Jump to window by number
+Cmd-1..9   Jump to window by number on macOS (M-1..9 elsewhere)
 SPC w /    Split vertical
 SPC w -    Split horizontal
 SPC w d    Delete window

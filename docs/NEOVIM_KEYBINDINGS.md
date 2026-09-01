@@ -81,6 +81,7 @@ Use **Harpoon** when you keep bouncing between a small set of important files.
 | Close window | `SPC w d` | `<leader>wd` or `<C-w>c` | |
 | Switch window | `SPC w w` | `<C-w>w` | |
 | Move to window | `SPC w h/j/k/l` | `<C-h/j/k/l>` | LazyVim default |
+| Numbered window | `Cmd-1` ... `Cmd-9` | `<D-1>` ... `<D-9>` | macOS/Ghostty |
 
 ## Sessions / Workspace Story
 

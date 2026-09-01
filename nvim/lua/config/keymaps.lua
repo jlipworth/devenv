@@ -3,6 +3,14 @@
 
 local map = vim.keymap.set
 
+-- Ghostty forwards Command-1..9 to Neovim (rather than using them for tabs).
+-- Match Spacemacs/AeroSpace by selecting the corresponding visible window.
+for number = 1, 9 do
+  map("n", "<D-" .. number .. ">", number .. "<C-w>w", {
+    desc = "Go to window " .. number,
+  })
+end
+
 -- Match current Spacemacs `evil-escape` usage.
 map("i", "jk", "<Esc>", { desc = "Exit insert mode" })
 

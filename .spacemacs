@@ -818,6 +818,15 @@ before packages are loaded."
 
   ;; keybindings global
 
+  ;; AeroSpace owns Option-1..9 globally for workspace selection on macOS.
+  ;; Keep direct numbered-window selection available on Command-1..9 instead.
+  ;; Command is the `super' modifier in this Emacs build.
+  (dotimes (index 9)
+    (let ((number (1+ index)))
+      (global-set-key
+       (kbd (format "s-%d" number))
+       (intern (format "spacemacs/winum-select-window-%d" number)))))
+
   (setq-default evil-escape-key-sequence "jk")
   (setq-default evil-escape-delay 0.2)
   ;; Keep the global jk escape everywhere else, but do not let a quick j/k
