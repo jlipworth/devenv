@@ -3,6 +3,7 @@
 
 brew "ripgrep"
 brew "fd"
+brew "coreutils" if OS.mac? # GNU ls required by dirvish-fd
 brew "bat"
 brew "eza"
 brew "fzf"
