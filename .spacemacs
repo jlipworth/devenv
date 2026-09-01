@@ -220,6 +220,13 @@ This function should only modify configuration layer settings."
    ;; Also include the dependencies as they will not be resolved automatically.
    dotspacemacs-additional-packages
    '(
+     ;; Temporary fork while the magic-latex-buffer performance work is
+     ;; reviewed upstream.  Pin the exact commit so testing is reproducible.
+     (magic-latex-buffer
+      :location
+      (recipe :fetcher github
+              :repo "jlipworth/magic-latex-buffer"
+              :commit "44cfd364771adc5d6718132b485ff0f5c5924818"))
      exec-path-from-shell
      mermaid-mode
      ob-mermaid
