@@ -55,20 +55,33 @@ echo "=== Step 2: verify config symlink ==="
 test -L "$XDG_CONFIG_HOME/nvim"
 test "$(readlink "$XDG_CONFIG_HOME/nvim")" = "$ROOT_DIR/nvim"
 
-echo "=== Step 3: sync plugins headlessly ==="
-nvim --headless "+Lazy! sync" +qa
+echo "=== Step 3: install plugins at the pinned lockfile revisions ==="
+# Deliberately not `Lazy! sync`: the config dir is a symlink to $ROOT_DIR/nvim,
+# so a sync would move plugins to upstream HEAD and rewrite the repo's tracked
+# nvim/lazy-lock.json. `install` clones anything missing, `restore` checks every
+# plugin out at the locked revision (lazy.nvim's restore only touches plugins
+# that are already installed, so install must run first).
+nvim --headless "+Lazy! install" "+Lazy! restore" +qa
 
 echo "=== Step 4: install representative Mason packages ==="
+# Prebuilt-binary packages work everywhere; the npm-backed ones are only
+# requested when npm exists (the NO_ADMIN image ships without Node.js).
 MASON_PACKAGES=(
-    bash-language-server
-    css-lsp
-    emmet-ls
-    html-lsp
-    prettier
     ruff
     shellcheck
     texlab
 )
+if command -v npm > /dev/null 2>&1; then
+    MASON_PACKAGES+=(
+        bash-language-server
+        css-lsp
+        emmet-ls
+        html-lsp
+        prettier
+    )
+else
+    echo "npm not found; skipping npm-backed Mason packages"
+fi
 export CI_MASON_PACKAGES
 CI_MASON_PACKAGES="$(
     IFS=,
@@ -93,5 +106,101 @@ echo "=== Step 5: final startup smoke ==="
 COLOR_FILE="$TEST_HOME/colors_name.txt"
 nvim --headless "+lua vim.fn.writefile({vim.g.colors_name or 'nil'}, '$COLOR_FILE')" +qa > /dev/null 2>&1
 test "$(cat "$COLOR_FILE")" = "tokyonight-night"
+
+echo "=== Step 6: headless Lua specs ==="
+"$ROOT_DIR/tests/nvim/run_nvim_tests.sh"
+
+echo "=== Step 7: tex buffer assertions ==="
+# Proves the tex filetype path wires up end to end: VimTeX's <localleader>ll
+# and the <localleader>oc date map from nvim/lua/config/autocmds.lua are both
+# buffer-local FileType products, so their presence means the FileType autocmds
+# ran to completion on a real .tex buffer.
+TEX_FILE="$TEST_HOME/smoke.tex"
+cat > "$TEX_FILE" <<'TEX'
+\documentclass{article}
+\begin{document}
+hello
+\end{document}
+TEX
+
+TEX_ASSERT="$TEST_HOME/tex-assert.lua"
+cat > "$TEX_ASSERT" <<'LUA'
+local localleader = vim.g.maplocalleader or "\\"
+
+local function mapped(lhs)
+  return vim.fn.maparg(localleader .. lhs, "n") ~= ""
+end
+
+-- The maps are installed from FileType autocmds that LazyVim only registers on
+-- VeryLazy, so poll rather than assert immediately.
+vim.wait(60000, function()
+  return mapped("ll") and mapped("oc")
+end, 200)
+
+local problems = {}
+if not mapped("ll") then
+  table.insert(problems, "VimTeX did not map <localleader>ll in a tex buffer")
+end
+if not mapped("oc") then
+  table.insert(problems, "tex FileType autocmds did not map <localleader>oc")
+end
+if #problems > 0 then
+  io.stderr:write(table.concat(problems, "\n") .. "\n")
+  vim.cmd("cq! 1")
+end
+print("tex buffer assertions passed (filetype=" .. vim.bo.filetype .. ")")
+LUA
+
+nvim --headless "$TEX_FILE" "+luafile $TEX_ASSERT" +qa
+
+echo "=== Step 8: treesitter parser install ==="
+# NVIM_DISABLE_AUTO_INSTALLS=1 leaves ensure_installed empty on purpose, so the
+# parser is installed explicitly here rather than as a startup side effect.
+# nvim-treesitter (main) shells out to `tree-sitter build` and needs CLI
+# >= 0.26.1. Step 1 tries to install one (ensure_tree_sitter_cli), but every
+# prebuilt CLI that new (GitHub release, Mason, npm, Linuxbrew bottle) needs
+# glibc >= 2.38, and the bookworm-based CI images ship 2.36. A host like that
+# cannot exercise the parser build at all, so report it loudly and skip rather
+# than fail; set CI_REQUIRE_TREESITTER=1 to make it fatal (e.g. once the CI
+# image moves to a newer base).
+if tree-sitter --version; then
+    run_treesitter_step=true
+else
+    run_treesitter_step=false
+    if command -v tree-sitter > /dev/null 2>&1; then
+        echo "WARNING: tree-sitter CLI is on PATH but cannot run on this host (glibc too old for the prebuilt binary); skipping parser build" >&2
+    else
+        echo "WARNING: no tree-sitter CLI available; skipping parser build" >&2
+    fi
+    if [[ "${CI_REQUIRE_TREESITTER:-0}" == "1" ]]; then
+        echo "CI_REQUIRE_TREESITTER=1 and no runnable tree-sitter CLI" >&2
+        exit 1
+    fi
+fi
+TS_ASSERT="$TEST_HOME/ts-assert.lua"
+cat > "$TS_ASSERT" <<'LUA'
+local timeout_ms = tonumber(vim.env.CI_TS_TIMEOUT_MS or "300000")
+
+require("lazy").load({ plugins = { "nvim-treesitter" } })
+vim.cmd("TSInstall! python")
+
+local function installed()
+  return #vim.api.nvim_get_runtime_file("parser/python.*", false) > 0
+end
+
+vim.wait(timeout_ms, installed, 500)
+
+if not installed() then
+  io.stderr:write("python treesitter parser was not installed\n")
+  vim.cmd("cq! 1")
+end
+print("treesitter python parser installed")
+LUA
+
+if [[ "$run_treesitter_step" == true ]]; then
+    nvim --headless "+luafile $TS_ASSERT" +qa
+else
+    echo "treesitter parser install SKIPPED (no runnable tree-sitter CLI)"
+fi
 
 echo "=== Neovim smoke passed (${NVIM_INSTALL_MODE}) ==="

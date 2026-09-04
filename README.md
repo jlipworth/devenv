@@ -85,7 +85,9 @@ make latex      # texlab
 make docker     # dockerfile-language-server, hadolint
 make ocaml      # opam, merlin, utop
 make cli_tools  # eza, bat, ripgrep, fd, fzf, zoxide, lazygit
-make neovim     # Install/configure Neovim independently
+make neovim     # Install/configure Neovim independently (pinned source build)
+make neovim-package # Neovim from the pinned GitHub release (no-admin path)
+make neovim-test    # Headless Neovim Lua specs in tests/nvim
 ```
 
 ## Requirements
@@ -102,9 +104,9 @@ make neovim     # Install/configure Neovim independently
 
 CI is split across Woodpecker pipeline files under `.woodpecker/`.
 
-- `build.yml` validates the Emacs build flow
-- `layers.yml` validates language/editor layers, including the Neovim smoke path
-- `noadmin.yml` covers non-sudo smoke tests
+- `build.yml` validates the Emacs build flow and the default Neovim source build
+- `layers.yml` validates language/editor layers, including the legacy Neovim package path
+- `noadmin.yml` covers non-sudo smoke tests, including Neovim via the package path
 - `lint.yml` runs formatting and lint checks
 
 Neovim coverage includes a Linux headless smoke script at `ci/neovim-smoke.sh`.

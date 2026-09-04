@@ -79,6 +79,22 @@ steps:
       - command -v starship
       - test -d "$HOME/.nvm"
 
+  - name: noadmin-neovim
+    image: *noadmin_image
+    depends_on: []
+    environment:
+      CI: "true"
+      NO_ADMIN: "true"
+      DEBIAN_FRONTEND: noninteractive
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      NVIM_INSTALL_MODE: package
+    commands:
+      - set -eu
+      # Source builds need sudo-installed toolchains, so NO_ADMIN uses the
+      # package/download path (make neovim-package) via the smoke script.
+      - ./ci/neovim-smoke.sh 2>&1 | tee neovim.log
+      - 'grep -q "Neovim smoke passed" neovim.log'
+
 # Future follow-up:
 # - consider adding a slower/manual full `make latex` job once the
 #   slim TeX Live package set is settled

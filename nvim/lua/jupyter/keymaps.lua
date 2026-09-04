@@ -25,11 +25,13 @@ function M.setup(bufnr)
   map("n", "<localleader>jt", repl.toggle_repl,          "Jupyter: toggle REPL")
   map("n", "<localleader>jo", repl.focus_repl,           "Jupyter: focus REPL")
 
-  -- Navigation
-  map({ "n", "x", "o" }, "]]", cells.goto_next_cell,  "Next cell")
-  map({ "n", "x", "o" }, "[[", cells.goto_prev_cell,  "Prev cell")
-  map({ "n", "x", "o" }, "]C", cells.goto_last_cell,  "Last cell")
-  map({ "n", "x", "o" }, "[C", cells.goto_first_cell, "First cell")
+  -- Navigation. Uses ]j/[j and ]J/[J (rather than ]]/[[ and ]C/[C) so this
+  -- leaves ]]/[[ to LazyVim's LSP Next/Prev Reference maps, which are otherwise
+  -- shadowed in every Python buffer these maps are installed in.
+  map({ "n", "x", "o" }, "]j", cells.goto_next_cell,  "Next cell")
+  map({ "n", "x", "o" }, "[j", cells.goto_prev_cell,  "Prev cell")
+  map({ "n", "x", "o" }, "]J", cells.goto_last_cell,  "Last cell")
+  map({ "n", "x", "o" }, "[J", cells.goto_first_cell, "First cell")
 
   -- Cell manipulation
   map("n", "<localleader>ji", function()
@@ -68,7 +70,7 @@ function M.setup(bufnr)
       "  <localleader>ji  insert cell below   <localleader>jI  insert cell above",
       "  <localleader>jx  delete cell",
       "",
-      "  ]]  next cell    [[  prev cell    ]C  last cell    [C  first cell",
+      "  ]j  next cell    [j  prev cell    ]J  last cell    [J  first cell",
       "  aj  around cell (incl. marker)   ij  inside cell (code only)",
     }
     local buf = vim.api.nvim_create_buf(false, true)

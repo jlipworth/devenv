@@ -4,3 +4,6 @@
 brew "texlab"
 brew "poppler"
 brew "aspell"
+
+# PDF viewer with SyncTeX support for VimTeX forward/inverse search
+cask "skim" if OS.mac?

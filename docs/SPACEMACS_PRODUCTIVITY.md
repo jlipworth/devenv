@@ -121,9 +121,14 @@ The layer as currently configured in `.spacemacs`:
 
 ```elisp
 (git :variables
-     git-enable-magit-delta-plugin t
-     git-enable-magit-forge-plugin t)
+     git-enable-magit-delta-plugin t)
 ```
+
+Forge (GitHub/GitLab issues and pull requests inside Magit) needs no layer
+variable: the Spacemacs git layer installs it unconditionally on every
+non-Windows system. There is no `git-enable-magit-forge-plugin` variable —
+setting one has no effect. See [FORGE_SETUP.md](FORGE_SETUP.md) for the
+authentication setup Forge does require.
 
 ### Auto-Completion Layer
 

@@ -450,3 +450,164 @@ install_aur_packages() {
         fi
     done
 }
+
+# =============================================================================
+# Neovim helpers
+# =============================================================================
+
+# Compare two dotted version strings. Returns 0 (true) when $1 < $2.
+# Missing components are treated as 0, so "0.12" < "0.12.4".
+neovim_version_lt() {
+    local IFS=.
+    local lhs rhs
+    local i
+    read -r -a lhs <<< "$1"
+    read -r -a rhs <<< "$2"
+
+    for ((i = ${#lhs[@]}; i < ${#rhs[@]}; i++)); do
+        lhs[i]=0
+    done
+    for ((i = ${#rhs[@]}; i < ${#lhs[@]}; i++)); do
+        rhs[i]=0
+    done
+
+    for ((i = 0; i < ${#lhs[@]}; i++)); do
+        if ((10#${lhs[i]} < 10#${rhs[i]})); then
+            return 0
+        fi
+        if ((10#${lhs[i]} > 10#${rhs[i]})); then
+            return 1
+        fi
+    done
+
+    return 1
+}
+
+# =============================================================================
+# lazygit (LazyVim git integration: <leader>gG)
+# =============================================================================
+
+# Install lazygit, shared by build_neovim.sh and prereq_packages.sh.
+# macOS: Homebrew. Linux: Homebrew/Linuxbrew or the distro package manager,
+# falling back to the upstream GitHub release tarball into ~/.local/bin.
+# Idempotent: returns early when lazygit is already available.
+install_lazygit() {
+    if command -v lazygit &> /dev/null; then
+        log "lazygit is already installed."
+        return 0
+    fi
+
+    log "Installing lazygit..."
+
+    if command -v brew &> /dev/null; then
+        if brew install lazygit; then
+            log "lazygit installed via Homebrew." "SUCCESS"
+            return 0
+        fi
+        log "Error installing lazygit via Homebrew; trying other sources." "WARNING"
+    fi
+
+    if [[ "$OS" == "Darwin" ]]; then
+        log "lazygit could not be installed (Homebrew is required on macOS)." "WARNING"
+        log "Install it manually for LazyVim's <leader>gG lazygit view." "WARNING"
+        return 0
+    fi
+
+    if [[ "$DISTRO" == "arch" ]] && ! no_admin_mode; then
+        if install_packages "lazygit" && command -v lazygit &> /dev/null; then
+            return 0
+        fi
+        log "Distro package install of lazygit did not provide a binary; falling back to GitHub release." "WARNING"
+    fi
+
+    install_lazygit_release
+}
+
+# Download the latest lazygit release tarball into ~/.local/bin (no admin needed).
+install_lazygit_release() {
+    log "Installing lazygit from GitHub releases..."
+
+    local lg_version
+    lg_version="$(curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest 2> /dev/null |
+        grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')"
+
+    if [[ -z "$lg_version" ]]; then
+        log "Failed to determine the latest lazygit version from the GitHub API." "WARNING"
+        log "Install lazygit manually for LazyVim's <leader>gG lazygit view." "WARNING"
+        return 0
+    fi
+
+    local lg_arch
+    case "$(uname -m)" in
+        x86_64 | amd64) lg_arch="x86_64" ;;
+        aarch64 | arm64) lg_arch="arm64" ;;
+        *) lg_arch="$(uname -m)" ;;
+    esac
+
+    local lg_os="Linux"
+    if [[ "$OS" == "Darwin" ]]; then
+        lg_os="Darwin"
+    fi
+
+    local tmp_dir
+    tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/lazygit.XXXXXX")"
+
+    if ! curl -fsSL \
+        "https://github.com/jesseduffield/lazygit/releases/download/v${lg_version}/lazygit_${lg_version}_${lg_os}_${lg_arch}.tar.gz" \
+        -o "$tmp_dir/lazygit.tar.gz"; then
+        log "Failed to download lazygit ${lg_version} for ${lg_os}/${lg_arch}." "WARNING"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+
+    if ! tar -xzf "$tmp_dir/lazygit.tar.gz" -C "$tmp_dir" lazygit; then
+        log "Failed to extract the lazygit tarball." "WARNING"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+
+    mkdir -p "$HOME/.local/bin"
+    mv "$tmp_dir/lazygit" "$HOME/.local/bin/lazygit"
+    chmod +x "$HOME/.local/bin/lazygit"
+    rm -rf "$tmp_dir"
+
+    export PATH="$HOME/.local/bin:$PATH"
+    add_to_path "$HOME/.local/bin" "lazygit"
+    log "lazygit ${lg_version} installed to ~/.local/bin" "SUCCESS"
+}
+
+# Returns 0 when a tree-sitter CLI is on PATH *and* actually runs. A binary can
+# be present yet unusable (Mason and npm ship prebuilt CLIs that need a newer
+# glibc than Debian bookworm provides), so presence alone is not enough.
+tree_sitter_cli_works() {
+    command -v tree-sitter &> /dev/null && tree-sitter --version &> /dev/null
+}
+
+# Install the tree-sitter CLI that nvim-treesitter (main) uses to build
+# grammars (it needs >= 0.26.1). Prefer Homebrew's tree-sitter-cli formula
+# (the plain tree-sitter formula is the library only): its Linux bottles link
+# against Homebrew's own glibc, so they run on older distributions where the
+# GitHub-release binaries that npm and Mason download fail with
+# "GLIBC_2.39 not found".
+ensure_tree_sitter_cli() {
+    if tree_sitter_cli_works; then
+        log "tree-sitter CLI is already installed ($(tree-sitter --version 2> /dev/null))."
+        return 0
+    fi
+
+    log "Installing the tree-sitter CLI (used to build nvim-treesitter grammars)..."
+    if command -v brew &> /dev/null; then
+        brew install tree-sitter-cli || log "Error installing tree-sitter-cli via Homebrew." "WARNING"
+    elif [[ -n "${NODE_CMD:-}" ]] && command -v "$NODE_CMD" &> /dev/null; then
+        $NODE_CMD install -g tree-sitter-cli || log "Error installing tree-sitter-cli via $NODE_CMD." "WARNING"
+    fi
+    hash -r 2> /dev/null || true
+
+    if tree_sitter_cli_works; then
+        log "tree-sitter CLI installed ($(tree-sitter --version 2> /dev/null))." "SUCCESS"
+    elif command -v tree-sitter &> /dev/null; then
+        log "tree-sitter is on PATH but does not run here (likely a glibc mismatch); nvim-treesitter cannot build grammars until a working CLI is installed (Homebrew: brew install tree-sitter-cli)." "WARNING"
+    else
+        log "tree-sitter CLI unavailable; nvim-treesitter cannot build grammars until it is installed." "WARNING"
+    fi
+}

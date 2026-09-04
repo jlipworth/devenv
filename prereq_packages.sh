@@ -981,6 +981,21 @@ install_ocaml_support() {
     log "Installing OCaml development tools via opam..."
     opam install -y ocp-indent merlin utop ocamlformat ||
         log "Some opam packages failed to install." "WARNING"
+
+    # LSP tooling for the Neovim/Emacs OCaml layers. opam install is itself
+    # idempotent, but skip the call entirely when both are already present.
+    if command -v opam &> /dev/null; then
+        if command -v ocamllsp &> /dev/null && command -v ocamlformat &> /dev/null; then
+            log "ocaml-lsp-server and ocamlformat are already installed."
+        else
+            log "Installing ocaml-lsp-server and ocamlformat via opam..."
+            opam install -y ocaml-lsp-server ocamlformat ||
+                log "Error installing ocaml-lsp-server/ocamlformat via opam." "WARNING"
+        fi
+    else
+        log "opam is not available; skipping ocaml-lsp-server/ocamlformat." "WARNING"
+    fi
+
     log "OCaml support installed successfully." "SUCCESS"
 }
 
@@ -2255,36 +2270,24 @@ install_neovim() {
 install_neovim_package() {
     log "Installing Neovim and configuring LazyVim..."
 
-    # Source versions.conf for NEOVIM_VERSION
+    # Capture caller-supplied overrides before versions.conf clobbers them.
+    local neovim_version_env="${NEOVIM_VERSION:-}"
+    local minimum_neovim_version_env="${NEOVIM_MIN_VERSION:-}"
+
+    # Source versions.conf for NEOVIM_VERSION / NEOVIM_MIN_VERSION
     source "$GNU_DIR/versions.conf"
-    local neovim_version="${NEOVIM_VERSION:-0.12.0}"
-    local minimum_neovim_version="0.11.2"
 
-    neovim_version_lt() {
-        local IFS=.
-        local lhs rhs
-        local i
-        read -r -a lhs <<< "$1"
-        read -r -a rhs <<< "$2"
+    local neovim_version="${neovim_version_env:-${NEOVIM_VERSION:-}}"
+    local minimum_neovim_version="${minimum_neovim_version_env:-${NEOVIM_MIN_VERSION:-}}"
 
-        for ((i = ${#lhs[@]}; i < ${#rhs[@]}; i++)); do
-            lhs[i]=0
-        done
-        for ((i = ${#rhs[@]}; i < ${#lhs[@]}; i++)); do
-            rhs[i]=0
-        done
-
-        for ((i = 0; i < ${#lhs[@]}; i++)); do
-            if ((10#${lhs[i]} < 10#${rhs[i]})); then
-                return 0
-            fi
-            if ((10#${lhs[i]} > 10#${rhs[i]})); then
-                return 1
-            fi
-        done
-
+    if [[ -z "$neovim_version" || -z "$minimum_neovim_version" ]]; then
+        log "NEOVIM_VERSION/NEOVIM_MIN_VERSION are missing from $GNU_DIR/versions.conf and the environment." "ERROR"
         return 1
-    }
+    fi
+
+    log "Neovim target version: $neovim_version (minimum accepted: $minimum_neovim_version)"
+
+    # neovim_version_lt() is shared and lives in common_utils.sh.
 
     get_installed_neovim_version() {
         if ! command -v nvim &> /dev/null; then
@@ -2358,7 +2361,33 @@ install_neovim_package() {
 
         export PATH="$HOME/.local/bin:$PATH"
         add_to_path "$HOME/.local/bin" "Neovim"
+        # A package-managed nvim (for example under Linuxbrew) may already be
+        # hashed from an earlier lookup, which would hide the release binary.
+        hash -r 2> /dev/null || true
         log "Neovim installed to $nvim_dest" "SUCCESS"
+    }
+
+    # Package managers can lag the pinned target (a CI image with a stale
+    # Homebrew formula index, HOMEBREW_NO_AUTO_UPDATE=1, and so on). Fall back
+    # to the pinned GitHub release instead of failing the run.
+    ensure_neovim_target() {
+        local current
+        current="$(get_installed_neovim_version || true)"
+
+        if [[ -n "$current" ]] && ! neovim_version_lt "$current" "$neovim_version"; then
+            return 0
+        fi
+
+        if [[ -z "$current" ]]; then
+            log "Package-managed Neovim is missing or not runnable; installing pinned release v${neovim_version} into $HOME/.local/bin." "WARNING"
+            if command -v nvim &> /dev/null; then
+                log_neovim_version_failure
+            fi
+        else
+            log "Package-managed Neovim $current is older than the pinned target $neovim_version; installing pinned release into $HOME/.local/bin." "WARNING"
+        fi
+
+        install_neovim_release
     }
 
     # LazyVim bootstraps itself via git on first launch, so fail fast if git is
@@ -2392,8 +2421,10 @@ install_neovim_package() {
 
         if is_installed "brew"; then
             brew upgrade neovim || brew install neovim || log "Error upgrading Neovim via Homebrew." "WARNING"
+            ensure_neovim_target || return 1
         elif [[ "$DISTRO" == "arch" ]] && ! no_admin_mode; then
             install_packages "neovim"
+            ensure_neovim_target || return 1
         else
             log "Package-managed Neovim cannot be trusted to meet target $neovim_version here; installing pinned user-local build instead." "WARNING"
             installed_neovim_version=""
@@ -2407,14 +2438,10 @@ install_neovim_package() {
     elif is_installed "brew"; then
         log "Installing Neovim via Homebrew..."
         brew install neovim || log "Error installing Neovim via Homebrew." "WARNING"
-        installed_neovim_version="$(get_installed_neovim_version || true)"
-        if [[ -z "$installed_neovim_version" ]]; then
-            log "Homebrew Neovim installed, but it is not runnable in this environment; falling back to pinned user-local release." "WARNING"
-            log_neovim_version_failure
-            install_neovim_release
-        fi
+        ensure_neovim_target || return 1
     elif [[ "$DISTRO" == "arch" ]] && ! no_admin_mode; then
         install_packages "neovim"
+        ensure_neovim_target || return 1
     else
         install_neovim_release
     fi
@@ -2435,56 +2462,9 @@ install_neovim_package() {
     fi
     log "Neovim version verified: $installed_neovim_version"
 
-    # --- Install lazygit (required for LazyVim git integration) ---
-    if ! is_installed "lazygit"; then
-        log "Installing lazygit..."
-        if is_installed "brew"; then
-            brew install lazygit || log "Error installing lazygit via Homebrew." "WARNING"
-        elif [[ "$DISTRO" == "arch" ]] && ! no_admin_mode; then
-            install_packages "lazygit"
-        else
-            # Download lazygit binary from GitHub releases
-            log "Installing lazygit from GitHub releases..."
-            local lg_version
-            lg_version=$(curl -s https://api.github.com/repos/jesseduffield/lazygit/releases/latest | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')
-
-            if [[ -z "$lg_version" ]]; then
-                log "Failed to determine latest lazygit version from GitHub API." "WARNING"
-                return 0
-            fi
-
-            local lg_arch
-            case "$(uname -m)" in
-                x86_64 | amd64) lg_arch="x86_64" ;;
-                aarch64 | arm64) lg_arch="arm64" ;;
-                *) lg_arch="$(uname -m)" ;;
-            esac
-
-            local lg_os
-            if [[ "$OS" == "Darwin" ]]; then
-                lg_os="Darwin"
-            else
-                lg_os="Linux"
-            fi
-
-            curl -fsSL "https://github.com/jesseduffield/lazygit/releases/download/v${lg_version}/lazygit_${lg_version}_${lg_os}_${lg_arch}.tar.gz" \
-                -o /tmp/lazygit.tar.gz || {
-                log "Failed to download lazygit." "WARNING"
-            }
-
-            if [[ -f /tmp/lazygit.tar.gz ]]; then
-                tar -xzf /tmp/lazygit.tar.gz -C /tmp lazygit
-                mkdir -p "$HOME/.local/bin"
-                mv /tmp/lazygit "$HOME/.local/bin/"
-                chmod +x "$HOME/.local/bin/lazygit"
-                rm /tmp/lazygit.tar.gz
-                add_to_path "$HOME/.local/bin" "lazygit"
-                log "lazygit installed to ~/.local/bin" "SUCCESS"
-            fi
-        fi
-    else
-        log "lazygit is already installed."
-    fi
+    # --- Install lazygit (LazyVim git integration: <leader>gG) ---
+    install_lazygit
+    ensure_tree_sitter_cli
 
     # --- Create Neovim config symlink ---
     local nvim_config_dir="$HOME/.config/nvim"
@@ -2505,6 +2485,20 @@ install_neovim_package() {
 
     ln -s "$nvim_source" "$nvim_config_dir"
     log "Neovim config symlinked: $nvim_config_dir -> $nvim_source" "SUCCESS"
+
+    # --- Optional notebook tooling (warn only; Neovim works without it) ---
+    local missing_notebook_tools=()
+    local notebook_tool
+    for notebook_tool in jupytext ipython; do
+        if ! command -v "$notebook_tool" &> /dev/null; then
+            missing_notebook_tools+=("$notebook_tool")
+        fi
+    done
+
+    if ((${#missing_notebook_tools[@]} > 0)); then
+        log "Missing notebook tooling: ${missing_notebook_tools[*]}. Neovim's Jupyter/notebook workflow will be degraded." "WARNING"
+        log "Install it with 'make python-env' (or './prereq_packages.sh install_python_env')." "WARNING"
+    fi
 
     log "Neovim setup complete! Run 'nvim' to auto-install plugins and LSP servers on first launch." "SUCCESS"
 }

@@ -3,53 +3,54 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # shellcheck source=common_utils.sh
 source "$SCRIPT_DIR/common_utils.sh"
 
+# Capture caller-supplied overrides before versions.conf is sourced: sourcing it
+# unconditionally would otherwise silently discard `NEOVIM_VERSION=... ./build_neovim.sh`.
+NEOVIM_VERSION_ENV="${NEOVIM_VERSION:-}"
+NEOVIM_MIN_VERSION_ENV="${NEOVIM_MIN_VERSION:-}"
+
 if [[ -f "$GNU_DIR/versions.conf" ]]; then
     source "$GNU_DIR/versions.conf"
 fi
 
 set -euo pipefail
 
-NEOVIM_VERSION="${NEOVIM_VERSION:-0.12.0}"
-NEOVIM_MIN_VERSION="${NEOVIM_MIN_VERSION:-0.11.2}"
+NEOVIM_VERSION_SOURCE="versions.conf"
+if [[ -n "$NEOVIM_VERSION_ENV" ]]; then
+    NEOVIM_VERSION="$NEOVIM_VERSION_ENV"
+    NEOVIM_VERSION_SOURCE="environment override"
+fi
+
+NEOVIM_MIN_VERSION_SOURCE="versions.conf"
+if [[ -n "$NEOVIM_MIN_VERSION_ENV" ]]; then
+    NEOVIM_MIN_VERSION="$NEOVIM_MIN_VERSION_ENV"
+    NEOVIM_MIN_VERSION_SOURCE="environment override"
+fi
+
+if [[ -z "${NEOVIM_VERSION:-}" || -z "${NEOVIM_MIN_VERSION:-}" ]]; then
+    log "NEOVIM_VERSION/NEOVIM_MIN_VERSION are unset and $GNU_DIR/versions.conf did not supply them." "ERROR"
+    log "Set them in versions.conf or pass them in the environment, then re-run." "ERROR"
+    exit 1
+fi
+
 NEOVIM_BUILD_TYPE="${NEOVIM_BUILD_TYPE:-RelWithDebInfo}"
 NEOVIM_PREFIX="${NEOVIM_PREFIX:-$HOME/.local/neovim}"
 NEOVIM_SOURCE_ROOT="${NEOVIM_SOURCE_ROOT:-$HOME/.cache/devenv-builds}"
 NEOVIM_TAR="neovim-v${NEOVIM_VERSION}.tar.gz"
 NEOVIM_DIR="neovim-${NEOVIM_VERSION}"
+NEOVIM_FORCE_REBUILD="${NEOVIM_FORCE_REBUILD:-false}"
 CI="${CI:-false}"
 CI_INSTALL="${CI_INSTALL:-false}"
 
-DRY_RUN="false"
+DRY_RUN="${DRY_RUN:-false}"
 if [[ "${1:-}" == "--verify" || "${1:-}" == "--check" || "${1:-}" == "--dry-run" ]]; then
     DRY_RUN="true"
+fi
+if [[ "$DRY_RUN" == "true" ]]; then
     log "Running in verification/dry-run mode. Will prepare bundled dependencies and configure only." "INFO"
 fi
 
-neovim_version_lt() {
-    local IFS=.
-    local lhs rhs
-    local i
-    read -r -a lhs <<< "$1"
-    read -r -a rhs <<< "$2"
-
-    for ((i = ${#lhs[@]}; i < ${#rhs[@]}; i++)); do
-        lhs[i]=0
-    done
-    for ((i = ${#rhs[@]}; i < ${#lhs[@]}; i++)); do
-        rhs[i]=0
-    done
-
-    for ((i = 0; i < ${#lhs[@]}; i++)); do
-        if ((10#${lhs[i]} < 10#${rhs[i]})); then
-            return 0
-        fi
-        if ((10#${lhs[i]} > 10#${rhs[i]})); then
-            return 1
-        fi
-    done
-
-    return 1
-}
+log "Neovim target version: ${NEOVIM_VERSION} (source: ${NEOVIM_VERSION_SOURCE})"
+log "Neovim minimum version: ${NEOVIM_MIN_VERSION} (source: ${NEOVIM_MIN_VERSION_SOURCE})"
 
 detect_linux_gcc_version() {
     local gcc_version
@@ -149,6 +150,9 @@ configure_no_admin_linux_env() {
     fi
 }
 
+# nvim-treesitter compiles grammars with the tree-sitter CLI. macOS and the
+# Linuxbrew path get it from brewfiles/Brewfile.neovim-build; this covers the
+# remaining Linux paths.
 cmake_generator() {
     if command -v ninja &> /dev/null; then
         echo "Ninja"
@@ -182,7 +186,7 @@ ensure_build_dependencies() {
 
         $pacman_cmd -Sy
         $pacman_cmd -S --needed --noconfirm \
-            base-devel cmake ninja curl git gettext ccache pkgconf
+            base-devel cmake ninja curl git gettext ccache pkgconf tree-sitter-cli
         log "Dependencies installed successfully" "SUCCESS"
         return 0
     fi
@@ -199,6 +203,7 @@ ensure_build_dependencies() {
                 brew install gcc
             fi
             set_brew_toolchain_env
+            ensure_tree_sitter_cli
             log "Dependencies installed via Linuxbrew successfully" "SUCCESS"
             return 0
         fi
@@ -225,6 +230,7 @@ ensure_build_dependencies() {
         if command -v "g++-${gcc_version}" &> /dev/null; then
             export CXX="g++-${gcc_version}"
         fi
+        ensure_tree_sitter_cli
         log "Dependencies installed successfully" "SUCCESS"
         return 0
     fi
@@ -356,20 +362,49 @@ link_nvim_config() {
     log "Neovim config symlinked: $nvim_config_dir -> $nvim_source" "SUCCESS"
 }
 
-install_lazygit_companion() {
-    if is_installed "lazygit"; then
-        log "lazygit is already installed."
-        return 0
+installed_prefix_version() {
+    if [[ ! -x "$NEOVIM_PREFIX/bin/nvim" ]]; then
+        return 1
     fi
 
-    log "Installing lazygit companion tool..."
-    if is_installed "brew"; then
-        brew install lazygit || log "Error installing lazygit via Homebrew." "WARNING"
-    elif [[ "$DISTRO" == "arch" ]] && ! no_admin_mode; then
-        install_packages "lazygit"
-    else
-        log "lazygit is not installed. Install it separately for <leader>gg support." "WARNING"
+    "$NEOVIM_PREFIX/bin/nvim" --version 2> /dev/null |
+        head -1 | sed -E 's/^NVIM v([0-9]+(\.[0-9]+){1,2}).*/\1/'
+}
+
+# Returns 0 when the pinned Neovim is already installed and the expensive
+# source build can be skipped. Always logs the decision it made.
+should_skip_neovim_build() {
+    local current
+    current="$(installed_prefix_version || true)"
+
+    if [[ -z "$current" ]]; then
+        log "No Neovim ${NEOVIM_VERSION} found at $NEOVIM_PREFIX/bin/nvim; running the source build."
+        return 1
     fi
+
+    if [[ "$current" != "$NEOVIM_VERSION" ]]; then
+        log "Installed Neovim $current does not match the pinned ${NEOVIM_VERSION}; rebuilding."
+        return 1
+    fi
+
+    if [[ "$NEOVIM_FORCE_REBUILD" == "true" ]]; then
+        log "Installed Neovim $current matches the pin, but NEOVIM_FORCE_REBUILD=true; rebuilding."
+        return 1
+    fi
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log "Installed Neovim $current matches the pin, but dry-run mode still exercises the build prep; not short-circuiting." "INFO"
+        return 1
+    fi
+
+    if [[ "$CI" == "true" ]]; then
+        log "Installed Neovim $current matches the pin, but CI=true always builds from source; not short-circuiting." "INFO"
+        return 1
+    fi
+
+    log "Neovim ${NEOVIM_VERSION} is already installed at $NEOVIM_PREFIX/bin/nvim; skipping the source build." "SUCCESS"
+    log "Set NEOVIM_FORCE_REBUILD=true to rebuild anyway." "INFO"
+    return 0
 }
 
 log "Preparing Neovim ${NEOVIM_VERSION} source build..."
@@ -377,6 +412,17 @@ log "Install prefix: $NEOVIM_PREFIX"
 
 if [[ "$CI" == "true" ]]; then
     log "Running in CI mode" "INFO"
+fi
+
+if should_skip_neovim_build; then
+    mkdir -p "$HOME/.local/bin"
+    ln -sf "$NEOVIM_PREFIX/bin/nvim" "$HOME/.local/bin/nvim"
+    add_to_path "$HOME/.local/bin" "Neovim"
+    ensure_tree_sitter_cli
+    install_lazygit
+    link_nvim_config
+    log "Neovim ${NEOVIM_VERSION} is up to date: $("$NEOVIM_PREFIX/bin/nvim" --version | head -1)" "SUCCESS"
+    exit 0
 fi
 
 ensure_build_dependencies
@@ -466,7 +512,7 @@ ln -sf "$NEOVIM_PREFIX/bin/nvim" "$HOME/.local/bin/nvim"
 add_to_path "$HOME/.local/bin" "Neovim"
 log "Neovim source build installed: $("$NEOVIM_PREFIX/bin/nvim" --version | head -1)" "SUCCESS"
 
-install_lazygit_companion
+install_lazygit
 link_nvim_config
 
 echo ""
