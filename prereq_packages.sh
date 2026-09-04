@@ -2361,7 +2361,33 @@ install_neovim_package() {
 
         export PATH="$HOME/.local/bin:$PATH"
         add_to_path "$HOME/.local/bin" "Neovim"
+        # A package-managed nvim (for example under Linuxbrew) may already be
+        # hashed from an earlier lookup, which would hide the release binary.
+        hash -r 2> /dev/null || true
         log "Neovim installed to $nvim_dest" "SUCCESS"
+    }
+
+    # Package managers can lag the pinned target (a CI image with a stale
+    # Homebrew formula index, HOMEBREW_NO_AUTO_UPDATE=1, and so on). Fall back
+    # to the pinned GitHub release instead of failing the run.
+    ensure_neovim_target() {
+        local current
+        current="$(get_installed_neovim_version || true)"
+
+        if [[ -n "$current" ]] && ! neovim_version_lt "$current" "$neovim_version"; then
+            return 0
+        fi
+
+        if [[ -z "$current" ]]; then
+            log "Package-managed Neovim is missing or not runnable; installing pinned release v${neovim_version} into $HOME/.local/bin." "WARNING"
+            if command -v nvim &> /dev/null; then
+                log_neovim_version_failure
+            fi
+        else
+            log "Package-managed Neovim $current is older than the pinned target $neovim_version; installing pinned release into $HOME/.local/bin." "WARNING"
+        fi
+
+        install_neovim_release
     }
 
     # LazyVim bootstraps itself via git on first launch, so fail fast if git is
@@ -2395,8 +2421,10 @@ install_neovim_package() {
 
         if is_installed "brew"; then
             brew upgrade neovim || brew install neovim || log "Error upgrading Neovim via Homebrew." "WARNING"
+            ensure_neovim_target || return 1
         elif [[ "$DISTRO" == "arch" ]] && ! no_admin_mode; then
             install_packages "neovim"
+            ensure_neovim_target || return 1
         else
             log "Package-managed Neovim cannot be trusted to meet target $neovim_version here; installing pinned user-local build instead." "WARNING"
             installed_neovim_version=""
@@ -2410,14 +2438,10 @@ install_neovim_package() {
     elif is_installed "brew"; then
         log "Installing Neovim via Homebrew..."
         brew install neovim || log "Error installing Neovim via Homebrew." "WARNING"
-        installed_neovim_version="$(get_installed_neovim_version || true)"
-        if [[ -z "$installed_neovim_version" ]]; then
-            log "Homebrew Neovim installed, but it is not runnable in this environment; falling back to pinned user-local release." "WARNING"
-            log_neovim_version_failure
-            install_neovim_release
-        fi
+        ensure_neovim_target || return 1
     elif [[ "$DISTRO" == "arch" ]] && ! no_admin_mode; then
         install_packages "neovim"
+        ensure_neovim_target || return 1
     else
         install_neovim_release
     fi
