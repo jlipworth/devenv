@@ -436,6 +436,7 @@ if should_skip_neovim_build; then
     mkdir -p "$HOME/.local/bin"
     ln -sf "$NEOVIM_PREFIX/bin/nvim" "$HOME/.local/bin/nvim"
     add_to_path "$HOME/.local/bin" "Neovim"
+    ensure_tree_sitter_cli
     install_lazygit
     link_nvim_config
     log "Neovim ${NEOVIM_VERSION} is up to date: $("$NEOVIM_PREFIX/bin/nvim" --version | head -1)" "SUCCESS"

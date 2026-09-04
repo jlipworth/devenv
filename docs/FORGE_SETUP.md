@@ -5,11 +5,9 @@ This page is Spacemacs-specific; Neovim uses a different config path.
 
 ## Prerequisites
 
-- Spacemacs git layer with forge enabled:
-  ```elisp
-  (git :variables
-       git-enable-magit-forge-plugin t)
-  ```
+- The Spacemacs `git` layer. Forge needs no layer variable: the git layer
+  installs it unconditionally on every non-Windows system. There is no
+  `git-enable-magit-forge-plugin` variable — setting one has no effect.
 
 ## Authentication Setup
 

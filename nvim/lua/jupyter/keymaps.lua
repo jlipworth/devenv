@@ -26,7 +26,8 @@ function M.setup(bufnr)
   map("n", "<localleader>jo", repl.focus_repl,           "Jupyter: focus REPL")
 
   -- Navigation. Uses ]j/[j and ]J/[J (rather than ]]/[[ and ]C/[C) so this
-  -- doesn't shadow Python's treesitter class/def motions on the same buffer.
+  -- leaves ]]/[[ to LazyVim's LSP Next/Prev Reference maps, which are otherwise
+  -- shadowed in every Python buffer these maps are installed in.
   map({ "n", "x", "o" }, "]j", cells.goto_next_cell,  "Next cell")
   map({ "n", "x", "o" }, "[j", cells.goto_prev_cell,  "Prev cell")
   map({ "n", "x", "o" }, "]J", cells.goto_last_cell,  "Last cell")

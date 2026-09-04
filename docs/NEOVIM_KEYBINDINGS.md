@@ -313,8 +313,8 @@ Jupyter session — the Neovim REPL is plain IPython.
 These used to be `]]` / `[[` (next/prev cell) and `]C` / `[C` (last/first
 cell). They were moved to `]j` / `[j` / `]J` / `[J` because the maps are
 installed in every Python buffer, cell markers or not, and `]]` / `[[` were
-shadowing Python's treesitter class/def motions. `]]` / `[[` now fall through
-to those motions again; `]C` / `[C` fall through to treesitter class motions.
+shadowing LazyVim's LSP Next/Prev Reference maps. `]]` / `[[` now navigate
+document-highlight references again as LazyVim intends.
 
 ### Cheatsheet popup
 

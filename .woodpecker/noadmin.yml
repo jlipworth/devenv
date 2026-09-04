@@ -89,11 +89,11 @@ steps:
       HOMEBREW_NO_AUTO_UPDATE: "1"
       NVIM_INSTALL_MODE: package
     commands:
-      - set -eu
+      - set -euo pipefail
       # Source builds need sudo-installed toolchains, so NO_ADMIN uses the
       # package/download path (make neovim-package) via the smoke script.
       - ./ci/neovim-smoke.sh 2>&1 | tee neovim.log
-      - grep -q "NVIM v" neovim.log
+      - 'grep -q "Neovim smoke passed" neovim.log'
 
 # Future follow-up:
 # - consider adding a slower/manual full `make latex` job once the
