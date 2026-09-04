@@ -76,8 +76,17 @@ return {
   {
     -- The pinned mason-lspconfig (v2) supports `ensure_installed` and
     -- `automatic_enable` only; `automatic_installation` was removed upstream.
-    -- LazyVim passes `automatic_enable = { exclude = ... }` itself, so the
-    -- only knob left here is the extra ensure_installed list.
+    -- LazyVim passes `automatic_enable = { exclude = ... }` itself.
+    --
+    -- NOTE: this `ensure_installed = {}` override is a no-op safety net, not
+    -- the thing that disables installs. LazyVim builds its own list and does
+    -- `vim.list_extend(install, LazyVim.opts("mason-lspconfig.nvim").ensure_installed or {})`
+    -- (lazyvim/plugins/lsp/init.lua), which always *appends* this spec's
+    -- value onto its derived list rather than replacing it, so setting it to
+    -- `{}` here can never clear anything. The `mason = false` loop in the
+    -- nvim-lspconfig opts above (which flips every entry in `servers`) is
+    -- what actually prevents mason-lspconfig from installing anything: do
+    -- not remove that loop believing this block covers it.
     "mason-org/mason-lspconfig.nvim",
     opts = function(_, opts)
       if disable_auto_installs then
