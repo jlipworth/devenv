@@ -93,7 +93,7 @@ steps:
       # Source builds need sudo-installed toolchains, so NO_ADMIN uses the
       # package/download path (make neovim-package) via the smoke script.
       - ./ci/neovim-smoke.sh 2>&1 | tee neovim.log
-      - command -v nvim
+      - grep -q "NVIM v" neovim.log
 
 # Future follow-up:
 # - consider adding a slower/manual full `make latex` job once the
