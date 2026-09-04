@@ -6,4 +6,4 @@ brew "git"
 brew "ninja"
 brew "pkg-config"
 # tree-sitter CLI: nvim-treesitter compiles grammars with it
-brew "tree-sitter"
+brew "tree-sitter-cli"

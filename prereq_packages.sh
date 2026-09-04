@@ -2464,6 +2464,7 @@ install_neovim_package() {
 
     # --- Install lazygit (LazyVim git integration: <leader>gG) ---
     install_lazygit
+    ensure_tree_sitter_cli
 
     # --- Create Neovim config symlink ---
     local nvim_config_dir="$HOME/.config/nvim"

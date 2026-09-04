@@ -153,24 +153,6 @@ configure_no_admin_linux_env() {
 # nvim-treesitter compiles grammars with the tree-sitter CLI. macOS and the
 # Linuxbrew path get it from brewfiles/Brewfile.neovim-build; this covers the
 # remaining Linux paths.
-ensure_tree_sitter_cli() {
-    if command -v tree-sitter &> /dev/null; then
-        log "tree-sitter CLI is already installed."
-        return 0
-    fi
-
-    log "Installing the tree-sitter CLI (used to build nvim-treesitter grammars)..."
-    if command -v "$NODE_CMD" &> /dev/null; then
-        $NODE_CMD install -g tree-sitter-cli || log "Error installing tree-sitter-cli via $NODE_CMD." "WARNING"
-    fi
-
-    if command -v tree-sitter &> /dev/null; then
-        log "tree-sitter CLI installed." "SUCCESS"
-    else
-        log "tree-sitter CLI unavailable; nvim-treesitter will rely on prebuilt parsers." "WARNING"
-    fi
-}
-
 cmake_generator() {
     if command -v ninja &> /dev/null; then
         echo "Ninja"

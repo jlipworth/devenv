@@ -70,7 +70,6 @@ MASON_PACKAGES=(
     ruff
     shellcheck
     texlab
-    tree-sitter-cli
 )
 if command -v npm > /dev/null 2>&1; then
     MASON_PACKAGES+=(
@@ -157,9 +156,14 @@ nvim --headless "$TEX_FILE" "+luafile $TEX_ASSERT" +qa
 echo "=== Step 8: treesitter parser install ==="
 # NVIM_DISABLE_AUTO_INSTALLS=1 leaves ensure_installed empty on purpose, so the
 # parser is installed explicitly here rather than as a startup side effect.
-# nvim-treesitter (main) shells out to `tree-sitter build`; the CLI comes from
-# the Mason package installed in Step 4, so make sure Mason's bin is on PATH.
-export PATH="$XDG_DATA_HOME/nvim/mason/bin:$PATH"
+# nvim-treesitter (main) shells out to `tree-sitter build`. Step 1 installs the
+# CLI (ensure_tree_sitter_cli, Homebrew-first); the Mason/npm prebuilt binaries
+# need glibc 2.39 and do not run on the bookworm-based CI images, so require a
+# CLI that actually executes here rather than merely exists.
+if ! tree-sitter --version; then
+    echo "tree-sitter CLI is missing or not runnable on this host" >&2
+    exit 1
+fi
 TS_ASSERT="$TEST_HOME/ts-assert.lua"
 cat > "$TS_ASSERT" <<'LUA'
 local timeout_ms = tonumber(vim.env.CI_TS_TIMEOUT_MS or "300000")
