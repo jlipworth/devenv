@@ -10,6 +10,8 @@ This config currently uses:
 - **Snacks explorer** for the file tree
 - **persistence.nvim** for session restore
 - **Harpoon 2** for optional working-set / hot-file jumps
+- **Neogit + Diffview + Octo** for git (`<leader>gg` is Neogit, not lazygit)
+- **blink.cmp** for completion and snippet expansion (no LuaSnip)
 
 
 ## Getting Started
@@ -45,7 +47,7 @@ Think of this setup as:
 - `<leader>e` — explorer
 - `<leader>fp` — projects
 - `<leader>qs` — restore session
-- `<leader>gg` — lazygit
+- `<leader>gg` — Neogit (Magit-style status; lazygit is `<leader>gG`)
 - `gd` — go to definition
 - `<leader>ca` — code action
 - `jk` — escape insert mode
@@ -69,7 +71,7 @@ Use **Harpoon** when you keep bouncing between a small set of important files.
 | Project switcher | `SPC p l` / `SPC p p` | `<leader>fp` | Project picker |
 | Switch buffer | `SPC b n/p` | `[b` / `]b` | Previous/next buffer |
 | Close buffer | `SPC b d` | `<leader>bd` | |
-| Save file | `SPC f s` | `<leader>w` or `:w` | |
+| Save file | `SPC f s` | `<C-s>` or `:w` | `<leader>w` is the **windows** group, not save |
 | Command history | `SPC SPC` | `<leader>:` | Commands live at `<leader>sC` |
 
 ## Windows and Splits
@@ -81,7 +83,10 @@ Use **Harpoon** when you keep bouncing between a small set of important files.
 | Close window | `SPC w d` | `<leader>wd` or `<C-w>c` | |
 | Switch window | `SPC w w` | `<C-w>w` | |
 | Move to window | `SPC w h/j/k/l` | `<C-h/j/k/l>` | LazyVim default |
-| Numbered window | `Cmd-1` ... `Cmd-9` | `Cmd-1` ... `Cmd-9` | Ghostty uses a tmux-safe Meta encoding |
+| Numbered window | `Cmd-1` ... `Cmd-9` | `Cmd-1` ... `Cmd-9` | Bound in normal, visual, **insert** and **terminal** modes (insert/visual leave via `<Esc>`, terminal via `<C-\><C-n>`), matching Spacemacs' global `winum` behaviour. Ghostty uses a tmux-safe Meta encoding, so both `<D-N>` and `<M-N>` are bound |
+| Resize window | `SPC w .` (transient state) | `<C-Up>` / `<C-Down>` / `<C-Left>` / `<C-Right>` | LazyVim defaults; kept, which is why multi-cursor's add-cursor keys moved to `<M-Up>`/`<M-Down>` |
+| Terminal (root dir) | `SPC '` (vterm) | `<leader>ft` or `<c-/>` | Snacks terminal; `<c-/>` also closes it from terminal mode |
+| Terminal (cwd) | | `<leader>fT` | Snacks terminal in the current working directory |
 
 ## Sessions / Workspace Story
 
@@ -98,6 +103,23 @@ Neovim does not ship with Spacemacs-style layouts, but this setup has a workable
 | Restore last session | `<leader>ql` | Resume last session |
 | Select session | `<leader>qS` | Choose from saved sessions |
 | Stop saving session | `<leader>qd` | Disable session persistence for current session |
+
+### Layouts analog (`<leader><tab>` — tabs)
+
+Spacemacs `SPC l 1` ... `SPC l 9` (numbered layouts) has no direct
+equivalent: `<leader>l` is `:Lazy` in LazyVim, so the numbered-layout keys
+are deliberately not rebound. The closest thing is LazyVim's tab group,
+where each tab page carries its own window layout.
+
+| Action | LazyVim | Notes |
+|--------|---------|-------|
+| New tab | `<leader><tab><tab>` | New tab page (new window layout) |
+| Next / previous tab | `<leader><tab>]` / `<leader><tab>[` | |
+| First / last tab | `<leader><tab>f` / `<leader><tab>l` | |
+| Close tab | `<leader><tab>d` | |
+| Close other tabs | `<leader><tab>o` | |
+
+Numbered jumps are `1gt`, `2gt`, ... (built-in Vim), or `:tabnext N`.
 
 ## Harpoon 2 (Optional Working Set)
 
@@ -139,6 +161,41 @@ that used to live here is now superseded by that section.
 | Prev diagnostic | `[ d` | `[d` | |
 | LSP info | | `:LspInfo` | Check attached servers |
 
+### Language support
+
+All LazyVim extras are imported from `nvim/lua/config/lazy.lua` (they must be
+imported before the `plugins` directory, or LazyVim warns "import order is
+incorrect" on interactive start). Extras enabled for Spacemacs layer parity:
+
+| Area | Extras |
+|---|---|
+| Core languages | `lang.python`, `lang.typescript`, `lang.json`, `lang.yaml`, `lang.toml`, `lang.markdown`, `lang.sql`, `lang.tex`, `lang.tailwind`, `lang.clangd`, `lang.cmake` |
+| Added for layer parity | `lang.rust`, `lang.ocaml`, `lang.terraform`, `lang.docker`, `lang.ansible`, `lang.helm` |
+| Linting | `linting.eslint` — with `vim.g.lazyvim_eslint_auto_format = false`, so prettier stays the sole JS/TS formatter |
+| Conditional | `lang.r` loads only when `Rscript` is on PATH |
+| Other | `ai.claudecode`, `util.octo`, `dap.core` |
+
+Extra LSP servers wired up in `nvim/lua/plugins/lang.lua` on top of what the
+extras bring: `bashls`, `html`, `cssls`, `emmet_ls`, `vimls`,
+`nginx_language_server`, `sqls`, `powershell_es` (only when `pwsh`/`powershell`
+is on PATH) and `sourcekit` (Swift — only when `sourcekit-lsp` is on PATH; it
+ships with the toolchain and is never installed by Mason). `clangd` is started
+with `--experimental-modules-support` appended to LazyVim's own flags, for
+C++20 modules.
+
+VimTeX's PDF viewer (`,lv` forward search) is Skim on macOS and zathura
+elsewhere. Skim is installed by `brewfiles/Brewfile.latex` on macOS; zathura is
+not installed by this repo — add it from your distro if you want Linux
+forward/inverse search. VimTeX requires Neovim >= 0.12.4 and refuses to load
+below it — see `NEOVIM_MIN_VERSION` in `versions.conf`.
+
+`NVIM_DISABLE_AUTO_INSTALLS=1` (used by CI) opts every server out of Mason and
+empties the treesitter/mason `ensure_installed` lists.
+
+`nvim/lazy-lock.json` is tracked in git. `:Lazy install` / `:Lazy update`
+rewrite it — commit that change deliberately, and use `:Lazy restore` to get
+back to the pinned set.
+
 ## Search and Replace
 
 | Action | Spacemacs | LazyVim | Notes |
@@ -163,12 +220,40 @@ Key groups:
 - `<leader>h` — Harpoon working set
 - `<leader>x` — Diagnostics / Trouble
 - `<leader>u` — UI toggles
+- `<leader>S` — Spell (replaces LazyVim's scratch-select binding)
+- `<leader>a` — AI / Claude Code
+- `<leader>d` — Debug (nvim-dap)
+- `<leader><tab>` — Tabs (the closest analog to Spacemacs layouts)
 
 ## Custom Additions
 
 | Action | Keybinding | Notes |
 |--------|-----------|-------|
 | Insert date | `<localleader>oc` | Inserts "Mon DD, YYYY" in `tex`/`org` buffers, matching the current Spacemacs major-mode date habit |
+| Markdown preview | `<leader>cp` | `:LivePreview start` (live-preview.nvim), markdown buffers only. Browser-based analog of Spacemacs `grip-mode` (`,cg`) |
+
+## Not ported from Spacemacs / `.vimrc`
+
+These bindings exist in `.spacemacs` / `jal-functions.el` / `.vimrc` and have
+**no** counterpart in this Neovim config. They are listed so the gap is
+explicit rather than surprising.
+
+| Source | Binding | What it did | Status here |
+|---|---|---|---|
+| `jal-functions.el` (latex-mode) | `,jn` / `,jp` | Next / previous LaTeX section | Not ported. VimTeX's own `]]` / `[[` section motions cover this |
+| `jal-functions.el` (latex-mode) | `,jj` | `helm-imenu` | Not ported; nearest is `<leader>ss` (LSP symbols, needs texlab attached) |
+| `jal-functions.el` (markdown/gfm) | `,M` | Compile the mermaid block at point | Not ported — mermaid is an explicit non-goal (`docs/archive/2026-03-23-neovim-support-design.md`) |
+| `jal-functions.el` (mermaid-mode) | `,c` / `,b` / `,r` / `,o` / `,d` | mermaid compile / buffer / region / browser / doc | Not ported — same non-goal; no mermaid-mode analog |
+| `.spacemacs` (markdown) | `,cg` | `grip-mode` GitHub-flavored preview | Replaced, not ported key-for-key: `<leader>cp` (live-preview.nvim) |
+| `.vimrc` | `<C-p>` | `:Files` (fzf) | Not ported; `<leader>ff` is the picker here |
+| `.vimrc` | `ga` | `vim-easy-align` | Not ported (plugin not installed) |
+| `.vimrc` | `;m` | Replace the character under the cursor with a space | Not ported (`r<Space>` does the same) |
+| `.vimrc` | cmdline `<C-h/j/k/l>`, `<C-^>`, `<C-$>` | Readline-ish command-line motions | Not ported; Neovim's default cmdline motions apply |
+| `.vimrc` (tex buffers) | `$` / `0` / `^` -> `g$` / `g0` / `g^` | Screen-line motions in wrapped TeX | Not ported. `j` / `k` do respect wrapped lines (`config/keymaps.lua`), but `$`/`0`/`^` do not |
+
+Also note: `.vimrc` maps `<Up>` / `<Down>` to the same wrap-aware motions as
+`j` / `k`. Here only `j` / `k` are remapped (`config/keymaps.lua`); LazyVim's
+own `<Up>` / `<Down>` maps ignore the `&wrap` check this config adds.
 
 ## Tips for Spacemacs Users
 
@@ -215,12 +300,18 @@ Jupyter session — the Neovim REPL is plain IPython.
 
 | Keys | Action |
 |---|---|
-| `]]` | Next cell |
-| `[[` | Previous cell |
-| `]C` | Last cell |
-| `[C` | First cell |
+| `]j` | Next cell |
+| `[j` | Previous cell |
+| `]J` | Last cell |
+| `[J` | First cell |
 | `aj` | Around cell textobject (incl. marker) |
 | `ij` | Inside cell textobject (code only) |
+
+These used to be `]]` / `[[` (next/prev cell) and `]C` / `[C` (last/first
+cell). They were moved to `]j` / `[j` / `]J` / `[J` because the maps are
+installed in every Python buffer, cell markers or not, and `]]` / `[[` were
+shadowing Python's treesitter class/def motions. `]]` / `[[` now fall through
+to those motions again; `]C` / `[C` fall through to treesitter class motions.
 
 ### Cheatsheet popup
 
@@ -233,7 +324,7 @@ Jupyter session — the Neovim REPL is plain IPython.
 | `SPC m s b` (send buffer) | `,jf` |
 | `SPC m s f` (send function) | visual-select then `,js` |
 | `SPC m s r` (send region) | visual-select then `,js` |
-| `SPC m s s` (swap to REPL) | `,jo` |
+| `SPC m s i` (start/switch to REPL) | `,jo` (focus) / `,jt` (toggle window) |
 | *(new)* | `,jj` = run cell (was not a Spacemacs verb) |
 
 ## Claude Code
@@ -259,7 +350,12 @@ install it as part of the base setup).
 | Keys | Mode | Action |
 |---|---|---|
 | `<leader>as` | visual | Send visual selection to Claude |
-| `<leader>as` | normal (in NvimTree / neo-tree / oil) | Add the file under cursor to Claude |
+
+The `ai.claudecode` extra also binds a normal-mode `<leader>as`
+("Add file" / `ClaudeCodeTreeAdd`), but it is filetype-gated to `NvimTree`,
+`neo-tree` and `oil` buffers. None of those are installed here — the file tree
+is the Snacks explorer — so that binding never fires. Use `<leader>ab` to add
+the current buffer instead.
 
 ### Diff review
 
@@ -290,6 +386,11 @@ winget; on Linux / macOS it comes from `Brewfile.git`.
 `<leader>gh*` hunk bindings are LazyVim's gitsigns defaults and are not
 customized here.
 
+LazyVim's Snacks picker also claims `<leader>gd`, `<leader>gD` and
+`<leader>gS` by default. This config disables all three on the Snacks side
+(`nvim/lua/plugins/git.lua`) so `gd`/`gD` are unambiguously Diffview and `gS`
+is Octo search; the Snacks git stash picker is re-homed on `<leader>gz`.
+
 ### Status / stage / commit (group `<leader>g` — "git")
 
 | Keys | Action |
@@ -298,15 +399,17 @@ customized here.
 | `<leader>gG` | Lazygit (cwd) — LazyVim default, unchanged |
 | `<leader>gc` | Neogit commit popup |
 | `<leader>gl` | Neogit log popup |
+| `<leader>gL` | Git Log (cwd) — Snacks picker, LazyVim default |
 | `<leader>gr` | Neogit pull popup |
 | `<leader>gP` | Neogit push popup |
+| `<leader>gz` | Git stash picker (Snacks) — re-homed off `<leader>gS`, which is Octo search |
 
 ### Diff / file history
 
 | Keys | Action |
 |---|---|
 | `<leader>gd` | Diffview (working tree vs HEAD) |
-| `<leader>gD` | Diffview (origin/HEAD..HEAD) |
+| `<leader>gD` | Diffview (`origin/HEAD...HEAD`) |
 | `<leader>gf` | Git Current File History (Snacks picker) |
 | `<leader>gF` | Diffview file history (current buffer) |
 | `<leader>gx` | Close Diffview |
@@ -405,8 +508,8 @@ fails or is skipped.
 | `SPC g f f` (Magit pull) | `<leader>gr` |
 | `SPC g P p` (Magit push) | `<leader>gP` |
 | `SPC g f h` (file hunk stage) | `<leader>ghs` |
-| `SPC g h i` (Forge list issues) | `<leader>gi` |
-| `SPC g h p` (Forge list PRs) | `<leader>gp` |
+| Forge issues — reached from the Magit status buffer (`SPC g s`), where Forge adds Issues/Pull Requests sections and its own dispatch transient. There is no `SPC g h *` leader key for this | `<leader>gi` (list) / `<leader>gI` (search) |
+| Forge pull requests — same: from Magit status, not a leader key | `<leader>gp` (list) |
 | `SPC d d` (run / continue) | `<leader>dc` |
 | `SPC d b` (toggle breakpoint) | `<leader>db` |
 | `SPC d i` (step into) | `<leader>di` |
@@ -418,12 +521,18 @@ fails or is skipped.
 | Keys | Mode | Action |
 |---|---|---|
 | `<C-n>` | normal / visual | Start session; select word / range under cursor. Press again to add next match. |
-| `<C-Up>` / `<C-Down>` | normal | Add a cursor above / below |
+| `<M-Up>` / `<M-Down>` | normal | Add a cursor above / below |
 | `<S-Left>` / `<S-Right>` | VM | Extend all cursors' selection |
 | `n` / `N` | VM | Next / previous match |
 | `q` | VM | Skip current match, jump to next |
 | `Q` | VM | Remove the current cursor |
 | `<Esc>` | VM | Exit multi-cursor mode |
+
+vim-visual-multi's upstream default for add-cursor-above/below is
+`<C-Up>` / `<C-Down>`. Those are LazyVim's window-height resize keys, so this
+config remaps `g:VM_maps` to `<M-Up>` / `<M-Down>`
+(`nvim/lua/plugins/visual-multi.lua`). Both sides survive: `<C-Up>` /
+`<C-Down>` still resize the window, `<M-Up>` / `<M-Down>` add cursors.
 
 See `:help visual-multi` for the full cheatsheet. The upstream project
 is feature-complete (last commit 2024-09-01).
@@ -441,17 +550,49 @@ Neovim downloads `.spl` files on demand to
 `~/.local/share/nvim/site/spell/`. If the first prompt was declined,
 re-run `:set spell` in an interactive session to re-trigger it.
 
-| Keys | Action |
-|---|---|
-| `]s` / `[s` | Next / previous misspelling |
-| `z=` | Suggest replacements |
-| `zg` / `zw` | Mark word good / wrong (persists in spellfile) |
+### `<leader>S` — spell group
 
-## Snippets (LuaSnip)
+This config takes `<leader>S` as a `+spell` prefix, loosely mirroring the
+Spacemacs spell-checking layer's `SPC S`. LazyVim's default `<leader>S`
+(Snacks scratch-buffer select) is disabled to free the prefix
+(`nvim/lua/plugins/spell.lua`); the scratch picker is still reachable as
+`:lua Snacks.scratch.select()`.
 
-LuaSnip ships with LazyVim. This repo adds VSCode-style snippets in
-`nvim/snippets/`, ported from the Yasnippet sources under `snippets/`
-so the same triggers work in both Spacemacs and Neovim.
+| Keys | Action | Raw Vim key |
+|---|---|---|
+| `<leader>Sb` | Enable spell for the buffer (`en_us`) | `:setlocal spell spelllang=en_us` |
+| `<leader>St` | Toggle spell for the buffer | `:setlocal spell!` |
+| `<leader>Sd` | Set dictionary — prompts for `spelllang` | `:setlocal spelllang=...` |
+| `<leader>Sn` / `<leader>SN` | Next / previous misspelling | `]s` / `[s` |
+| `<leader>Ss` | Suggest corrections | `z=` |
+| `<leader>Sa` | Add word to the personal dictionary | `zg` |
+| `<leader>Sw` | Mark word as wrong | `zw` |
+| `<leader>Su` | Undo the last add/mark | `zug` |
+| `<leader>us` | Toggle spelling (LazyVim UI-toggles group) | |
+
+The underlying `]s` / `[s` / `z=` / `zg` / `zw` keys all still work directly.
+
+### Deviations from Spacemacs `SPC S`
+
+- `Ss` suggests corrections (`z=`); Spacemacs uses `SPC S c` for
+  flyspell-correct-word and `SPC S s` for correct-at-point.
+- `Sb` *enables* spell for the buffer; Spacemacs `SPC S b` runs
+  `flyspell-buffer` over an already-enabled buffer.
+- `St` toggles spell here; Spacemacs toggles flyspell under `SPC t S`.
+- `SN` (previous misspelling) has no Spacemacs `SPC S` equivalent.
+- `Sa` / `Sw` / `Su` have no Spacemacs `SPC S` equivalent — flyspell manages
+  the personal dictionary differently.
+- Spacemacs `SPC S r` (flyspell-region) has no counterpart here.
+- The personal word list is Neovim's own spellfile under
+  `~/.local/share/nvim/site/spell/`; it is not shared with aspell/`~/.aspell.en.pws`.
+
+## Snippets (blink.cmp)
+
+There is **no LuaSnip** in this config. LazyVim 16 uses **blink.cmp**, which
+reads VSCode-style snippet packages itself. This repo adds its snippets in
+`nvim/snippets/` (with `nvim/snippets/package.json`), ported from the
+Yasnippet sources under `snippets/` so the same triggers work in both
+Spacemacs and Neovim.
 
 Current ported set (filetype `tex`):
 
@@ -464,6 +605,9 @@ Current ported set (filetype `tex`):
 | `i` | `\textit{...}` |
 | `u` | `\underline{...}` |
 
-Type the trigger in insert mode and press `<Tab>` to expand (default
-LazyVim / LuaSnip expansion key). `friendly-snippets` provides
-additional `tex` snippets alongside these.
+Type the trigger in insert mode; the snippet shows up in the blink.cmp
+completion menu, and **`<Enter>`** accepts it (LazyVim configures blink with
+the `enter` keymap preset). `<Tab>` jumps to the *next placeholder* once a
+snippet is active — it is not the expansion key. `<C-Space>` opens the menu
+manually. `friendly-snippets` provides additional `tex` snippets alongside
+these.
