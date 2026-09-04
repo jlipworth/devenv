@@ -18,7 +18,11 @@ return {
           scratch_repl = true,
           repl_definition = {
             python = {
-              command = { "ipython", "--no-autoindent" },
+              -- --no-confirm-exit: iron's close_repl shuts a REPL down by
+              -- sending Ctrl-D. Without this flag ipython answers with a
+              -- "Do you really want to exit ([y]/n)?" prompt and the process
+              -- stays alive.
+              command = { "ipython", "--no-autoindent", "--no-confirm-exit" },
               format = require("iron.fts.common").bracketed_paste_python,
             },
           },

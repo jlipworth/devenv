@@ -5,7 +5,7 @@
         latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools \
         latex_tooling latex_distribution \
         cli_tools cli_tools_core cli_tools_system step-cli starship syntax-highlighting update-deps \
-        full-setup noadmin-setup macos-ci-setup macos-ci-preflight help neovim neovim-source neovim-package windows-terminal-tooling
+        full-setup noadmin-setup macos-ci-setup macos-ci-preflight help neovim neovim-source neovim-package neovim-test windows-terminal-tooling
 
 # Default target to install all prerequisite layers
 prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript elisp latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools
@@ -175,6 +175,10 @@ neovim-package:
 	@echo "Installing Neovim and configuring LazyVim via package/download path..."
 	@NEOVIM_INSTALL_MODE=package ./prereq_packages.sh install_neovim
 
+neovim-test:
+	@echo "Running headless Neovim Lua specs..."
+	@./tests/nvim/run_nvim_tests.sh
+
 windows-terminal-tooling:
 	@echo "Installing Windows-side psmux + Alacritty tooling from WSL..."
 	@bash ./bin/install-windows-terminal-tooling-from-wsl.sh
@@ -256,4 +260,5 @@ help:
 	@echo "  neovim          - Build pinned Neovim from source + LazyVim (default Unix path)"
 	@echo "  neovim-source   - Explicit source-build alias for pinned Neovim + LazyVim"
 	@echo "  neovim-package  - Legacy package/download Neovim + LazyVim path"
+	@echo "  neovim-test     - Run the headless Neovim Lua specs in tests/nvim"
 	@echo "  windows-terminal-tooling - From WSL, install Windows-side psmux + Alacritty config"

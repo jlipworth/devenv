@@ -11,7 +11,7 @@ if #packages == 0 then
 end
 
 local base = vim.fn.stdpath("data") .. "/mason/packages/"
-local deadline = vim.loop.now() + timeout_ms
+local deadline = (vim.uv or vim.loop).now() + timeout_ms
 
 local function missing_packages()
   local missing = {}
@@ -25,7 +25,7 @@ end
 
 local missing = missing_packages()
 while #missing > 0 do
-  if vim.loop.now() > deadline then
+  if (vim.uv or vim.loop).now() > deadline then
     error("Timed out waiting for Mason packages: " .. table.concat(missing, ", "))
   end
   vim.cmd("sleep 1000m")
