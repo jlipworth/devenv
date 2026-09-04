@@ -251,9 +251,12 @@ explicit rather than surprising.
 | `.vimrc` | cmdline `<C-h/j/k/l>`, `<C-^>`, `<C-$>` | Readline-ish command-line motions | Not ported; Neovim's default cmdline motions apply |
 | `.vimrc` (tex buffers) | `$` / `0` / `^` -> `g$` / `g0` / `g^` | Screen-line motions in wrapped TeX | Not ported. `j` / `k` do respect wrapped lines (`config/keymaps.lua`), but `$`/`0`/`^` do not |
 
-Also note: `.vimrc` maps `<Up>` / `<Down>` to the same wrap-aware motions as
-`j` / `k`. Here only `j` / `k` are remapped (`config/keymaps.lua`); LazyVim's
-own `<Up>` / `<Down>` maps ignore the `&wrap` check this config adds.
+Also note: `.vimrc` has no `<Up>` / `<Down>` maps at all — only `j` / `k` get
+the wrap-aware treatment there. LazyVim's own defaults map both `j`/`k` and
+`<Up>`/`<Down>` to `gj`/`gk` (v:count == 0), with no `&wrap` guard on either.
+This config overrides `j` / `k` to add the `&wrap` check (`config/keymaps.lua`)
+but leaves `<Up>` / `<Down>` on LazyVim's unguarded default, so the arrow keys
+disagree with `j` / `k` when `&wrap` is off.
 
 ## Tips for Spacemacs Users
 
