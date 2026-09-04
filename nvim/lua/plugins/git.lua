@@ -21,8 +21,10 @@ return {
       -- must `false` octo's <leader>gP before binding our own.
     },
     opts = {
-      integrations = { diffview = true, telescope = true },
-      disable_commit_confirmation = false,
+      -- telescope is not installed (LazyVim 16 uses snacks.picker); snacks is
+      -- the picker Neogit should delegate to. `disable_commit_confirmation`
+      -- was removed upstream and is rejected by the pinned config validator.
+      integrations = { diffview = true, snacks = true },
       graph_style = "unicode",
     },
   },
@@ -42,6 +44,21 @@ return {
       { "<leader>gD", "<cmd>DiffviewOpen origin/HEAD...HEAD<cr>", desc = "Diffview (vs origin/HEAD)" },
       { "<leader>gF", "<cmd>DiffviewFileHistory %<cr>", desc = "Diffview file history" },
       { "<leader>gx", "<cmd>DiffviewClose<cr>", desc = "Diffview close" },
+    },
+  },
+
+  -- Snacks picker keymap fixups: <leader>gd/<leader>gD/<leader>gS are bound by
+  -- the LazyVim snacks_picker extra and collide with the diffview bindings
+  -- above (lazy.nvim keymap resolution between two plugins is order-dependent,
+  -- so drop the snacks side explicitly). Snacks' git stash picker is re-homed
+  -- on <leader>gz, which nothing else claims.
+  {
+    "folke/snacks.nvim",
+    keys = {
+      { "<leader>gd", false },
+      { "<leader>gD", false },
+      { "<leader>gS", false },
+      { "<leader>gz", function() Snacks.picker.git_stash() end, desc = "Git stash (Snacks)" },
     },
   },
 
