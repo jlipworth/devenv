@@ -575,3 +575,39 @@ install_lazygit_release() {
     add_to_path "$HOME/.local/bin" "lazygit"
     log "lazygit ${lg_version} installed to ~/.local/bin" "SUCCESS"
 }
+
+# Returns 0 when a tree-sitter CLI is on PATH *and* actually runs. A binary can
+# be present yet unusable (Mason and npm ship prebuilt CLIs that need a newer
+# glibc than Debian bookworm provides), so presence alone is not enough.
+tree_sitter_cli_works() {
+    command -v tree-sitter &> /dev/null && tree-sitter --version &> /dev/null
+}
+
+# Install the tree-sitter CLI that nvim-treesitter (main) uses to build
+# grammars (it needs >= 0.26.1). Prefer Homebrew's tree-sitter-cli formula
+# (the plain tree-sitter formula is the library only): its Linux bottles link
+# against Homebrew's own glibc, so they run on older distributions where the
+# GitHub-release binaries that npm and Mason download fail with
+# "GLIBC_2.39 not found".
+ensure_tree_sitter_cli() {
+    if tree_sitter_cli_works; then
+        log "tree-sitter CLI is already installed ($(tree-sitter --version 2> /dev/null))."
+        return 0
+    fi
+
+    log "Installing the tree-sitter CLI (used to build nvim-treesitter grammars)..."
+    if command -v brew &> /dev/null; then
+        brew install tree-sitter-cli || log "Error installing tree-sitter-cli via Homebrew." "WARNING"
+    elif [[ -n "${NODE_CMD:-}" ]] && command -v "$NODE_CMD" &> /dev/null; then
+        $NODE_CMD install -g tree-sitter-cli || log "Error installing tree-sitter-cli via $NODE_CMD." "WARNING"
+    fi
+    hash -r 2> /dev/null || true
+
+    if tree_sitter_cli_works; then
+        log "tree-sitter CLI installed ($(tree-sitter --version 2> /dev/null))." "SUCCESS"
+    elif command -v tree-sitter &> /dev/null; then
+        log "tree-sitter is on PATH but does not run here (likely a glibc mismatch); nvim-treesitter cannot build grammars until a working CLI is installed (Homebrew: brew install tree-sitter-cli)." "WARNING"
+    else
+        log "tree-sitter CLI unavailable; nvim-treesitter cannot build grammars until it is installed." "WARNING"
+    fi
+}
