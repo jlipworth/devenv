@@ -94,4 +94,75 @@ COLOR_FILE="$TEST_HOME/colors_name.txt"
 nvim --headless "+lua vim.fn.writefile({vim.g.colors_name or 'nil'}, '$COLOR_FILE')" +qa > /dev/null 2>&1
 test "$(cat "$COLOR_FILE")" = "tokyonight-night"
 
+echo "=== Step 6: headless Lua specs ==="
+"$ROOT_DIR/tests/nvim/run_nvim_tests.sh"
+
+echo "=== Step 7: tex buffer assertions ==="
+# Proves the tex filetype path wires up end to end: VimTeX's <localleader>ll
+# and the <localleader>oc date map from nvim/lua/config/autocmds.lua are both
+# buffer-local FileType products, so their presence means the FileType autocmds
+# ran to completion on a real .tex buffer.
+TEX_FILE="$TEST_HOME/smoke.tex"
+cat > "$TEX_FILE" <<'TEX'
+\documentclass{article}
+\begin{document}
+hello
+\end{document}
+TEX
+
+TEX_ASSERT="$TEST_HOME/tex-assert.lua"
+cat > "$TEX_ASSERT" <<'LUA'
+local localleader = vim.g.maplocalleader or "\\"
+
+local function mapped(lhs)
+  return vim.fn.maparg(localleader .. lhs, "n") ~= ""
+end
+
+-- The maps are installed from FileType autocmds that LazyVim only registers on
+-- VeryLazy, so poll rather than assert immediately.
+vim.wait(60000, function()
+  return mapped("ll") and mapped("oc")
+end, 200)
+
+local problems = {}
+if not mapped("ll") then
+  table.insert(problems, "VimTeX did not map <localleader>ll in a tex buffer")
+end
+if not mapped("oc") then
+  table.insert(problems, "tex FileType autocmds did not map <localleader>oc")
+end
+if #problems > 0 then
+  io.stderr:write(table.concat(problems, "\n") .. "\n")
+  vim.cmd("cq! 1")
+end
+print("tex buffer assertions passed (filetype=" .. vim.bo.filetype .. ")")
+LUA
+
+nvim --headless "$TEX_FILE" "+luafile $TEX_ASSERT" +qa
+
+echo "=== Step 8: treesitter parser install ==="
+# NVIM_DISABLE_AUTO_INSTALLS=1 leaves ensure_installed empty on purpose, so the
+# parser is installed explicitly here rather than as a startup side effect.
+TS_ASSERT="$TEST_HOME/ts-assert.lua"
+cat > "$TS_ASSERT" <<'LUA'
+local timeout_ms = tonumber(vim.env.CI_TS_TIMEOUT_MS or "300000")
+
+require("lazy").load({ plugins = { "nvim-treesitter" } })
+vim.cmd("TSInstall! python")
+
+local function installed()
+  return #vim.api.nvim_get_runtime_file("parser/python.*", false) > 0
+end
+
+vim.wait(timeout_ms, installed, 500)
+
+if not installed() then
+  io.stderr:write("python treesitter parser was not installed\n")
+  vim.cmd("cq! 1")
+end
+print("treesitter python parser installed")
+LUA
+
+nvim --headless "+luafile $TS_ASSERT" +qa
+
 echo "=== Neovim smoke passed (${NVIM_INSTALL_MODE}) ==="
