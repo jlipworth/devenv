@@ -64,17 +64,25 @@ echo "=== Step 3: install plugins at the pinned lockfile revisions ==="
 nvim --headless "+Lazy! install" "+Lazy! restore" +qa
 
 echo "=== Step 4: install representative Mason packages ==="
+# Prebuilt-binary packages work everywhere; the npm-backed ones are only
+# requested when npm exists (the NO_ADMIN image ships without Node.js).
 MASON_PACKAGES=(
-    bash-language-server
-    css-lsp
-    emmet-ls
-    html-lsp
-    prettier
     ruff
     shellcheck
     texlab
     tree-sitter-cli
 )
+if command -v npm > /dev/null 2>&1; then
+    MASON_PACKAGES+=(
+        bash-language-server
+        css-lsp
+        emmet-ls
+        html-lsp
+        prettier
+    )
+else
+    echo "npm not found; skipping npm-backed Mason packages"
+fi
 export CI_MASON_PACKAGES
 CI_MASON_PACKAGES="$(
     IFS=,
