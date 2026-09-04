@@ -55,8 +55,13 @@ echo "=== Step 2: verify config symlink ==="
 test -L "$XDG_CONFIG_HOME/nvim"
 test "$(readlink "$XDG_CONFIG_HOME/nvim")" = "$ROOT_DIR/nvim"
 
-echo "=== Step 3: sync plugins headlessly ==="
-nvim --headless "+Lazy! sync" +qa
+echo "=== Step 3: install plugins at the pinned lockfile revisions ==="
+# Deliberately not `Lazy! sync`: the config dir is a symlink to $ROOT_DIR/nvim,
+# so a sync would move plugins to upstream HEAD and rewrite the repo's tracked
+# nvim/lazy-lock.json. `install` clones anything missing, `restore` checks every
+# plugin out at the locked revision (lazy.nvim's restore only touches plugins
+# that are already installed, so install must run first).
+nvim --headless "+Lazy! install" "+Lazy! restore" +qa
 
 echo "=== Step 4: install representative Mason packages ==="
 MASON_PACKAGES=(
