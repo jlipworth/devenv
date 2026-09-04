@@ -85,7 +85,9 @@ make latex      # texlab
 make docker     # dockerfile-language-server, hadolint
 make ocaml      # opam, merlin, utop
 make cli_tools  # eza, bat, ripgrep, fd, fzf, zoxide, lazygit
-make neovim     # Install/configure Neovim independently
+make neovim     # Install/configure Neovim independently (pinned source build)
+make neovim-package # Neovim from the pinned GitHub release (no-admin path)
+make neovim-test    # Headless Neovim Lua specs in tests/nvim
 ```
 
 ## Requirements

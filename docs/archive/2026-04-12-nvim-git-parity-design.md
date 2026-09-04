@@ -74,9 +74,17 @@ Freshness check performed 2026-04-12 via `gh api repos/<owner>/<repo>/commits`:
 
 Net plugin delta: **+3** (neogit, diffview, octo) plus transitive deps
 (`nui.nvim` is already pulled in by claudecode; `plenary.nvim` is already
-a LazyVim base dep; `telescope.nvim` is pulled in by the octo extra via
-its picker-autodetect block). Expected final plugin count: **51-53**
+a LazyVim base dep). Expected final plugin count: **51-53**
 from the current 48 baseline.
+
+> **Correction (2026-09-04):** this section originally claimed the octo extra
+> pulls in `telescope.nvim` via its picker-autodetect block. That is wrong on
+> LazyVim 16: the block *selects* a picker from the extras already enabled
+> (`editor.telescope`, then `editor.fzf`, then `editor.snacks_picker`) and adds
+> no picker plugin of its own. This config enables none of the first two, so
+> octo uses the Snacks picker and telescope is never installed. Neogit is
+> likewise configured with `integrations = { diffview = true, snacks = true }`
+> rather than telescope (`nvim/lua/plugins/git.lua`).
 
 ### Rejected Alternatives
 
