@@ -225,7 +225,7 @@ This function should only modify configuration layer settings."
       :location
       (recipe :fetcher github
               :repo "jlipworth/magic-latex-buffer"
-              :commit "44cfd364771adc5d6718132b485ff0f5c5924818"))
+              :commit "ee5b4f3cd7c37677554956983b4b9b01df7b2362"))
      exec-path-from-shell
      mermaid-mode
      ob-mermaid
