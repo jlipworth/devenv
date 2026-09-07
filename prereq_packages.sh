@@ -2027,6 +2027,128 @@ install_codex_config() {
     fi
 }
 
+install_claude_safari_mcp() {
+    # Register Apple's Safari MCP server (safaridriver --mcp) with Claude Code
+    # and the Claude desktop app (Cowork), mirroring [mcp_servers.safari-mcp]
+    # in .codex_config.toml. Both configs are JSON files that the apps rewrite
+    # themselves, so merge one key in place rather than copying or symlinking.
+    # macOS-only: /usr/bin/safaridriver does not exist elsewhere.
+    local config_os="${CODEX_CONFIG_OS:-$OS}"
+    if [[ "$config_os" != "Darwin" ]]; then
+        log "Skipping Safari MCP registration for Claude (macOS only)."
+        return 0
+    fi
+    if ! command -v python3 > /dev/null 2>&1; then
+        log "python3 not found; cannot register Safari MCP for Claude." "WARNING"
+        return 0
+    fi
+    log "Registering Safari MCP server with Claude Code and Claude Desktop..."
+    local claude_code_config="${CLAUDE_CODE_USER_CONFIG:-$HOME/.claude.json}"
+    local claude_desktop_config="${CLAUDE_DESKTOP_CONFIG:-$HOME/Library/Application Support/Claude/claude_desktop_config.json}"
+    local claude_settings="${CLAUDE_SETTINGS:-$HOME/.claude/settings.json}"
+    local safaridriver="${SAFARIDRIVER_BIN:-/usr/bin/safaridriver}"
+    python3 - "$claude_code_config" "$claude_desktop_config" "$claude_settings" "$safaridriver" << 'PY'
+import json
+import os
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+claude_code_config, claude_desktop_config, claude_settings, safaridriver = map(Path, sys.argv[1:5])
+SERVER = "safari-mcp"
+COMMAND = "/usr/bin/safaridriver"
+ARGS = ["--mcp"]
+# Keep in sync with enabled_tools in .codex_config.toml (check_codex_config.sh).
+ALLOWED = [
+    "create_tab", "list_tabs", "switch_tab", "page_info", "get_page_content",
+    "screenshot", "wait_for_navigation", "page_interactions", "close_tab",
+]
+
+
+def load(path):
+    if not path.exists() or path.stat().st_size == 0:
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def save(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".")
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2)
+        handle.write("\n")
+    os.replace(tmp, path)
+
+
+def register(path, entry, label):
+    data = load(path)
+    servers = data.setdefault("mcpServers", {})
+    if servers.get(SERVER) == entry:
+        print(f"{label}: {SERVER} already registered")
+        return
+    servers[SERVER] = entry
+    save(path, data)
+    print(f"{label}: registered {SERVER} in {path}")
+
+
+# Claude Code stores user-scope MCP servers in ~/.claude.json (same as
+# `claude mcp add --scope user`); Claude Desktop uses claude_desktop_config.json.
+register(claude_code_config, {"type": "stdio", "command": COMMAND, "args": ARGS, "env": {}}, "Claude Code")
+register(claude_desktop_config, {"command": COMMAND, "args": ARGS}, "Claude Desktop")
+
+
+def list_tools():
+    """Ask safaridriver --mcp for its tool names over stdio JSON-RPC."""
+    if not safaridriver.exists():
+        return None
+    msgs = [
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+            "protocolVersion": "2025-06-18", "capabilities": {},
+            "clientInfo": {"name": "devenv-install", "version": "0"}}},
+        {"jsonrpc": "2.0", "method": "notifications/initialized"},
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+    ]
+    payload = "".join(json.dumps(m) + "\n" for m in msgs)
+    try:
+        proc = subprocess.run([str(safaridriver), *ARGS], input=payload, capture_output=True,
+                              text=True, timeout=20)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    for line in proc.stdout.splitlines():
+        try:
+            msg = json.loads(line)
+        except ValueError:
+            continue
+        if msg.get("id") == 2 and "result" in msg:
+            return sorted(t["name"] for t in msg["result"].get("tools", []))
+    return None
+
+
+# Claude Code has no per-server enabled_tools; enforce the Codex allowlist by
+# denying every other tool the server advertises (permissions.deny wins over
+# allow). Tool names are discovered live so new safaridriver tools stay denied.
+tools = list_tools()
+if tools is None:
+    print("WARNING: could not enumerate safaridriver --mcp tools; Claude Code deny-list not updated", file=sys.stderr)
+    sys.exit(0)
+prefix = f"mcp__{SERVER}__"
+wanted_deny = sorted(prefix + t for t in tools if t not in ALLOWED)
+wanted_allow = sorted(prefix + t for t in ALLOWED if t in tools)
+settings = load(claude_settings)
+perms = settings.setdefault("permissions", {})
+deny = [d for d in perms.get("deny", []) if not d.startswith(prefix)] + wanted_deny
+allow = [a for a in perms.get("allow", []) if not a.startswith(prefix)] + wanted_allow
+changed = deny != perms.get("deny", []) or allow != perms.get("allow", [])
+perms["deny"], perms["allow"] = deny, allow
+if changed:
+    save(claude_settings, settings)
+    print(f"Claude Code: allow {len(wanted_allow)} / deny {len(wanted_deny)} {SERVER} tools in {claude_settings}")
+else:
+    print("Claude Code: safari-mcp tool permissions already current")
+PY
+}
+
 remove_legacy_opencode_npm_installations() {
     local prefix
     local prefixes=()
@@ -2168,6 +2290,7 @@ install_ai_tools() {
     fi
 
     install_codex_config
+    install_claude_safari_mcp
 
     # Remove the legacy Codex stop hook that was copied from Claude Code settings.
     # Codex notifications are handled by ~/.codex/config.toml; keeping this hook
@@ -2569,6 +2692,7 @@ main() {
         "install_editor_prereqs"
         "install_codex_cli_native"
         "install_codex_config"
+        "install_claude_safari_mcp"
         "install_opencode"
         "install_ai_tools"
         "install_starship"
