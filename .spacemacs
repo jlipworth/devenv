@@ -119,7 +119,6 @@ This function should only modify configuration layer settings."
 
      (latex :variables
             latex-enable-folding t
-            latex-build-command "LaTeX"
             latex-enable-magic t
             )
 
