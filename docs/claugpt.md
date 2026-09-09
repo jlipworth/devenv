@@ -4,7 +4,7 @@
 requests to GPT-5.6 models through CLIProxyAPI and OpenAI Codex OAuth.
 
 ```text
-Claude Code -> Anthropic Messages API -> CLIProxyAPI -> Codex OAuth -> GPT-5.6 Sol/Terra
+Claude Code -> Anthropic Messages API -> CLIProxyAPI -> Codex OAuth -> GPT-6 Astra + GPT-5.6 Terra
 ```
 
 ## Install on another Mac
@@ -14,7 +14,7 @@ Prerequisites:
 - Homebrew
 - Claude Code (`claude` must be on `PATH`)
 - `jq`
-- An OpenAI account with Codex access to `gpt-5.6-sol` and `gpt-5.6-terra`
+- An OpenAI account with Codex access to `gpt-6-astra` and `gpt-5.6-terra`
 
 From this repository, run:
 
@@ -26,7 +26,7 @@ The script is idempotent. It:
 
 1. Installs CLIProxyAPI with Homebrew when necessary.
 2. Creates a random localhost-only proxy key.
-3. Configures standard `gpt-5.6-sol` routing and an explicit priority alias.
+3. Configures standard `gpt-6-astra` routing and an explicit priority alias.
 4. Performs Codex OAuth when no existing CLIProxyAPI credential is present.
 5. Installs the `claugpt`, `claudgpy`, and `claugptf` launchers.
 6. Starts CLIProxyAPI as a Homebrew service and verifies all configured models.
@@ -47,8 +47,8 @@ built-in slots are mapped as follows:
 
 | Claude Code selection | Actual route |
 | --- | --- |
-| `/model opus` | `gpt-5.6-sol` (standard) |
-| `/model sonnet` | `gpt-5.6-sol` (standard) |
+| `/model opus` | `gpt-6-astra` (standard) |
+| `/model sonnet` | `gpt-6-astra` (standard) |
 | `/model haiku` | `gpt-5.6-terra` (standard) |
 
 Reasoning effort is independent of the service tier and can be changed using
@@ -65,23 +65,23 @@ Claude Code's native command:
 CLIProxyAPI translates Claude's `output_config.effort` into OpenAI's
 `reasoning.effort`. The fast/priority alias is deliberately absent from every
 Claude model slot and subagent setting. Haiku and small/background tasks use
-standard Terra; explicit subagents remain on standard Sol.
+standard Terra; explicit subagents remain on standard Astra.
 
 All three launchers set `CLAUDE_CODE_MAX_CONTEXT_TOKENS=258400`. This matches the
-effective Codex OAuth window for GPT-5.6 Sol and Terra (272,000 raw tokens at
+effective Codex OAuth window for GPT-6 Astra and GPT-5.6 Terra (272,000 raw tokens at
 95%) and applies only to these custom launchers; normal `claude` sessions retain
 Claude Code's standard model-specific context settings.
 
 The launchers also match the tested Claude Code gateway setup by setting:
 
 ```text
-CLAUDE_CODE_SUBAGENT_MODEL=gpt-5.6-sol
+CLAUDE_CODE_SUBAGENT_MODEL=gpt-6-astra
 CLAUDE_CODE_ALWAYS_ENABLE_EFFORT=1
 CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY=3
 ENABLE_TOOL_SEARCH=false
 ```
 
-This keeps spawned subagents on GPT-5.6 Sol, exposes effort controls, limits
+This keeps spawned subagents on GPT-6 Astra, exposes effort controls, limits
 parallel read-only tool/subagent work to three, and loads MCP tools up front
 instead of relying on proxy support for deferred `tool_reference` blocks.
 
@@ -113,8 +113,8 @@ isolated sandbox: it permits model-generated shell commands and file changes
 without review. The setup script deliberately leaves manual mode as the default
 for `claugpt`. The explicitly named `claudgpy` launcher enables YOLO mode on the
 standard model. `claugptf` is the only generated launcher that opts the main
-session into the `gpt-5.6-sol-fast` priority alias, and it always enables YOLO
-mode. Its spawned subagents still use standard `gpt-5.6-sol`.
+session into the `gpt-6-astra-fast` priority alias, and it always enables YOLO
+mode. Its spawned subagents still use standard `gpt-6-astra`.
 
 ## Files created outside the repository
 

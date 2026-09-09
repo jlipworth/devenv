@@ -59,14 +59,14 @@ api-keys:
 
 oauth-model-alias:
   codex:
-    - name: "gpt-5.6-sol"
-      alias: "gpt-5.6-sol-fast"
+    - name: "gpt-6-astra"
+      alias: "gpt-6-astra-fast"
       fork: true
 
 payload:
   override:
     - models:
-        - name: "gpt-5.6-sol-fast"
+        - name: "gpt-6-astra-fast"
           protocol: "codex"
       params:
         service_tier: "priority"
@@ -87,14 +87,14 @@ ANTHROPIC_AUTH_TOKEN="$(<"${key_file}")"
 export ANTHROPIC_AUTH_TOKEN
 
 # Claude Code only displays its built-in model slots. Opus and Sonnet select
-# Sol; Haiku selects Terra. Explicit subagents remain on Sol by default.
-export ANTHROPIC_DEFAULT_OPUS_MODEL="gpt-5.6-sol"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="gpt-5.6-sol"
+# Astra; Haiku selects Terra. Explicit subagents remain on Astra by default.
+export ANTHROPIC_DEFAULT_OPUS_MODEL="gpt-6-astra"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="gpt-6-astra"
 export ANTHROPIC_DEFAULT_HAIKU_MODEL="gpt-5.6-terra"
-export ANTHROPIC_MODEL="${CLAUGPT_MODEL:-gpt-5.6-sol}"
+export ANTHROPIC_MODEL="${CLAUGPT_MODEL:-gpt-6-astra}"
 export ANTHROPIC_SMALL_FAST_MODEL="gpt-5.6-terra"
 export CLAUDE_CODE_MAX_CONTEXT_TOKENS="258400"
-export CLAUDE_CODE_SUBAGENT_MODEL="gpt-5.6-sol"
+export CLAUDE_CODE_SUBAGENT_MODEL="gpt-6-astra"
 export CLAUDE_CODE_ALWAYS_ENABLE_EFFORT="1"
 export CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY="3"
 export ENABLE_TOOL_SEARCH="false"
@@ -118,7 +118,7 @@ cat >"${launcher_fast_yolo}" <<'EOF'
 set -euo pipefail
 
 # This is the only launcher that opts the main session into the priority alias.
-export CLAUGPT_MODEL="gpt-5.6-sol-fast"
+export CLAUGPT_MODEL="gpt-6-astra-fast"
 exec "${HOME}/.local/bin/claugpt" --dangerously-skip-permissions "$@"
 EOF
 chmod 755 "${launcher_fast_yolo}"
@@ -135,7 +135,7 @@ sleep 2
 
 models="$(curl -fsS -H "Authorization: Bearer ${proxy_key}" \
     http://127.0.0.1:8317/v1/models | jq -r '.data[]?.id')"
-for model in gpt-5.6-sol gpt-5.6-sol-fast gpt-5.6-terra; do
+for model in gpt-6-astra gpt-6-astra-fast gpt-5.6-terra; do
     if ! grep -qx "${model}" <<<"${models}"; then
         log "Expected model ${model} is unavailable for this account." "ERROR"
         exit 1
@@ -145,4 +145,4 @@ done
 log "claugpt is ready at ${launcher}." "SUCCESS"
 log "claudgpy (YOLO mode) is ready at ${launcher_yolo}." "SUCCESS"
 log "claugptf (explicit priority + YOLO mode) is ready at ${launcher_fast_yolo}." "SUCCESS"
-log "Model slots: Opus/Sonnet = Sol; Haiku = Terra; explicit subagents = Sol."
+log "Model slots: Opus/Sonnet = Astra; Haiku = Terra; explicit subagents = Astra."
