@@ -3,8 +3,6 @@ model_instructions_file = "~/.codex/instructions.md"
 personality = "pragmatic"
 model = "gpt-6-astra"
 model_reasoning_effort = "high"
-# Stable repo-managed notification shim installed by `make ai-tools`.
-notify = ["ai-notify-if-unfocused"]
 
 [agents]
 max_threads = 20
@@ -16,9 +14,9 @@ responses_websockets_v2 = true
 
 [tui]
 status_line = ["current-dir", "git-branch", "model-with-reasoning", "context-used", "total-input-tokens", "total-output-tokens"]
-# Native Codex TUI notifications are disabled because terminal-specific routing
-# is handled by the repo-managed `ai-notify-if-unfocused` dispatcher above.
-notifications = false
+# Use Codex's native terminal notifications when the terminal is unfocused.
+notifications = true
+notification_condition = "unfocused"
 
 # macOS-only: install_codex_config omits this table on other operating systems.
 # Restart Codex after installation or any allowlist change. page_interactions is

@@ -4,18 +4,6 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "tui": "fullscreen",
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "ai-notify-if-unfocused \"Claude Code task finished\""
-          }
-        ]
-      }
-    ]
-  },
   "statusLine": {
     "type": "command",
     "command": "bash $HOME/.claude/statusline-command.sh"
@@ -35,5 +23,5 @@
   "preferences": {
     "inputMode": "vim"
   },
-  "preferredNotifChannel": "notifications_disabled"
+  "preferredNotifChannel": "auto"
 }

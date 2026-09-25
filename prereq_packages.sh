@@ -2293,8 +2293,7 @@ install_ai_tools() {
     install_claude_safari_mcp
 
     # Remove the legacy Codex stop hook that was copied from Claude Code settings.
-    # Codex notifications are handled by ~/.codex/config.toml; keeping this hook
-    # makes Codex completion also emit a misleading "Claude Code task finished"
+    # Keeping this hook makes Codex completion also emit a misleading "Claude Code task finished"
     # macOS notification. Only delete the exact legacy hook, leaving any user
     # customized Codex hooks intact.
     local codex_hooks_target="$HOME/.codex/hooks.json"
@@ -2334,24 +2333,11 @@ PY
         fi
     fi
 
-    # Install AI notification helper into a stable PATH location
-    log "Setting up AI notification helper..."
-    mkdir -p "$HOME/.local/bin"
-    add_to_path "$HOME/.local/bin" "Local user binaries"
-    if [[ -f "$GNU_DIR/notifications/ai-notify-if-unfocused" ]]; then
-        ln -sf "$GNU_DIR/notifications/ai-notify-if-unfocused" "$HOME/.local/bin/ai-notify-if-unfocused"
-        for helper in ai-notify-relay-local ai-notify-relay-ensure-macos; do
-            if [[ -f "$GNU_DIR/notifications/$helper" ]]; then
-                ln -sf "$GNU_DIR/notifications/$helper" "$HOME/.local/bin/$helper"
-            fi
-        done
-        for helper in "$GNU_DIR"/notifications/ai-notify-if-unfocused "$GNU_DIR"/notifications/backends/*.sh; do
-            [[ -f "$helper" ]] && chmod +x "$helper"
-        done
-        chmod +x "$GNU_DIR"/notifications/ai-notify-relay-local 2> /dev/null || true
-        log "Symlinked AI notification helpers to ~/.local/bin."
-    else
-        log "AI notification helper not found at $GNU_DIR/notifications/ai-notify-if-unfocused" "WARNING"
+    # Existing Claude settings are mutable and may still contain the old Stop
+    # hook. Retire only repo-managed notification entries, preserving local
+    # preferences and Codex app integrations.
+    if command -v python3 > /dev/null 2>&1; then
+        python3 "$GNU_DIR/bin/use-native-ai-notifications" || log "Could not migrate AI notification settings." "WARNING"
     fi
 
     # Install tmux helper scripts
