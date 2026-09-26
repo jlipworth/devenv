@@ -15,6 +15,19 @@
   "Personal customizations and helper functions."
   :group 'convenience)
 
+;;;; Snippet insertion
+
+(defvar helm-yas-use-prefix)
+
+(defun jal/helm-yas-insert-snippet (complete-prefix)
+  "Browse snippets without filtering by the word before point.
+With COMPLETE-PREFIX (interactively, C-u), use Helm-YAS prefix completion.
+Ordinary insertion leaves preceding text intact and supports region wrapping."
+  (interactive "P")
+  (require 'helm-c-yasnippet)
+  (let ((helm-yas-use-prefix (not (null complete-prefix))))
+    (spacemacs/helm-yas)))
+
 ;;;; Date insertion
 
 (defun jal/insert-current-date ()

@@ -219,6 +219,12 @@ This function should only modify configuration layer settings."
    ;; Also include the dependencies as they will not be resolved automatically.
    dotspacemacs-additional-packages
    '(
+     ;; Opt-in prefix-free browsing while the Helm-YAS fix is reviewed upstream.
+     (helm-c-yasnippet
+      :location
+      (recipe :fetcher github
+              :repo "jlipworth/helm-c-yasnippet"
+              :commit "fc96d728cbc4098475e1f3cf3ce0a8c514bfe754"))
      ;; Temporary fork while the magic-latex-buffer performance work is
      ;; reviewed upstream.  Pin the exact commit so testing is reproducible.
      (magic-latex-buffer
@@ -780,6 +786,10 @@ If you are unsure, try setting them in `dotspacemacs/user-config' first."
     "Directory containing GNU_files repository.")
   (add-to-list 'load-path jal-gnu-files-dir)
 
+  ;; Load tracked snippets directly; do not depend on a bootstrap-created symlink.
+  (setq auto-completion-private-snippets-directory
+        (expand-file-name "snippets" jal-gnu-files-dir))
+
   ;; Ignore empty WSL2 env vars that cause stringp errors
   (add-to-list 'spacemacs-ignored-environment-variables "^WSLENV$")
   )
@@ -797,6 +807,9 @@ before packages are loaded."
 
   ;; Load custom functions
   (require 'jal-functions)
+
+  ;; Browse all snippets; C-u preserves Helm-YAS's prefix-completion behavior.
+  (spacemacs/set-leader-keys "is" #'jal/helm-yas-insert-snippet)
 
   ;; global emacs settings
   (global-auto-revert-mode t)
