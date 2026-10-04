@@ -2,7 +2,7 @@
 
 .PHONY: spacemacs prereq-layers-all editor-symlinks editor system-prereq node-manual \
         shell-layer git-layer yaml markdown completion vimscript elisp \
-        latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools ai-notifications-native \
+        latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools ai-notifications-native claude-settings \
         latex_tooling latex_distribution \
         cli_tools cli_tools_core cli_tools_system step-cli starship syntax-highlighting update-deps \
         full-setup noadmin-setup macos-ci-setup macos-ci-preflight help neovim neovim-source neovim-package neovim-test windows-terminal-tooling
@@ -165,6 +165,9 @@ ai-tools:
 
 ai-notifications-native:
 	@python3 bin/use-native-ai-notifications
+
+claude-settings:
+	@python3 bin/claude-settings-defaults
 
 neovim:
 	@echo "Installing Neovim and configuring LazyVim (source-build default on Unix)..."

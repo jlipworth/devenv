@@ -2282,6 +2282,11 @@ install_ai_tools() {
     else
         log "Claude settings not found at $GNU_DIR/.claude_settings.json" "WARNING"
     fi
+    # Defaults above only seed new machines; managed keys (commit/PR
+    # attribution) are merged into existing settings on every run.
+    if command -v python3 > /dev/null 2>&1; then
+        python3 "$GNU_DIR/bin/claude-settings-defaults" || log "Could not apply managed Claude Code settings." "WARNING"
+    fi
     if [[ -f "$GNU_DIR/.claude_statusline.sh" ]]; then
         ln -sf "$GNU_DIR/.claude_statusline.sh" "$HOME/.claude/statusline-command.sh"
         log "Symlinked Claude Code statusline script."

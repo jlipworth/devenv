@@ -53,7 +53,7 @@ desktop = json.loads((home / "Library/Application Support/Claude/claude_desktop_
 assert desktop["mcpServers"]["safari-mcp"] == entry
 
 settings = json.loads((home / ".claude/settings.json").read_text())
-assert settings["hooks"] and settings["effortLevel"] == "xhigh"  # unrelated keys preserved
+assert settings["tui"] == "fullscreen" and settings["effortLevel"] == "xhigh"  # unrelated keys preserved
 allowed = ["create_tab", "list_tabs", "switch_tab", "page_info", "get_page_content",
            "screenshot", "wait_for_navigation", "page_interactions", "close_tab"]
 assert settings["permissions"]["allow"] == sorted(f"mcp__safari-mcp__{t}" for t in allowed)

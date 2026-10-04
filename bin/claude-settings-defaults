@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""Enforce repo-managed keys in a Claude Code settings.json, preserving everything else.
+
+usage: claude-settings-defaults [--check] [SETTINGS_PATH]
+
+SETTINGS_PATH defaults to ~/.claude/settings.json and is created if missing.
+--check reports drift and exits 1 without writing. The script has no repo
+dependencies, so it can be piped to another account:
+    sudo -u moltbot python3 - < bin/claude-settings-defaults
+"""
+
+import json
+import os
+import pathlib
+import sys
+import tempfile
+
+# Empty strings suppress Claude Code's commit trailer and PR footer.
+MANAGED = {
+    "attribution": {"commit": "", "pr": ""},
+}
+
+
+def atomic_write(path, content, mode):
+    fd, name = tempfile.mkstemp(prefix=path.name + ".", dir=path.parent)
+    try:
+        os.fchmod(fd, mode)
+        with os.fdopen(fd, "w") as out:
+            out.write(content)
+        os.replace(name, path)
+    finally:
+        if os.path.exists(name):
+            os.unlink(name)
+
+
+def main(argv):
+    check = "--check" in argv
+    args = [a for a in argv if a != "--check"]
+    if len(args) > 1 or any(a.startswith("-") for a in args):
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    path = pathlib.Path(args[0]) if args else pathlib.Path.home() / ".claude/settings.json"
+
+    data = json.loads(path.read_text()) if path.is_file() else {}
+    if not isinstance(data, dict):
+        print(f"{path} is not a JSON object", file=sys.stderr)
+        return 1
+    drift = [key for key, value in MANAGED.items() if data.get(key) != value]
+    if not drift:
+        return 0
+    if check:
+        print(f"{path}: managed keys differ: {', '.join(drift)}", file=sys.stderr)
+        return 1
+
+    data.update({key: MANAGED[key] for key in drift})
+    mode = path.stat().st_mode & 0o777 if path.exists() else 0o600
+    path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write(path, json.dumps(data, indent=2, ensure_ascii=False) + "\n", mode)
+    print(f"Updated {path}: {', '.join(drift)}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

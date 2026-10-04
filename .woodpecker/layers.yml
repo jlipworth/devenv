@@ -217,6 +217,7 @@ steps:
       - ./tests/codex_config_spec.sh
       - ./tests/ai_tools_spec.sh
       - ./tests/claude_safari_mcp_spec.sh
+      - ./tests/claude_settings_defaults_spec.sh
       - make ai-tools
 
   - name: layer-cli_tools
