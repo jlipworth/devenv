@@ -3,9 +3,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # shellcheck source=common_utils.sh
 source "$SCRIPT_DIR/common_utils.sh"
 
+# Capture a caller-supplied GCC_VERSION (e.g. the CI pin) before versions.conf
+# is sourced, which would otherwise reset it to the file's value.
+GCC_VERSION_ENV="${GCC_VERSION:-}"
+
 # Source pinned versions
 if [[ -f "$SCRIPT_DIR/versions.conf" ]]; then
     source "$SCRIPT_DIR/versions.conf"
+fi
+if [[ -n "$GCC_VERSION_ENV" ]]; then
+    GCC_VERSION="$GCC_VERSION_ENV"
 fi
 EMACS_VERSION="${EMACS_VERSION:-30.2}"
 

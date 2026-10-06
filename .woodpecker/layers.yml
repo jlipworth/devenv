@@ -220,6 +220,16 @@ steps:
       - ./tests/claude_settings_defaults_spec.sh
       - make ai-tools
 
+  # Guards for the manual macOS pipeline; the spec mocks uname/brew, so it
+  # runs on Linux and catches regressions before a macOS runner is used.
+  - name: macos-ci-guards
+    image: *ci_image
+    depends_on: []
+    environment:
+      CI: "true"
+    commands:
+      - ./tests/ci/macos_ci_spec.sh
+
   - name: layer-cli_tools
     image: *ci_image
     depends_on: []

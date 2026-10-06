@@ -27,6 +27,11 @@
       "automerge": false
     },
     {
+      "description": "versions.conf pins (editor/toolchain builds) - manual review",
+      "matchManagers": ["custom.regex"],
+      "automerge": false
+    },
+    {
       "description": "CI Dockerfile base image - manual review",
       "matchManagers": ["dockerfile"],
       "automerge": false
@@ -36,12 +41,24 @@
   "enabledManagers": [
     "pip_requirements",
     "dockerfile",
-    "pre-commit"
+    "pre-commit",
+    "custom.regex"
   ],
 
   "pre-commit": {
     "enabled": true
   },
+
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Pins in versions.conf marked with a `# renovate:` comment",
+      "managerFilePatterns": ["/^versions\\.conf$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?(?: extractVersion=(?<extractVersion>\\S+))?\\n[A-Z_]+=\"(?<currentValue>[^\"]+)\""
+      ]
+    }
+  ],
 
   "prConcurrentLimit": 5,
   "prCreation": "not-pending",

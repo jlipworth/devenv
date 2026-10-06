@@ -782,6 +782,31 @@ install_python_prereqs() {
     fi
 }
 
+# Linuxbrew R is built with Homebrew GCC, but its Makeconf names plain gcc/g++,
+# which resolve to the host compiler when packages are built. An older host GCC
+# cannot compile R's headers (Debian bookworm's GCC 12 rejects R >= 4.6's C23
+# `enum : int`), so point R package builds at Homebrew GCC via ~/.R/Makevars.
+# A Makevars the user wrote by hand is left alone.
+configure_r_brew_compiler() {
+    local makevars="$HOME/.R/Makevars"
+    local marker="# Managed by GNU_files install_r_support"
+    local brew_gcc brew_gxx
+    brew_gcc="$(find "$(brew --prefix gcc 2> /dev/null)/bin" -maxdepth 1 -name 'gcc-[0-9]*' 2> /dev/null | sort -V | tail -n 1)"
+    if [[ -z "$brew_gcc" ]]; then
+        log "Homebrew GCC not found; R packages will build with the host compiler." "WARNING"
+        return 0
+    fi
+    brew_gxx="${brew_gcc%/gcc-*}/g++-${brew_gcc##*/gcc-}"
+    if [[ -s "$makevars" ]] && [[ "$(head -n 1 "$makevars")" != "$marker" ]]; then
+        log "Keeping existing $makevars; set CC=$brew_gcc there if R packages fail to compile." "WARNING"
+        return 0
+    fi
+    mkdir -p "$HOME/.R"
+    printf '%s\nCC=%s\nCXX=%s\nCXX11=%s\nCXX14=%s\nCXX17=%s\nCXX20=%s\n' \
+        "$marker" "$brew_gcc" "$brew_gxx" "$brew_gxx" "$brew_gxx" "$brew_gxx" "$brew_gxx" > "$makevars"
+    log "Using Homebrew compiler $brew_gcc for R package builds ($makevars)."
+}
+
 install_r_support() {
     log "Installing R tools for ESS..."
     local r_available=false
@@ -803,13 +828,23 @@ install_r_support() {
     fi
 
     if is_installed "Rscript"; then
-        r_available=true
         log "Ensuring the R languageserver package is installed..."
         # Create user library directory if it doesn't exist
         Rscript -e 'dir.create(Sys.getenv("R_LIBS_USER"), showWarnings = FALSE, recursive = TRUE)'
+        if [[ "$OS" == "Linux" ]] && is_installed "brew"; then
+            configure_r_brew_compiler
+        fi
         # Install to user library to avoid permission issues
         Rscript -e 'if (!requireNamespace("languageserver", quietly = TRUE)) install.packages("languageserver", repos = "https://cloud.r-project.org", lib = Sys.getenv("R_LIBS_USER"))' ||
             log "Failed to install languageserver package for R." "WARNING"
+        # install.packages() only warns when a package fails to compile, so
+        # check that languageserver actually loads.
+        if Rscript -e 'quit(status = if (requireNamespace("languageserver", quietly = TRUE)) 0 else 1)'; then
+            r_available=true
+        else
+            log "R is installed, but the languageserver package failed to install (see the compiler output above)." "ERROR"
+            return 1
+        fi
     else
         log "Rscript not found on PATH; skipping languageserver install." "WARNING"
     fi
@@ -2596,24 +2631,7 @@ install_neovim_package() {
     ensure_tree_sitter_cli
 
     # --- Create Neovim config symlink ---
-    local nvim_config_dir="$HOME/.config/nvim"
-    local nvim_source="$GNU_DIR/nvim"
-
-    mkdir -p "$HOME/.config"
-
-    if [ -L "$nvim_config_dir" ]; then
-        log "A symbolic link already exists at $nvim_config_dir. Replacing it."
-        rm "$nvim_config_dir"
-    elif [ -d "$nvim_config_dir" ]; then
-        log "A directory exists at $nvim_config_dir. Backing it up."
-        mv "$nvim_config_dir" "${nvim_config_dir}_backup_$(date +%Y%m%d%H%M%S)"
-    elif [ -e "$nvim_config_dir" ]; then
-        log "A non-directory file exists at $nvim_config_dir. Backing it up."
-        mv "$nvim_config_dir" "${nvim_config_dir}_backup_$(date +%Y%m%d%H%M%S)"
-    fi
-
-    ln -s "$nvim_source" "$nvim_config_dir"
-    log "Neovim config symlinked: $nvim_config_dir -> $nvim_source" "SUCCESS"
+    link_nvim_config
 
     # --- Optional notebook tooling (warn only; Neovim works without it) ---
     local missing_notebook_tools=()

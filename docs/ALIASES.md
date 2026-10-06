@@ -112,14 +112,14 @@ fde txt               # Find all .txt files
 
 **Function:**
 
-- `help <command>` - View command help with syntax highlighting
+- `bhelp <command>` - View command help with syntax highlighting
 
 **Examples:**
 
 ```bash
 cat script.py         # View Python file with highlighting
 batp longfile.txt     # View with paging
-help ls              # View ls help with highlighting
+bhelp ls             # View ls help with highlighting
 ```
 
 ### ripgrep (grep replacement)
@@ -288,7 +288,7 @@ alias dots='cd ~/.config'
 ## Tips
 
 1. **Use tab completion** - All these tools support excellent tab completion
-2. **Check tool help** - Use `<tool> --help` or `help <tool>` for more options
+2. **Check tool help** - Use `<tool> --help` or `bhelp <tool>` for more options
 3. **Combine tools** - e.g., `rg TODO | bat` or `fd .rs | fzf`
 4. **Override defaults** - Add your own aliases to override these in `.zshrc` if needed
 

@@ -50,8 +50,9 @@ assert text.count("[projects.") == 2
 assert "stale-command" not in text
 assert "evaluate_javascript" not in text
 
-# Repo-defined keys win; local-only keys and tables survive.
-assert 'model = "local-old-value"' not in text
+# Repo-defined keys win; local-only keys and tables survive. The repo leaves
+# model choice to each machine, so a local model is kept.
+assert 'model = "local-old-value"' in text
 assert text.count("\nmodel = ") == 1
 assert 'approval_policy = "never"' in text
 assert 'notify = ["/Applications/Some.app/wrapper", "turn-ended"]' in text

@@ -629,7 +629,7 @@ function Test-GnuFilesCheckoutValid {
     $requiredPaths = @(
         ".git",
         ".psmux.conf",
-        "alacritty.toml",
+        "alacritty.windows.toml",
         "nvim"
     )
 
@@ -1350,13 +1350,7 @@ if (-not $alacrittyCommand) {
     throw "Alacritty install failed. Neither winget nor the portable fallback produced an 'alacritty' command."
 }
 
-$alacrittyWindowsSourcePath = Join-Path $gnuFilesPath "alacritty.windows.toml"
-$alacrittyDefaultSourcePath = Join-Path $gnuFilesPath "alacritty.toml"
-$alacrittySourcePath = if (Test-Path $alacrittyWindowsSourcePath) {
-    $alacrittyWindowsSourcePath
-} else {
-    $alacrittyDefaultSourcePath
-}
+$alacrittySourcePath = Join-Path $gnuFilesPath "alacritty.windows.toml"
 $alacrittyConfigDir = "$env:APPDATA\alacritty"
 $alacrittyConfigPath = "$alacrittyConfigDir\alacritty.toml"
 
@@ -1366,10 +1360,6 @@ if (Test-Path $alacrittySourcePath) {
     }
 
     $alacrittyConfig = Get-Content -Path $alacrittySourcePath -Raw
-    if ($alacrittySourcePath -eq $alacrittyDefaultSourcePath) {
-        $alacrittyConfig = $alacrittyConfig -replace 'program = "wsl\.exe"', 'program = "powershell.exe"'
-        $alacrittyConfig = $alacrittyConfig -replace 'args = \["-d", "Ubuntu-20\.04", "--cd", "~"\]', 'args = ["-NoLogo"]'
-    }
 
     $mesloFontInstalled = Test-FontInstalled @("MesloLGM Nerd Font Mono")
     $jetBrainsMonoNerdInstalled = Test-JetBrainsMonoNerdFontInstalled
