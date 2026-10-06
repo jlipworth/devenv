@@ -13,6 +13,7 @@ trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/darwin-home/.codex" "$tmp/linux-home/.codex"
 cat > "$tmp/darwin-home/.codex/config.toml" << 'EOF'
 model = "local-old-value"
+model_instructions_file = "~/.codex/instructions.md"
 approval_policy = "never"
 notify = ["/Applications/Some.app/wrapper", "turn-ended"]
 
@@ -32,6 +33,11 @@ enabled_tools = ["evaluate_javascript"]
 [projects."/tmp/two"]
 trust_level = "trusted"
 EOF
+
+# State left by older installs: the instructions link that fed
+# model_instructions_file, and an empty AGENTS.md placeholder.
+ln -s "$repo_root/.codex_instructions.md" "$tmp/darwin-home/.codex/instructions.md"
+: > "$tmp/darwin-home/.codex/AGENTS.md"
 
 # Exercise only the config installer: no CLI installs and no Safari/WebDriver session.
 HOME="$tmp/darwin-home" GNU_DIR="$repo_root" CODEX_CONFIG_OS=Darwin \
@@ -61,6 +67,8 @@ tui = re.search(r"(?ms)^\[tui\]\n(.*?)(?=^\[|\Z)", text).group(1)
 assert "screen_reader_detection_done = true" in tui
 assert "notifications = true" in tui
 assert '[plugins."browser@openai-bundled"]\nenabled = true' in text
+# The legacy key pointed at the link the installer retires.
+assert "model_instructions_file" not in text
 
 expected = "\n".join(
     [
@@ -77,6 +85,9 @@ matches = re.findall(
 assert len(matches) == 1
 assert matches[0].strip() == expected
 PY
+
+[[ ! -e "$tmp/darwin-home/.codex/instructions.md" && ! -L "$tmp/darwin-home/.codex/instructions.md" ]]
+[[ "$(readlink "$tmp/darwin-home/.codex/AGENTS.md")" == "$repo_root/.claude_global.md" ]]
 
 # A second install must be idempotent and continue preserving project trust.
 cp "$tmp/darwin-home/.codex/config.toml" "$tmp/first-install.toml"
@@ -105,12 +116,16 @@ fi
 
 # Unsupported TOML (multi-line strings) leaves the existing config untouched.
 mkdir -p "$tmp/odd-home/.codex"
-printf 'developer_instructions = """\nhello\n"""\n' > "$tmp/odd-home/.codex/config.toml"
+printf 'model_instructions_file = "~/.codex/instructions.md"\ndeveloper_instructions = """\nhello\n"""\n' \
+    > "$tmp/odd-home/.codex/config.toml"
+ln -s "$repo_root/.codex_instructions.md" "$tmp/odd-home/.codex/instructions.md"
 cp "$tmp/odd-home/.codex/config.toml" "$tmp/odd-before.toml"
 HOME="$tmp/odd-home" GNU_DIR="$repo_root" CODEX_CONFIG_OS=Darwin \
     "$repo_root/prereq_packages.sh" install_codex_config > "$tmp/odd-install.log" 2>&1
 cmp "$tmp/odd-before.toml" "$tmp/odd-home/.codex/config.toml"
 grep -q "left it unchanged" "$tmp/odd-install.log"
+# The unchanged config still names the legacy link, so it must survive.
+[[ -L "$tmp/odd-home/.codex/instructions.md" ]]
 
 # full-setup reaches prereq-layers-all, whose ai-tools layer invokes this installer.
 make -C "$repo_root" -n full-setup > "$tmp/full-setup-dry-run.log"
