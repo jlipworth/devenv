@@ -15,9 +15,13 @@ local function on_read(args)
   if path == "" then path = args.match end
   local result = vim.fn.systemlist({ "jupytext", "--to", "py:percent", "--output", "-", path })
   if vim.v.shell_error ~= 0 then
+    -- The buffer is left empty; on_write refuses to save it so a stray :w
+    -- cannot replace the notebook with an empty one.
+    vim.b[args.buf].jupyter_read_failed = true
     notify_err("jupytext read failed for " .. path)
     return
   end
+  vim.b[args.buf].jupyter_read_failed = nil
   vim.api.nvim_buf_set_lines(args.buf, 0, -1, false, result)
   vim.bo[args.buf].filetype = "python"
   vim.bo[args.buf].modified = false
@@ -28,6 +32,10 @@ end
 -- `:w other.ipynb`. --update keeps the outputs already stored in the target.
 -- Fires BufWritePost on success so format-on-save, gitsigns, LSP sync keep working.
 local function on_write(args)
+  if vim.b[args.buf].jupyter_read_failed then
+    notify_err("not saving: this notebook failed to load (:e to retry)")
+    return
+  end
   local path = vim.fn.fnamemodify(args.match, ":p")
   -- resolve() both sides: <amatch> can keep symlinks (macOS /var) that the
   -- buffer name has already resolved.

@@ -81,8 +81,8 @@ if [[ "$OS" == "Linux" && "$DISTRO" == "arch" ]]; then
         PACMAN_CMD="sudo pacman"
     fi
 
-    $PACMAN_CMD -Sy
-
+    # No bare -Sy: syncing without upgrading is an Arch partial upgrade.
+    # Full upgrades stay explicit (see UPDATE_CMD in common_utils.sh).
     log "Installing build packages..."
     $PACMAN_CMD -S --needed --noconfirm \
         base-devel cmake pkg-config gtk3 gnutls \
@@ -292,8 +292,9 @@ elif [[ "$OS" == "Darwin" ]]; then
     export DYLD_FALLBACK_LIBRARY_PATH="${LIBGCCJIT_PREFIX}/lib/gcc/current:${DYLD_FALLBACK_LIBRARY_PATH:-}"
     log "libgccjit paths configured: $LIBGCCJIT_PREFIX"
 
-    # Find the latest versioned gcc executable (e.g., /opt/homebrew/bin/gcc-15)
-    LATEST_GCC_EXECUTABLE=$(ls -1 /opt/homebrew/bin/gcc-[0-9]* | sort -V | tail -n 1)
+    # Find the latest versioned gcc executable (e.g., /opt/homebrew/bin/gcc-15;
+    # /usr/local/bin on Intel Macs)
+    LATEST_GCC_EXECUTABLE=$(ls -1 "$(brew --prefix)"/bin/gcc-[0-9]* | sort -V | tail -n 1)
 
     # Ask that executable for its version and extract the major number
     LATEST_GCC_MAJOR_VERSION=$(${LATEST_GCC_EXECUTABLE} -dumpversion | cut -d. -f1)

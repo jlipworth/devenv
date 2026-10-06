@@ -14,6 +14,8 @@
 # Notes:
 # - We keep this lightweight on purpose.
 # - This image mirrors the intended work-machine case: no sudo at runtime, but Homebrew is preinstalled.
+# - Steps run under the image's /bin/sh (dash), which has no pipefail, so each
+#   `cmd | tee log` runs in bash -o pipefail to keep cmd's exit status.
 
 when:
   event: [push, pull_request, manual]
@@ -31,7 +33,7 @@ steps:
       DEBIAN_FRONTEND: noninteractive
     commands:
       - set -eu
-      - make cli_tools 2>&1 | tee cli_tools.log
+      - bash -o pipefail -c 'make cli_tools 2>&1 | tee cli_tools.log'
       - 'grep -q "NO_ADMIN=true: skipping CLI system-integration extras" cli_tools.log'
       - grep -q "Shell syntax highlighting setup complete" cli_tools.log
       - test -d "$HOME/.tmux"
@@ -46,7 +48,7 @@ steps:
       DEBIAN_FRONTEND: noninteractive
     commands:
       - set -eu
-      - make r 2>&1 | tee r.log
+      - bash -o pipefail -c 'make r 2>&1 | tee r.log'
       - command -v brew
       - grep -q "Installing R via Homebrew/Linuxbrew" r.log
 
@@ -59,7 +61,7 @@ steps:
       DEBIAN_FRONTEND: noninteractive
     commands:
       - set -eu
-      - make latex_tooling 2>&1 | tee latex_tooling.log
+      - bash -o pipefail -c 'make latex_tooling 2>&1 | tee latex_tooling.log'
       - command -v texlab
 
   - name: noadmin-system-prereq
@@ -71,7 +73,7 @@ steps:
       DEBIAN_FRONTEND: noninteractive
     commands:
       - set -eu
-      - make system-prereq 2>&1 | tee system_prereq.log
+      - bash -o pipefail -c 'make system-prereq 2>&1 | tee system_prereq.log'
       - command -v brew
       - 'grep -q "NO_ADMIN=true: skipping ksshaskpass" system_prereq.log'
       - grep -q "Node.js v" system_prereq.log
@@ -92,7 +94,7 @@ steps:
       - set -eu
       # Source builds need sudo-installed toolchains, so NO_ADMIN uses the
       # package/download path (make neovim-package) via the smoke script.
-      - ./ci/neovim-smoke.sh 2>&1 | tee neovim.log
+      - bash -o pipefail -c './ci/neovim-smoke.sh 2>&1 | tee neovim.log'
       - 'grep -q "Neovim smoke passed" neovim.log'
 
 # Future follow-up:

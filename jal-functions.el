@@ -58,7 +58,7 @@ Ordinary insertion leaves preceding text intact and supports region wrapping."
 
 ;; mermaid-mode keybindings (for .mmd/.mermaid files)
 (with-eval-after-load 'mermaid-mode
-  (when (boundp 'spacemacs/set-leader-keys-for-major-mode)
+  (when (fboundp 'spacemacs/set-leader-keys-for-major-mode)
     (spacemacs/set-leader-keys-for-major-mode 'mermaid-mode
       "c" 'mermaid-compile
       "b" 'mermaid-compile-buffer
