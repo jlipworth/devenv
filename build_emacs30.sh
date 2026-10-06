@@ -367,11 +367,39 @@ if [[ -d "$EMACS_DIR" ]]; then
 fi
 
 if [[ ! -d "$EMACS_DIR" ]]; then
-    log "Downloading Emacs ${EMACS_VERSION} from GNU FTP..."
-    if [[ "$OS" == "Darwin" ]]; then
-        curl -fsSL "https://ftp.gnu.org/gnu/emacs/${EMACS_TAR}" -o "${EMACS_TAR}"
+    # ftp.gnu.org has outages; any mirror is fine because the tarball is
+    # checked against the pinned EMACS_SHA256 before it is used.
+    downloaded=false
+    for base in https://ftp.gnu.org/gnu/emacs https://ftpmirror.gnu.org/emacs \
+        https://mirrors.kernel.org/gnu/emacs; do
+        log "Downloading Emacs ${EMACS_VERSION} from ${base}..."
+        rm -f "${EMACS_TAR}"
+        if [[ "$OS" == "Darwin" ]]; then
+            curl -fsSL --connect-timeout 20 "${base}/${EMACS_TAR}" -o "${EMACS_TAR}" && downloaded=true
+        else
+            wget -q --timeout=20 --tries=2 "${base}/${EMACS_TAR}" && downloaded=true
+        fi
+        [[ "$downloaded" == true ]] && break
+        log "Download from ${base} failed" "WARNING"
+    done
+    if [[ "$downloaded" != true ]]; then
+        log "Could not download ${EMACS_TAR} from any GNU mirror" "ERROR"
+        exit 1
+    fi
+    if [[ -n "${EMACS_SHA256:-}" ]]; then
+        if command -v sha256sum > /dev/null 2>&1; then
+            actual_sha256="$(sha256sum "${EMACS_TAR}" | awk '{print $1}')"
+        else
+            actual_sha256="$(shasum -a 256 "${EMACS_TAR}" | awk '{print $1}')"
+        fi
+        if [[ "$actual_sha256" != "$EMACS_SHA256" ]]; then
+            log "SHA-256 mismatch for ${EMACS_TAR}: got ${actual_sha256}, expected ${EMACS_SHA256}" "ERROR"
+            rm -f "${EMACS_TAR}"
+            exit 1
+        fi
+        log "Verified ${EMACS_TAR} SHA-256" "SUCCESS"
     else
-        wget -q "https://ftp.gnu.org/gnu/emacs/${EMACS_TAR}"
+        log "EMACS_SHA256 is not set; skipping tarball verification" "WARNING"
     fi
     log "Download complete. Extracting..."
     tar -xzf "${EMACS_TAR}"
