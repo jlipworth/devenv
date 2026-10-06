@@ -529,9 +529,12 @@ install_lazygit() {
 install_lazygit_release() {
     log "Installing lazygit from GitHub releases..."
 
+    # `|| true`: callers run with `set -euo pipefail`, and an API failure (e.g.
+    # GitHub's unauthenticated rate limit) must reach the warning below
+    # instead of aborting the whole setup.
     local lg_version
     lg_version="$(curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest 2> /dev/null |
-        grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')"
+        grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')" || true
 
     if [[ -z "$lg_version" ]]; then
         log "Failed to determine the latest lazygit version from the GitHub API." "WARNING"
