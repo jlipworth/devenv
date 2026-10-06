@@ -50,8 +50,10 @@ xcode-select -p > /dev/null
 
 real_brew="$(command -v brew)"
 brewfiles=("$repo_root"/brewfiles/Brewfile.*)
+# --no-upgrade: only presence matters here. Plain `bundle check` also fails on
+# any formula with a newer release, or one whose tap the ci user never trusted.
 for brewfile in "${brewfiles[@]}"; do
-    if ! "$real_brew" bundle check --file="$brewfile" > /dev/null; then
+    if ! "$real_brew" bundle check --no-upgrade --file="$brewfile" > /dev/null; then
         echo "runner provisioning is incomplete for $brewfile" >&2
         exit 69
     fi
