@@ -232,7 +232,7 @@ Key groups:
 
 | Action | Keybinding | Notes |
 |--------|-----------|-------|
-| Insert date | `<localleader>oc` | Inserts "Mon DD, YYYY" in `tex`/`org` buffers, matching the current Spacemacs major-mode date habit |
+| Insert date | `<localleader>oc` | Inserts "Mon DD, YYYY" in `tex`/`plaintex`/`org` buffers, matching the current Spacemacs major-mode date habit |
 | Markdown preview | `<leader>cp` | `:LivePreview start` (live-preview.nvim), markdown buffers only. Browser-based analog of Spacemacs `grip-mode` (`,cg`) |
 
 ## Not ported from Spacemacs / `.vimrc`
@@ -545,8 +545,8 @@ is feature-complete (last commit 2024-09-01).
 
 ## Spell check
 
-LazyVim sets `spell` automatically on `gitcommit` and `markdown`
-filetypes. For any other buffer:
+LazyVim sets `spell` (and `wrap`) automatically on `text`, `plaintex`, `typst`,
+`gitcommit` and `markdown` filetypes. For any other buffer:
 
 ```vim
 :setlocal spell spelllang=en_us

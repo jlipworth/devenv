@@ -9,8 +9,8 @@ $ProgressPreference = "SilentlyContinue"
 
 # Version pin fallbacks. After GNU_files is located/cloned, these are refreshed from versions.conf.
 $AlacrittyVersion = "0.16.1"
-$FallbackNeovimVersion = "0.12.0"
-$MinimumNeovimVersion = [version]"0.11.2"
+$FallbackNeovimVersion = "0.12.5"
+$MinimumNeovimVersion = [version]"0.12.4"
 $GnuFilesRepoUrl = "https://github.com/jlipworth/devenv.git"
 $GnuFilesBootstrapBranch = "master"
 $psmuxVersion = $null
@@ -1187,7 +1187,8 @@ if ($gnuFilesPath) {
 $versionsConfigPath = Join-Path $gnuFilesPath "versions.conf"
 $AlacrittyVersion = Get-VersionFromConfig -ConfigPath $versionsConfigPath -Name "ALACRITTY_VERSION" -Fallback $AlacrittyVersion
 $FallbackNeovimVersion = Get-VersionFromConfig -ConfigPath $versionsConfigPath -Name "NEOVIM_VERSION" -Fallback $FallbackNeovimVersion
-Write-Host "Using pins from versions.conf where available: Alacritty $AlacrittyVersion, Neovim fallback $FallbackNeovimVersion" -ForegroundColor Green
+$MinimumNeovimVersion = [version](Get-VersionFromConfig -ConfigPath $versionsConfigPath -Name "NEOVIM_MIN_VERSION" -Fallback $MinimumNeovimVersion.ToString())
+Write-Host "Using pins from versions.conf where available: Alacritty $AlacrittyVersion, Neovim fallback $FallbackNeovimVersion, Neovim minimum $MinimumNeovimVersion" -ForegroundColor Green
 
 # --- 7. psmux + config + plugins ---
 Write-Host "`n[7/10] Installing psmux + config..." -ForegroundColor Yellow
@@ -1465,7 +1466,7 @@ Write-Host "fd: $fdVersion | rg: $rgVersion | gcc: $gccVersion | tree-sitter: $t
 
 $targetNeovimVersion = Get-LatestNeovimVersion
 $targetNeovimVersionObject = [version]$targetNeovimVersion
-Write-Host "Target Neovim version: $targetNeovimVersion (LazyVim minimum: $MinimumNeovimVersion)" -ForegroundColor Green
+Write-Host "Target Neovim version: $targetNeovimVersion (minimum: $MinimumNeovimVersion)" -ForegroundColor Green
 
 $portableNvimBinPath = "$env:LOCALAPPDATA\nvim-bin\nvim-win64\bin"
 Add-UserPathOnce $portableNvimBinPath
@@ -1499,7 +1500,7 @@ if ($null -eq $installedNvimVersion) {
 }
 
 if ($installedNvimVersion -lt $MinimumNeovimVersion) {
-    throw "Neovim $installedNvimVersion is too old for LazyVim. Require >= $MinimumNeovimVersion."
+    throw "Neovim $installedNvimVersion is too old for this config. Require >= $MinimumNeovimVersion."
 }
 
 $nvimVersion = (& $nvimCommand.Source --version | Select-Object -First 1).Trim()

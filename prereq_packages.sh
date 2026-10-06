@@ -1637,7 +1637,10 @@ install_cli_tools() {
             echo "    SetEnv TERM=xterm-256color" >> "$temp_ssh"
             echo "" >> "$temp_ssh"
             cat "$HOME/.ssh/config" >> "$temp_ssh"
-            mv "$temp_ssh" "$HOME/.ssh/config"
+            # Write through rather than mv, so a symlinked ~/.ssh/config keeps
+            # pointing at (and updates) its real file.
+            cat "$temp_ssh" > "$HOME/.ssh/config"
+            rm -f "$temp_ssh"
             chmod 600 "$HOME/.ssh/config"
             log "SSH config updated for Ghostty compatibility."
         else

@@ -46,6 +46,7 @@ proxy_key="$(<"${key_file}")"
 if [[ -f "${config_file}" ]] && ! grep -q 'Managed by setup-claugpt' "${config_file}"; then
     backup="${config_file}.backup.$(date +%Y%m%d%H%M%S)"
     cp "${config_file}" "${backup}"
+    chmod 600 "${backup}"
     log "Backed up the existing proxy configuration to ${backup}." "WARNING"
 fi
 
@@ -71,6 +72,8 @@ payload:
       params:
         service_tier: "priority"
 EOF
+# Homebrew installs this file 0644 and `cat >` keeps that mode; it holds the key.
+chmod 600 "${config_file}"
 
 cat >"${launcher}" <<'EOF'
 #!/usr/bin/env bash

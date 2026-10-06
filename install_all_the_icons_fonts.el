@@ -2,6 +2,15 @@
 
 (require 'package)
 
+;; Use Spacemacs' package dir (elpa/<major.minor>/develop) when it exists, so
+;; this doesn't install a second, unmanaged copy under plain elpa/.
+(let ((spacemacs-elpa (expand-file-name
+                       (format "elpa/%d.%d/develop"
+                               emacs-major-version emacs-minor-version)
+                       user-emacs-directory)))
+  (when (file-directory-p spacemacs-elpa)
+    (setq package-user-dir spacemacs-elpa)))
+
 (package-initialize)
 
 (unless (package-installed-p 'all-the-icons)

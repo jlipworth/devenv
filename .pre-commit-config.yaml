@@ -9,7 +9,15 @@ repos:
         entry: ./tests/codex_config_spec.sh
         language: system
         pass_filenames: false
-        files: ^(\.codex_config\.toml|prereq_packages\.sh|makefile|tests/codex_config_spec\.sh)$
+        files: |
+          (?x)^(
+            \.codex_config\.toml|
+            check_codex_config\.sh|
+            bin/codex-config-merge|
+            prereq_packages\.sh|
+            makefile|
+            tests/codex_config_spec\.sh
+          )$
       - id: check-ai-tools-install
         name: check AI tools package-manager ownership
         entry: ./tests/ai_tools_spec.sh
