@@ -1,8 +1,25 @@
-# Native macOS local-backend validation. This is deliberately manual-only until
-# the labelled Mac runner has been provisioned and validated.
+# Native macOS local-backend validation. The runner executes repository code
+# directly on a Mac, so this never runs for pull requests: only for owner
+# pushes to master that touch the setup, manual runs, and the weekly cron.
+# ci/validate-macos-pipeline.py enforces this in lint CI.
 when:
-  event: [manual]
+  event: [push, manual, cron]
   branch: master
+  cron: weekly
+  path:
+    include:
+      - "*.sh"
+      - makefile
+      - versions.conf
+      - requirements.txt
+      - .spacemacs
+      - jal-functions.el
+      - brewfiles/**
+      - bin/**
+      - ci/macos-*
+      - ci/spacemacs-smoke.sh
+      - .woodpecker/macos.yml
+    on_empty: false
 
 labels:
   platform: darwin/arm64

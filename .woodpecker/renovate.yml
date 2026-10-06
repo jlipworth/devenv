@@ -1,9 +1,10 @@
 # .woodpecker/renovate.yml
 # Renovate bot - scans GitHub repo and creates PRs for dependency updates
-# Runs on cron schedule only (configure in Woodpecker: weekly on Mondays)
+# Runs on the "renovate" cron only (configured in Woodpecker: Mondays 14:00 UTC)
 
 when:
   event: cron
+  cron: renovate
 
 steps:
   - name: renovate

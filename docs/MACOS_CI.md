@@ -7,8 +7,10 @@ on the Mac runner and must not be trusted with arbitrary fork code.
 
 ## Current rollout state
 
-`.woodpecker/macos.yml` is intentionally restricted to manual events and asks
-for these runner labels:
+`.woodpecker/macos.yml` runs on pushes to `master` that touch the setup
+(installer scripts, `makefile`, `versions.conf`, Brewfiles, `.spacemacs`, the
+macOS CI scripts), on manual runs, and on the `weekly` cron. It never runs for
+pull requests. It asks for these runner labels:
 
 ```yaml
 platform: darwin/arm64
@@ -16,11 +18,9 @@ backend: local
 purpose: mac-ci
 ```
 
-The pipeline is also restricted to the repository's `master` branch. It should
-remain manual-only until the Mac runner is provisioned and
-the repository is explicitly approved as a trusted workload. The GitHub repo is
-public, so fork pull requests must never run on this local backend. Enabling
-owner-controlled push runs is a separate post-enrollment change.
+The pipeline is also restricted to the repository's `master` branch. Pushes to
+`master` are owner-controlled merges; the GitHub repo is public, so fork pull
+requests must never run on this local backend.
 
 ## Safety model
 
@@ -44,8 +44,9 @@ This protects the normal `ci` account's home and the shared Homebrew prefix. It
 does not make the local backend a security sandbox; that is why repository
 trust and event gating remain mandatory.
 
-`ci/validate-macos-pipeline.py` enforces the three exact runner labels, a
-manual-only event, and the default branch. It is run by portable lint CI, so a
+`ci/validate-macos-pipeline.py` enforces the three exact runner labels, events
+limited to `push`, `manual`, and a named `cron` (never `pull_request`), and the
+default branch. It is run by portable lint CI, so a
 change cannot silently weaken the native workflow during review. This is not
 an agent-side event filter: Woodpecker must continue to require approval for
 fork pipelines, and fork pipelines must never be approved while the native
@@ -89,9 +90,10 @@ final smoke therefore exercises both the Emacs binary and the tracked
 `.spacemacs` configuration without touching the runner user's personal editor
 environment.
 
-The smoke fails if Spacemacs reports any package install or load errors. If
+The smoke (`ci/spacemacs-smoke.sh`, shared with the Linux build workflow)
+fails if Spacemacs reports any package install or load errors. If
 GNU ELPA is unreachable, the GNU and NonGNU archives are fetched from a mirror
-(`MACOS_CI_ELPA_MIRROR`, default the Tsinghua TUNA mirror) with their GPG
+(`SPACEMACS_SMOKE_ELPA_MIRROR`, default the Tsinghua TUNA mirror) with their GPG
 signatures required, so the mirror cannot substitute packages.
 
 For one-off diagnosis, retain the workspace:
@@ -112,8 +114,8 @@ The guard behavior can be tested without performing the full setup:
 ```
 
 The test verifies that read-only Homebrew queries work, missing dependencies
-fail, mutating commands are blocked, and the Woodpecker pipeline remains
-manual-only.
+fail, mutating commands are blocked, and the Woodpecker pipeline cannot be
+widened to pull requests.
 
 ## Ownership boundaries
 
@@ -123,4 +125,4 @@ manual-only.
 | Woodpecker agent, native `plugin-git`, and labels | Homelab/macOS automation |
 | Disposable setup and Spacemacs smoke | This repository |
 | Runner token and credentials | Secret management, never Git |
-| Enabling non-manual events | Explicit post-enrollment review |
+| Widening the native pipeline's events | Explicit review; never `pull_request` |
