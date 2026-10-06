@@ -2044,7 +2044,14 @@ install_codex_config() {
         local merge_args=()
         [[ "$codex_config_os" != "Darwin" ]] && merge_args+=(--drop mcp_servers.safari-mcp)
         local local_config="/dev/null"
-        [[ -s "$codex_target" ]] && local_config="$codex_target"
+        if [[ -s "$codex_target" ]]; then
+            # Older installs wrote model_instructions_file pointing at the
+            # ~/.codex/instructions.md link retired below; keeping that key
+            # would make Codex fail to start once the link is gone.
+            local_config="$(mktemp "$HOME/.codex/config.local.XXXXXX")"
+            grep -Ev '^[[:space:]]*model_instructions_file[[:space:]]*=[[:space:]]*"~/\.codex/instructions\.md"' \
+                "$codex_target" > "$local_config" || true
+        fi
 
         # Repo-defined keys (including the Safari MCP allowlist) replace stale
         # local values; local-only settings such as [projects.*] trust, Codex
@@ -2058,6 +2065,7 @@ install_codex_config() {
             log "Could not merge $codex_target; left it unchanged." "WARNING"
         fi
         rm -f "$codex_base"
+        [[ "$local_config" != /dev/null ]] && rm -f "$local_config"
     else
         log "Codex config not found at $GNU_DIR/.codex_config.toml" "WARNING"
     fi
@@ -2069,8 +2077,11 @@ install_codex_config() {
     # which replaced Codex's built-in instructions instead of adding to them.
     # (.codex_instructions.md stays as a symlink to .claude_global.md so machines
     # whose config.toml still names that file keep working until they re-run this.)
+    # Keep it while config.toml still names it (e.g. the merge was refused).
     if [[ -L "$HOME/.codex/instructions.md" ]] &&
-        [[ "$(readlink "$HOME/.codex/instructions.md")" == "$GNU_DIR/"* ]]; then
+        [[ "$(readlink "$HOME/.codex/instructions.md")" == "$GNU_DIR/"* ]] &&
+        ! grep -Eq '^[[:space:]]*model_instructions_file[[:space:]]*=.*instructions\.md' \
+            "$HOME/.codex/config.toml" 2> /dev/null; then
         rm -f "$HOME/.codex/instructions.md"
     fi
     if [[ ! -f "$global_instructions" ]]; then
