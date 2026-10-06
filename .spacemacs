@@ -195,7 +195,10 @@ This function should only modify configuration layer settings."
            )
 
      (swift :variables
-            swift-lsp-executable-path (executable-find "sourcekit-lsp"))
+            ;; Fall back to the bare name (lsp-sourcekit's default) so a
+            ;; missing server gets lsp-mode's normal prompt, not a nil error.
+            swift-lsp-executable-path (or (executable-find "sourcekit-lsp")
+                                          "sourcekit-lsp"))
 
      (docker :variables
              docker-dockerfile-backend 'lsp
@@ -768,7 +771,6 @@ If you are unsure, try setting them in `dotspacemacs/user-config' first."
   (setq frame-resize-pixelwise t)
 
   (setq network-security-level 'high)
-  (setq tls-checktrust t)
 
   ;; Allow upgrading built-in packages (e.g. transient) from (M)ELPA. Emacs 30
   ;; ships an older transient that shadows the newer one Magit 4 requires

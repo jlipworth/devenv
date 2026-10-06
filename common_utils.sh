@@ -414,8 +414,10 @@ install_packages() {
             elif [[ "$OS" == "Darwin" ]]; then
                 if [[ "${MACOS_CI:-false}" == "true" ]]; then
                     log "$package is runner-provisioned; skipping host upgrades in macOS CI."
-                # Check if package is in brew outdated list
-                elif brew outdated 2> /dev/null | grep -q "^${package}$"; then
+                # Ask about this package by name: brew resolves short names of
+                # tap formulas (terraform -> hashicorp/tap/terraform), whereas
+                # the full outdated list prints them tap-qualified.
+                elif brew outdated --quiet "$package" 2> /dev/null | grep -q .; then
                     log "$package has an update available. Updating..."
                     brew upgrade "$package" || echo "Error updating $package."
                 else

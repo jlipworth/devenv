@@ -28,6 +28,8 @@ esac
 
 debug_log "notifier=ghostty-osc9 message=$message"
 
+# The trailing '\\' is the OSC string terminator (ESC \), not a quote escape.
+# shellcheck disable=SC1003
 if [[ -n "${TMUX:-}" ]]; then
     # tmux passthrough wrapper. Requires `set -g allow-passthrough on`.
     # Use BEL for the inner OSC terminator to keep the wrapped form simple.

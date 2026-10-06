@@ -116,7 +116,7 @@ echo "=== Step 7: tex buffer assertions ==="
 # buffer-local FileType products, so their presence means the FileType autocmds
 # ran to completion on a real .tex buffer.
 TEX_FILE="$TEST_HOME/smoke.tex"
-cat > "$TEX_FILE" <<'TEX'
+cat > "$TEX_FILE" << 'TEX'
 \documentclass{article}
 \begin{document}
 hello
@@ -124,7 +124,7 @@ hello
 TEX
 
 TEX_ASSERT="$TEST_HOME/tex-assert.lua"
-cat > "$TEX_ASSERT" <<'LUA'
+cat > "$TEX_ASSERT" << 'LUA'
 local localleader = vim.g.maplocalleader or "\\"
 
 local function mapped(lhs)
@@ -178,7 +178,7 @@ else
     fi
 fi
 TS_ASSERT="$TEST_HOME/ts-assert.lua"
-cat > "$TS_ASSERT" <<'LUA'
+cat > "$TS_ASSERT" << 'LUA'
 local timeout_ms = tonumber(vim.env.CI_TS_TIMEOUT_MS or "300000")
 
 require("lazy").load({ plugins = { "nvim-treesitter" } })

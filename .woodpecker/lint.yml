@@ -8,7 +8,11 @@ steps:
   - name: shellcheck
     image: koalaman/shellcheck-alpine:stable
     commands:
-      - shellcheck --source-path=SCRIPTDIR -x *.sh
+      - >-
+        shellcheck --source-path=SCRIPTDIR -x
+        *.sh bin/*.sh ci/*.sh tests/*.sh tests/*/*.sh notifications/backends/*.sh
+        bin/emacs-macos-wrapper bin/setup-claugpt bin/tmux-pop-pane
+        ci/macos-brew-readonly ci/macos-sudo-deny notifications/ai-notify-*
       - ./check_codex_config.sh
 
   - name: macos-runner-policy

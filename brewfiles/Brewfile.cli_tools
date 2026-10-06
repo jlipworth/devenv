@@ -22,4 +22,4 @@ brew "zsh-autosuggestions"
 brew "zsh-syntax-highlighting"
 
 # Terminal emulator
-cask "ghostty"
+cask "ghostty" if OS.mac?

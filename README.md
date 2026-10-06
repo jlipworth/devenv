@@ -111,7 +111,7 @@ CI is split across Woodpecker pipeline files under `.woodpecker/`.
 - `build.yml` validates the Emacs build flow and the default Neovim source build
 - `layers.yml` validates language/editor layers, including the legacy Neovim package path
 - `noadmin.yml` covers non-sudo smoke tests, including Neovim via the package path
-- `lint.yml` runs formatting and lint checks
+- `lint.yml` runs shellcheck, the Codex config guard, and the macOS pipeline policy check (formatting, YAML and Markdown checks run via pre-commit)
 
 Neovim coverage includes a Linux headless smoke script at `ci/neovim-smoke.sh`.
 macOS has a guarded native pipeline that remains manual-only until the labelled runner is enrolled; see `docs/MACOS_CI.md`.
