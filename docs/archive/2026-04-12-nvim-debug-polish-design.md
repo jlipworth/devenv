@@ -22,6 +22,7 @@ against silent plugin rot. Specifically:
 4. **Snippet parity** — port the six Yasnippet templates in `snippets/`
    to LuaSnip's VSCode-style JSON format so the same triggers work in
    both editors.
+
 ### Non-Goals
 
 - **New language-DAP support beyond Python + JS/TS.** LazyVim has extras
@@ -99,6 +100,7 @@ during plan Task 8 validation.
   the python extra is active; adding vim-test on top is redundant.
 - **`spellsitter.nvim`** for treesitter-aware spell. Nice-to-have, not
   needed for parity with Spacemacs's default flyspell; defer.
+
 ### No-abandonware check (this sub-spec's new plugins)
 
 - **vim-visual-multi**: last commit 2024-09-01. The plugin is functionally
@@ -264,7 +266,7 @@ We pick **VSCode-style JSON** because:
 
 ### Target layout
 
-```
+```text
 nvim/
   snippets/
     package.json           # VSCode snippet manifest

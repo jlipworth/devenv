@@ -12,6 +12,7 @@ Date: 2026-03-13
 #### `common_utils.sh` — package manager abstraction
 
 All Linux package install/update commands used sudo:
+
 - Debian/Ubuntu: `sudo apt install -y`, `sudo apt update -qq`
 - Arch: `sudo pacman -S --needed --noconfirm`
 - Fedora: `sudo dnf install -y`

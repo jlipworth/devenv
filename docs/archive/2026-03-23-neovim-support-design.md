@@ -38,7 +38,7 @@ Secondary benefit: cross-platform Neovim config available on Linux/Mac machines 
 
 ### Config structure
 
-```
+```text
 nvim/
 ├── init.lua                  # LazyVim bootstrap (~10 lines, clones lazy.nvim and calls config.lazy)
 └── lua/
@@ -123,11 +123,13 @@ require("lazy").setup({
 ### Key custom settings
 
 **options.lua:**
+
 - Relative line numbers enabled to match the current `.spacemacs` line-number preference
 - `timeoutlen=200` to match current Spacemacs `evil-escape-delay`
 - Any spacing/indent overrides should only exist when they can be traced to a current Spacemacs layer setting or explicit repo choice
 
 **keymaps.lua:**
+
 - `jk` mapped to Escape in insert mode (matching Spacemacs `evil-escape`)
 - Wrapped-line movement should follow the current Spacemacs `evil-respect-visual-line-mode` habit rather than unconditional `gj`/`gk` remaps
 - Major-mode-local additions should prefer `<localleader>` / `,` when mirroring current Spacemacs major-mode bindings
@@ -151,6 +153,7 @@ The `nvim/` directory in the repo is symlinked to the platform config location:
 | Windows | `$env:LOCALAPPDATA\nvim` → `$GNU_DIR\nvim` |
 
 The `install_neovim()` function must handle pre-existing `~/.config/nvim`:
+
 - If it's a symlink: replace it
 - If it's a directory: back it up (append timestamp), then create symlink
 - Following the same pattern as `create_snippet_symlink()` in `prereq_packages.sh`
@@ -160,6 +163,7 @@ The `install_neovim()` function must handle pre-existing `~/.config/nvim`:
 ### Plugin/LSP auto-install behavior
 
 On first launch, LazyVim + mason.nvim will:
+
 1. Download and install all plugins (lazy.nvim handles this)
 2. Download and install LSP servers (mason.nvim handles this)
 
@@ -182,6 +186,7 @@ neovim:
 ```
 
 **Implementation notes:**
+
 - Add `neovim` to the `.PHONY` declaration
 - Add `neovim` to the `help` target output under "Other targets"
 - Do NOT add `neovim` to `prereq-layers-all`, `full-setup`, or `noadmin-setup`
@@ -199,6 +204,7 @@ New function `install_neovim()`:
 - Does NOT install LSP servers (mason handles that on first launch)
 
 **Implementation notes:**
+
 - Add `install_neovim` to the `valid_functions` array in `main()`
 - Do NOT add `install_neovim` to `install_all()`
 - Add `NEOVIM_VERSION="0.11.6"` to `versions.conf` for the appimage download path
@@ -251,6 +257,7 @@ Reference card mapping Spacemacs habits to LazyVim equivalents:
 ## Cleanup / Uninstall
 
 To remove Neovim setup:
+
 1. Remove config symlink: `rm ~/.config/nvim` (Linux/Mac) or remove junction on Windows
 2. Remove plugin/mason data: `rm -rf ~/.local/share/nvim ~/.local/state/nvim ~/.cache/nvim`
 3. Optionally uninstall Neovim binary (`brew uninstall neovim` or remove appimage)

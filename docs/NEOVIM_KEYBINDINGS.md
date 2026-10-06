@@ -6,13 +6,13 @@ Leader key is Space (same as Spacemacs).
 Major-mode leader is `,` (via `<localleader>`), matching the current `.spacemacs` setup.
 
 This config currently uses:
+
 - **Snacks picker** for file/search pickers
 - **Snacks explorer** for the file tree
 - **persistence.nvim** for session restore
 - **Harpoon 2** for optional working-set / hot-file jumps
 - **Neogit + Diffview + Octo** for git (`<leader>gg` is Neogit, not lazygit)
 - **blink.cmp** for completion and snippet expansion (no LuaSnip)
-
 
 ## Getting Started
 
@@ -25,6 +25,7 @@ nvim
 ```
 
 Useful first commands:
+
 - `:Lazy` — plugins
 - `:Mason` — LSP/tools
 - `:checkhealth` — sanity check
@@ -32,6 +33,7 @@ Useful first commands:
 ### Core mental model
 
 Think of this setup as:
+
 - **Snacks picker** = find/search things
 - **buffers** = open files
 - **sessions** = restore a project state
@@ -56,7 +58,6 @@ Think of this setup as:
 
 Use **sessions** when you want your windows, buffers, and project state back.
 Use **Harpoon** when you keep bouncing between a small set of important files.
-
 
 ## Core Navigation
 
@@ -91,6 +92,7 @@ Use **Harpoon** when you keep bouncing between a small set of important files.
 ## Sessions / Workspace Story
 
 Neovim does not ship with Spacemacs-style layouts, but this setup has a workable equivalent:
+
 - **project picker** for jumping between repos
 - **persistence.nvim sessions** for restoring buffers/windows per project
 - **Harpoon 2** for an optional per-project working set / hot-file list
@@ -210,6 +212,7 @@ back to the pinned set.
 Press `<leader>` (Space) and wait — which-key shows available bindings grouped by category, similar to Spacemacs.
 
 Key groups:
+
 - `<leader>f` — File / Find / Projects
 - `<leader>g` — Git
 - `<leader>b` — Buffers
@@ -320,7 +323,7 @@ document-highlight references again as LazyVim intends.
 
 `,?` in a Python/ipynb buffer shows the above in a floating window.
 
-### Spacemacs translation
+### Spacemacs translation (Jupyter)
 
 | Spacemacs | Neovim here |
 |---|---|
@@ -367,14 +370,14 @@ the current buffer instead.
 | `<leader>aa` | Accept Claude-proposed diff |
 | `<leader>ad` | Deny Claude-proposed diff |
 
-### Spacemacs translation
+### Spacemacs translation (Claude Code)
 
 | Spacemacs | Neovim here |
 |---|---|
 | *(no direct equivalent)* | `<leader>ac` toggles Claude Code session |
 | `SPC a *` (apps/assistants prefix) | `<leader>a *` — same mnemonic, same intent |
 
-## Git
+## Git (Neogit / Diffview / Octo)
 
 `<leader>gg` opens Neogit — a Magit-style status buffer. Stage with `s`,
 unstage with `u`, commit with `cc`, push with `Pp`, pull with `Pl`,
@@ -501,7 +504,7 @@ fails or is skipped.
 | `<leader>dPt` | Debug test method under cursor |
 | `<leader>dPc` | Debug test class under cursor |
 
-### Spacemacs translation
+### Spacemacs translation (Debug)
 
 | Spacemacs | Neovim here |
 |---|---|
@@ -545,7 +548,7 @@ is feature-complete (last commit 2024-09-01).
 LazyVim sets `spell` automatically on `gitcommit` and `markdown`
 filetypes. For any other buffer:
 
-```
+```vim
 :setlocal spell spelllang=en_us
 ```
 

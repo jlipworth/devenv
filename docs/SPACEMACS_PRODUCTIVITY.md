@@ -160,6 +160,7 @@ Edit all occurrences of a word simultaneously:
 4. Press `ESC` when done
 
 Use cases:
+
 - Rename a variable across a function
 - Change repeated text patterns
 - Quick find-and-replace without regex
@@ -177,6 +178,7 @@ Workspace management - separate window arrangements per task:
 | `SPC l ?` | Show layout transient state |
 
 Enable persistence (currently `nil` in `.spacemacs`):
+
 ```elisp
 (setq dotspacemacs-auto-resume-layouts t)
 ```
@@ -192,6 +194,7 @@ Focus on a portion of a buffer, hiding the rest:
 | `SPC n w` | Widen (return to full buffer) |
 
 Use cases:
+
 - Focus on one function while editing
 - Reduce visual clutter
 - Run commands only on narrowed region
@@ -254,6 +257,7 @@ any Vim text object. Substitute any operator (`y`, `v`, `=`) for `c`/`d`.
 ### Leave Emacs Running
 
 Emacs is designed to stay open. Use:
+
 - `SPC q r` - Restart Spacemacs
 - `SPC q R` - Restart and resume layouts
 - `emacsclient` from terminal for instant file opening
@@ -271,7 +275,8 @@ Many layers support lazy loading. Heavy layers load only when needed.
 ## Quick Reference Card
 
 ### Navigation
-```
+
+```text
 SPC p f    Find file in project
 SPC p p    Switch project
 SPC b b    Switch buffer
@@ -280,7 +285,8 @@ SPC /      Search in project
 ```
 
 ### Editing
-```
+
+```text
 SPC s e    iedit (multi-cursor)
 SPC v      Expand region
 SPC ;      Comment line/region
@@ -288,7 +294,8 @@ SPC x d w  Delete trailing whitespace
 ```
 
 ### Windows
-```
+
+```text
 Cmd-1..9   Jump to window by number on macOS (M-1..9 elsewhere)
 SPC w /    Split vertical
 SPC w -    Split horizontal
@@ -297,7 +304,8 @@ SPC w m    Maximize window (toggle)
 ```
 
 ### Git (Magit)
-```
+
+```text
 SPC g s    Git status
 SPC g b    Git blame
 SPC g d    Git diff
@@ -306,7 +314,8 @@ SPC g P    Git push
 ```
 
 ### Files
-```
+
+```text
 SPC f f    Find file
 SPC f r    Recent files
 SPC f s    Save file

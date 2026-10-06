@@ -42,7 +42,10 @@ echo "  cd $INSTALL_DIR && make full-setup    # Complete installation (all layer
 echo "  cd $INSTALL_DIR && make help          # Show all options"
 echo ""
 echo "Install Emacs + Spacemacs now? [y/N]"
-read -r response
+# Under `curl | bash`, stdin is the script itself, so ask the terminal instead.
+# With no terminal available, default to N.
+response=""
+{ read -r response < /dev/tty; } 2> /dev/null || response=""
 if [[ "$response" =~ ^[Yy]$ ]]; then
     make spacemacs
 fi

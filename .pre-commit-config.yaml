@@ -71,7 +71,11 @@ repos:
     rev: v0.47.0
     hooks:
       - id: markdownlint
-        args: ['--fix', '--disable', 'MD013', 'MD033', 'MD041']  # Disable line-length, inline HTML, first-line-h1
+        # Disabled: line-length, inline HTML, first-line-h1, table pipe spacing,
+        # hard tabs (Makefile examples need them). The trailing '--' ends the
+        # variadic --disable list so pre-commit's filenames reach markdownlint.
+        args: ['--fix', '--disable', 'MD013', 'MD033', 'MD041', 'MD060', 'MD010', '--']
+        exclude: '^good_fonts/'  # vendored Nerd Fonts READMEs
 
   # Check for common misspellings
   - repo: https://github.com/codespell-project/codespell

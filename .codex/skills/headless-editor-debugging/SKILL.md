@@ -12,11 +12,13 @@ When an Emacs/Spacemacs or Neovim issue is reported, **reproduce it headlessly f
 Try the simplest command first. If it fails, you have your reproduction.
 
 **Emacs** (full Spacemacs init with stacktrace on error):
+
 ```bash
 emacs --batch -l ~/.emacs.d/init.el
 ```
 
 **Neovim:**
+
 ```bash
 nvim --headless -c 'qall'
 ```
@@ -28,16 +30,19 @@ If these succeed but the problem is in a specific feature, narrow with Step 2.
 ### Emacs Isolation Progression
 
 1. **Single file without Spacemacs** — does the file load in vanilla Emacs?
+
    ```bash
    emacs -Q --batch -l <suspect-file.el>
    ```
 
 2. **Single package** — does the package load independently?
+
    ```bash
    emacs --batch --eval '(progn (package-initialize) (require (quote <package-name>)))'
    ```
 
 3. **Eval a specific form** — test the exact expression that fails:
+
    ```bash
    emacs --batch --eval '(progn (setq debug-on-error t) (load-file "~/.spacemacs") <form>)'
    ```
@@ -45,21 +50,25 @@ If these succeed but the problem is in a specific feature, narrow with Step 2.
 ### Neovim Isolation Progression
 
 1. **Clean config** — does it happen without your config?
+
    ```bash
    nvim --clean --headless -c '<command>' -c 'qall'
    ```
 
 2. **Single plugin health:**
+
    ```bash
    nvim --headless -c 'checkhealth <plugin-name>' -c 'qall'
    ```
 
 3. **Lazy plugin status** — which plugins failed to load?
+
    ```bash
    nvim --headless -c 'lua for _, p in ipairs(require("lazy").plugins()) do if not p._.loaded then print("NOT loaded: " .. p.name) end end' -c 'qall'
    ```
 
 4. **Direct Lua eval:**
+
    ```bash
    nvim --headless -c 'lua <expression>' -c 'qall'
    ```

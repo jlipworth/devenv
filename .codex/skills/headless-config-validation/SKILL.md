@@ -20,19 +20,23 @@ After modifying Emacs or Neovim configuration in this repo, run the appropriate 
 ## Emacs / Spacemacs Commands
 
 **Syntax check** (does the file parse as valid Elisp?):
+
 ```bash
 emacs --batch -l ~/.spacemacs --eval '(message "syntax ok")'
 ```
 
 **Layer list parse** (does `dotspacemacs/layers` evaluate without error?):
+
 ```bash
 emacs --batch --eval '(progn (setq debug-on-error t) (load-file "~/.spacemacs") (dotspacemacs/layers) (message "layers ok"))'
 ```
 
 **Custom Elisp load check** (standalone files only):
+
 ```bash
 emacs --batch -l <file>.el --eval '(message "loaded ok")'
 ```
+
 Note: Files that call Spacemacs functions (e.g., `jal-functions.el` uses `spacemacs/set-leader-keys-for-major-mode`) will fail in bare batch mode. Test those with the full init instead: `emacs --batch -l ~/.emacs.d/init.el`.
 
 **Exit code:** 0 = success. Non-zero = error. Stderr contains the Elisp backtrace on failure.
@@ -40,22 +44,27 @@ Note: Files that call Spacemacs functions (e.g., `jal-functions.el` uses `spacem
 ## Neovim Commands
 
 **Config parse** (does init.lua load without errors?):
+
 ```bash
 nvim --headless -c 'qall'
 ```
+
 Silent exit = success. Errors print to stderr.
 
 **Lazy plugin load test** (confirms all specs parse and plugins load):
+
 ```bash
 nvim --headless -c 'lua print(require("lazy").stats().count .. " plugins")' -c 'qall'
 ```
 
 **Lazy sync** (install missing plugins, useful after spec changes):
+
 ```bash
 nvim --headless "+Lazy! sync" +qa
 ```
 
 **Checkhealth for a plugin:**
+
 ```bash
 nvim --headless -c 'checkhealth <plugin-name>' -c 'qall'
 ```

@@ -17,6 +17,7 @@ This runbook documents strategies for deploying the GNU_files Emacs environment 
 ### Goal
 
 Deploy a complete Emacs 30.2 + Spacemacs environment to any Linux or macOS machine with:
+
 - Native GUI performance (fonts, icons, ligatures)
 - All language servers pre-configured
 - Identical configuration across machines
@@ -40,7 +41,7 @@ Deploy a complete Emacs 30.2 + Spacemacs environment to any Linux or macOS machi
 
 The repository currently uses shell scripts for setup:
 
-```
+```text
 GNU_files/
 ├── build_emacs30.sh      # Compile Emacs from source
 ├── prereq_packages.sh    # Install language servers
@@ -49,11 +50,13 @@ GNU_files/
 ```
 
 **Pros:**
+
 - Full control over build process
 - Works on both platforms
 - Well-tested
 
 **Cons:**
+
 - Requires ~30-60 min compilation on each machine
 - Version drift between machines possible
 - No easy rollback mechanism
@@ -83,16 +86,19 @@ Nix provides declarative, reproducible package management. Home Manager extends 
 ### Step 1: Install Nix
 
 **Linux:**
+
 ```bash
 sh <(curl -L https://nixos.org/nix/install) --daemon
 ```
 
 **macOS:**
+
 ```bash
 sh <(curl -L https://nixos.org/nix/install)
 ```
 
 After installation, restart your shell or run:
+
 ```bash
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 ```
@@ -118,7 +124,7 @@ nix-shell '<home-manager>' -A install
 
 Create a new directory for your Nix configuration (or add to GNU_files):
 
-```
+```text
 nix/
 ├── flake.nix           # Main flake definition
 ├── flake.lock          # Locked versions (auto-generated)
@@ -491,6 +497,7 @@ ENTRYPOINT ["emacs"]
 ### Running with X11
 
 **Linux:**
+
 ```bash
 docker run -it --rm \
     -e DISPLAY=$DISPLAY \
@@ -501,6 +508,7 @@ docker run -it --rm \
 ```
 
 **macOS (requires XQuartz):**
+
 ```bash
 # Install XQuartz: brew install --cask xquartz
 # Enable "Allow connections from network clients" in XQuartz preferences
@@ -592,6 +600,7 @@ nix-collect-garbage -d
 ### Why Not Guix?
 
 Guix is similar to Nix but uses Scheme. It's actually very Emacs-friendly (written by Emacs users). However:
+
 - Smaller package repository than Nixpkgs
 - Less macOS support
 - Steeper learning curve if you don't know Scheme

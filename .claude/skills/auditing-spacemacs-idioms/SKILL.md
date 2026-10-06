@@ -21,10 +21,11 @@ the report. Every claim needs `file:line` or README-section evidence.
 | Source of truth | Where |
 |---|---|
 | Template | `~/.emacs.d/core/templates/dotspacemacs-template.el` (NOT `.spacemacs.template`) |
-| Authoritative variable list | `spacemacs|defc` forms in `~/.emacs.d/core/core-dotspacemacs.el` |
+| Authoritative variable list | `spacemacs\|defc` forms in `~/.emacs.d/core/core-dotspacemacs.el` |
 | Default-change history | `git -C ~/.emacs.d log -S <var-name> -- core/core-dotspacemacs.el` |
 
 Check three drift classes:
+
 - **(a)** template variables missing from the dotfile (new knobs);
 - **(b)** dotfile variables removed/renamed upstream (also check obsolete
   keywords silently stripped by core, e.g. `core/core-fonts-support.el`
@@ -53,6 +54,7 @@ debug adapters) — but READMEs can lag the code; when they conflict, trust
 servers; `vscode-langservers-extracted` is the modern replacement).
 
 Flag:
+
 - installed tools the layer no longer uses (legacy pre-lsp era);
 - tools the configured backend needs that no prereq installs;
 - idiom shifts where the config sits on the legacy side (custom tool → lsp

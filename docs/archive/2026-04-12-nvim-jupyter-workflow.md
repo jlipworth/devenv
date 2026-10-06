@@ -70,6 +70,7 @@ This split keeps each module under 100 lines, makes `cells.lua` fully headless-t
 ## Task 1: Install external dependencies in setup scripts
 
 **Files:**
+
 - Modify: `setup-dev-tools.ps1`
 - Modify: `prereq_packages.sh`
 
@@ -186,6 +187,7 @@ git commit -m "Wire Jupyter CLI installs into setup scripts"
 ## Task 2: Create the cells helper module with headless tests (TDD)
 
 **Files:**
+
 - Create: `nvim/lua/jupyter/cells.lua`
 - Create: `tests/nvim/jupyter_cells_spec.lua`
 - Create: `tests/nvim/run_nvim_tests.sh`
@@ -446,6 +448,7 @@ git commit -m "Add jupyter.cells helper module with headless tests"
 ## Task 3: Add jupytext `.ipynb` read/write autocmds
 
 **Files:**
+
 - Create: `nvim/lua/jupyter/autocmds.lua`
 
 - [ ] **Step 1: Write autocmds module**
@@ -575,6 +578,7 @@ git commit -m "Add jupytext-based BufReadCmd/BufWriteCmd for .ipynb"
 ## Task 4: Add iron.nvim and mini.hipatterns plugin specs
 
 **Files:**
+
 - Create: `nvim/lua/plugins/jupyter.lua`
 
 - [ ] **Step 1: Write plugin spec with iron.nvim and mini.hipatterns only**
@@ -683,6 +687,7 @@ git commit -m "Add iron.nvim + mini.hipatterns plugin specs for Jupyter"
 ## Task 5: Create REPL wrappers with headless tests
 
 **Files:**
+
 - Create: `nvim/lua/jupyter/repl.lua`
 - Modify: `tests/nvim/jupyter_cells_spec.lua` → rename conceptually; add new `jupyter_repl_spec.lua` that tests the pure range computation without requiring iron
 
@@ -909,6 +914,7 @@ git commit -m "Add jupyter.repl module with range tests and iron send wrappers"
 ## Task 6: Create keymaps module and wire FileType autocmd via config/autocmds.lua
 
 **Files:**
+
 - Create: `nvim/lua/jupyter/keymaps.lua`
 - Modify: `nvim/lua/config/autocmds.lua`
 
@@ -1037,6 +1043,7 @@ git commit -m "Wire Jupyter keymaps via config/autocmds.lua FileType autocmd"
 ## Task 7: Add cell manipulation maps, cell textobjects, and which-key group
 
 **Files:**
+
 - Modify: `nvim/lua/jupyter/keymaps.lua`
 - Modify: `nvim/lua/plugins/jupyter.lua`
 
@@ -1172,6 +1179,7 @@ git commit -m "Add Jupyter cell textobjects, which-key group, and cheatsheet pop
 ## Task 8: Update `docs/NEOVIM_KEYBINDINGS.md`
 
 **Files:**
+
 - Modify: `docs/NEOVIM_KEYBINDINGS.md`
 
 - [ ] **Step 1: Inspect the current doc structure to find where to insert**
