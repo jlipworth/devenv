@@ -57,6 +57,7 @@ fi
 grep -q 'blocked mutating Homebrew command' "$tmp/guard.log"
 
 "$repo_root/ci/macos-full-setup.sh" --help | grep -q -- '--preflight'
+"$repo_root/ci/macos-full-setup.sh" --help | grep -q -- '--provision'
 grep -q 'event: \[manual\]' "$repo_root/.woodpecker/macos.yml"
 grep -q 'platform: darwin/arm64' "$repo_root/.woodpecker/macos.yml"
 grep -q 'backend: local' "$repo_root/.woodpecker/macos.yml"

@@ -12,19 +12,21 @@ export HOMEBREW_NO_INSTALL_CLEANUP=1
 
 usage() {
     cat << 'EOF'
-Usage: ci/macos-full-setup.sh [--preflight]
+Usage: ci/macos-full-setup.sh [--preflight | --provision]
 
 The normal mode runs `make full-setup` with a disposable HOME, a user-local
 Emacs prefix, a read-only Homebrew facade, and sudo disabled. It then clones
 the configured Spacemacs fork and performs a batch startup smoke test.
 
 --preflight checks the host-provided tools and Brewfiles without installing.
+--provision installs whatever the Brewfiles list that is missing (no upgrades),
+then runs the preflight. Run it as the Homebrew owner, not as the ci user.
 EOF
 }
 
 case "$mode" in
     run) ;;
-    --preflight) ;;
+    --preflight | --provision) ;;
     -h | --help)
         usage
         exit 0
@@ -50,6 +52,17 @@ xcode-select -p > /dev/null
 
 real_brew="$(command -v brew)"
 brewfiles=("$repo_root"/brewfiles/Brewfile.*)
+
+if [[ "$mode" == "--provision" ]]; then
+    if [[ "$(id -un)" == "ci" ]]; then
+        echo "run --provision as the Homebrew owner, not the ci account" >&2
+        exit 77
+    fi
+    for brewfile in "${brewfiles[@]}"; do
+        "$real_brew" bundle install --no-upgrade --file="$brewfile"
+    done
+fi
+
 # --no-upgrade: only presence matters here. Plain `bundle check` also fails on
 # any formula with a newer release, or one whose tap the ci user never trusted.
 for brewfile in "${brewfiles[@]}"; do
@@ -59,7 +72,7 @@ for brewfile in "${brewfiles[@]}"; do
     fi
 done
 
-if [[ "$mode" == "--preflight" ]]; then
+if [[ "$mode" != "run" ]]; then
     echo "macOS CI preflight passed: Xcode tools and all Brewfiles are present"
     exit 0
 fi

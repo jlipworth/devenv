@@ -51,13 +51,18 @@ an agent-side event filter: Woodpecker must continue to require approval for
 fork pipelines, and fork pipelines must never be approved while the native
 agent is eligible.
 
-## Runner preflight
+## Runner provisioning and preflight
 
-After provisioning the runner's shared toolchain, run:
+As the Homebrew owner on each runner (not the `ci` account), install whatever
+the Brewfiles list that is missing, then check the result:
 
 ```bash
-make macos-ci-preflight
+make macos-ci-provision   # brew bundle install --no-upgrade, then preflight
+make macos-ci-preflight   # read-only check
 ```
+
+Both runners (`macmini01`, `macstudio01`) carry the same labels, so a job can
+land on either; provision both after a Brewfile gains an entry.
 
 The preflight requires:
 
@@ -109,7 +114,7 @@ manual-only.
 
 | Concern | Owner |
 | --- | --- |
-| Xcode, Homebrew, Brewfile prerequisites | Mac runner provisioning |
+| Xcode, Homebrew, Brewfile prerequisites | Mac runner provisioning (`make macos-ci-provision`) |
 | Woodpecker agent, native `plugin-git`, and labels | Homelab/macOS automation |
 | Disposable setup and Spacemacs smoke | This repository |
 | Runner token and credentials | Secret management, never Git |
