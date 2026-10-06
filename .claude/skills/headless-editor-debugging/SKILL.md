@@ -7,7 +7,7 @@ description: "Use when a Spacemacs layer, Emacs package, or Neovim plugin is mis
 
 When an Emacs/Spacemacs or Neovim issue is reported, **reproduce it headlessly first**. Never guess at fixes without a reproduction command that shows the error.
 
-Use `superpowers:systematic-debugging` for general methodology. This skill adds editor-specific diagnostic commands.
+For general debugging methodology, use a systematic-debugging skill if one is available (e.g. `superpowers:systematic-debugging`). This skill adds editor-specific diagnostic commands.
 
 ## Step 1: Reproduce Headlessly
 
@@ -84,7 +84,7 @@ If these succeed but the problem is in a specific feature, narrow with Step 2.
 | Package not found at startup | Layer not in `dotspacemacs-configuration-layers` | Grep `.spacemacs` for the layer name |
 | `Symbol's function definition is void` | Deferred loading — function called before package loaded | Check `with-eval-after-load` / `use-package` `:defer` |
 | Layer loads but keybindings missing | `dotspacemacs/user-config` overrides or wrong hook | Test binding in `emacs --batch --eval` |
-| `Wrong number of arguments` | API changed after package update | Check package version with `M-x describe-package` equivalent: `emacs --batch --eval '(progn (package-initialize) (message "%s" (package-desc-version (cadr (assq (quote <pkg>) package-alist))))'` |
+| `Wrong number of arguments` | API changed after package update | Check package version with `emacs --batch --eval '(progn (package-initialize) (message "%s" (package-desc-version (cadr (assq (quote <pkg>) package-alist))))'` |
 
 ### Common Neovim / LazyVim Issues
 
@@ -97,4 +97,4 @@ If these succeed but the problem is in a specific feature, narrow with Step 2.
 
 ## Step 4: Fix and Verify
 
-After applying the fix, run the validation commands from `headless-config-validation` to confirm the config is clean. Always verify both the specific issue AND overall config health.
+After applying the fix, run the validation commands from the `headless-config-validation` skill to confirm the config is clean. Always verify both the specific issue AND overall config health.
