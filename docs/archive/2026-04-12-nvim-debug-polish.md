@@ -58,6 +58,7 @@ Expected: two paths. If either is missing, install via `$INSTALL_CMD` (brew or a
 ## Task 1: Add DAP core extra + verify Python DAP wiring
 
 **Files:**
+
 - Modify: `nvim/lua/config/lazy.lua`
 
 - [ ] **Step 1: Read current lazy.lua**
@@ -67,6 +68,7 @@ cat /home/jlipworth/GNU_files/.worktrees/nvim-debug-polish/nvim/lua/config/lazy.
 ```
 
 Expected shape:
+
 ```lua
 spec = {
   { "LazyVim/LazyVim", import = "lazyvim.plugins" },
@@ -80,13 +82,15 @@ If the shape differs (e.g., `lang.python` is already imported), adjust Step 2 ac
 - [ ] **Step 2: Insert `extras.dap.core` and `extras.lang.python` after claudecode**
 
 Use Edit with `old_string`:
-```
+
+```lua
     { import = "lazyvim.plugins.extras.ai.claudecode" },
     { import = "plugins" },
 ```
 
 and `new_string`:
-```
+
+```lua
     { import = "lazyvim.plugins.extras.ai.claudecode" },
     { import = "lazyvim.plugins.extras.dap.core" },
     { import = "lazyvim.plugins.extras.lang.python" },
@@ -145,18 +149,21 @@ git commit -m "Import LazyVim dap.core + lang.python extras for Python debugging
 ## Task 2: Add JS/TS DAP via lang.typescript extra
 
 **Files:**
+
 - Modify: `nvim/lua/config/lazy.lua`
 
 - [ ] **Step 1: Insert the typescript extra import**
 
 Use Edit with `old_string`:
-```
+
+```lua
     { import = "lazyvim.plugins.extras.lang.python" },
     { import = "plugins" },
 ```
 
 and `new_string`:
-```
+
+```lua
     { import = "lazyvim.plugins.extras.lang.python" },
     { import = "lazyvim.plugins.extras.lang.typescript" },
     { import = "plugins" },
@@ -210,6 +217,7 @@ git commit -m "Import LazyVim lang.typescript extra for JS/TS debug adapter"
 ## Task 3: Add vim-visual-multi local spec
 
 **Files:**
+
 - New: `nvim/lua/plugins/visual-multi.lua`
 
 - [ ] **Step 1: Check for pre-existing `<C-n>` normal-mode conflict**
@@ -337,6 +345,7 @@ Record the output of Steps 1-3 in the task report. They inform the doc wording i
 ## Task 5: Port LaTeX yasnippets to LuaSnip
 
 **Files:**
+
 - New: `nvim/lua/plugins/snippets.lua`
 - New: `nvim/snippets/package.json`
 - New: `nvim/snippets/latex.json`
@@ -491,6 +500,7 @@ git commit -m "Port 6 LaTeX yasnippets to LuaSnip VSCode JSON format"
 ## Task 7: Document Debug / Multi-cursor / Spell / Snippets
 
 **Files:**
+
 - Modify: `docs/NEOVIM_KEYBINDINGS.md`
 
 - [ ] **Step 1: Inspect the doc's current tail**
@@ -505,7 +515,7 @@ Expected: ends with the Claude Code section's Spacemacs-translation table (from 
 
 Append the following markdown verbatim (starts with a blank line; everything inside the code fence is the content to append, fences themselves are NOT part of the file):
 
-```markdown
+````markdown
 
 ## Debug (nvim-dap)
 
@@ -585,7 +595,7 @@ is feature-complete (last commit 2024-09-01).
 LazyVim sets `spell` automatically on `gitcommit` and `markdown`
 filetypes. For any other buffer:
 
-```
+```vim
 :setlocal spell spelllang=en_us
 ```
 
@@ -619,7 +629,7 @@ Current ported set (filetype `tex`):
 Type the trigger in insert mode and press `<Tab>` to expand (default
 LazyVim / LuaSnip expansion key). `friendly-snippets` provides
 additional `tex` snippets alongside these.
-```
+````
 
 (The triple-backtick fence immediately above delimits the content for
 the implementer — do NOT include it in the file.)

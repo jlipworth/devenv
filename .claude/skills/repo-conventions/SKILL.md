@@ -21,6 +21,7 @@ Never hardcode `apt`, `brew`, or `pacman`. Use the abstractions from `common_uti
 ### Idempotency
 
 Always check before installing:
+
 ```bash
 if ! is_installed "tool-name"; then
     $INSTALL_CMD tool-name
@@ -42,6 +43,7 @@ Never append to `.bashrc` or `.zshrc` directly. Use these functions from `common
 ### Logging
 
 Use the `log` function, never raw `echo`:
+
 ```bash
 log "Installing foo..." "INFO"
 log "foo installed successfully" "SUCCESS"
@@ -52,6 +54,7 @@ log "foo installation failed" "ERROR"
 ### NO_ADMIN Path
 
 All system package installs must respect `$NO_ADMIN`. When `NO_ADMIN=true`, skip `sudo` package managers and fall back to Homebrew/Linuxbrew or user-local installs:
+
 ```bash
 if [[ "$NO_ADMIN" == "true" ]]; then
     brew install tool-name
@@ -77,6 +80,7 @@ Versions live in `versions.conf` and are sourced by build scripts. Never hardcod
 When adding a new language layer, complete all of these steps:
 
 1. **Add install function** in `prereq_packages.sh`:
+
    ```bash
    install_<layer>_prereqs() {
        log "Installing <layer> prerequisites..."
@@ -92,15 +96,18 @@ When adding a new language layer, complete all of these steps:
    ```
 
 2. **Add make target** in `makefile`:
+
    ```makefile
    <layer>:
    	@echo "Installing <Layer> tools..."
    	@./prereq_packages.sh install_<layer>_prereqs
    ```
+
    Add the target name to the `.PHONY` list at the top.
 
 3. **Create Brewfile** (if macOS/Homebrew packages are needed):
-   ```
+
+   ```ruby
    # brewfiles/Brewfile.<layer>
    # <Layer> layer
    # Install: brew bundle --file=brewfiles/Brewfile.<layer>
@@ -109,6 +116,7 @@ When adding a new language layer, complete all of these steps:
    ```
 
 4. **Add CI job** in `.woodpecker/layers.yml`:
+
    ```yaml
    - name: layer-<layer>
      image: *ci_image
@@ -123,6 +131,7 @@ When adding a new language layer, complete all of these steps:
 5. **Add to `prereq-layers-all`** in `makefile` if it should run during `make full-setup`.
 
 6. **Validate:**
+
    ```bash
    pre-commit run --all-files
    ```

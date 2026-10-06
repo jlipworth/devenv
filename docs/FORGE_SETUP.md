@@ -29,6 +29,7 @@ Tokens are stored in `~/.authinfo` (or `~/.authinfo.gpg` for encryption).
 ### GitHub
 
 1. Get your token from the gh CLI (if authenticated):
+
    ```bash
    gh auth token
    ```
@@ -38,13 +39,15 @@ Tokens are stored in `~/.authinfo` (or `~/.authinfo.gpg` for encryption).
    Required scopes: `repo`, `read:org`
 
 2. Add to `~/.authinfo`:
-   ```
+
+   ```text
    machine api.github.com login YOUR_USERNAME^forge password YOUR_TOKEN
    ```
 
 ### GitLab
 
 1. Get your token from the glab CLI config:
+
    ```bash
    grep token ~/.config/glab-cli/config.yml
    ```
@@ -54,19 +57,21 @@ Tokens are stored in `~/.authinfo` (or `~/.authinfo.gpg` for encryption).
    Required scopes: `api`, `read_user`
 
 2. Add to `~/.authinfo`:
-   ```
+
+   ```text
    machine gitlab.com/api/v4 login YOUR_USERNAME^forge password YOUR_TOKEN
    ```
 
 ### Self-hosted GitLab
 
-```
+```text
 machine gitlab.mycompany.com/api/v4 login YOUR_USERNAME^forge password YOUR_TOKEN
 ```
 
 ## File Permissions
 
 Ensure authinfo is only readable by you:
+
 ```bash
 chmod 600 ~/.authinfo
 ```
@@ -90,17 +95,22 @@ First `forge-pull` creates the local SQLite database and may take a moment.
 ## Troubleshooting
 
 ### "cannot determine username"
+
 Set the username in git config:
+
 ```bash
 git config --global github.user YOUR_USERNAME
 git config --global gitlab.user YOUR_USERNAME
 ```
 
 ### "forge--request: 401"
+
 Token is invalid or missing scopes. Regenerate with correct permissions.
 
 ### "No remote or remote is not a forge"
+
 The repository's remote URL must point to a supported forge (GitHub, GitLab, Gitea, etc.).
 
 ### Database issues
+
 Reset forge database: `M-x forge-reset-database`

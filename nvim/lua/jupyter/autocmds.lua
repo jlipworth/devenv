@@ -24,17 +24,22 @@ local function on_read(args)
 end
 
 -- Write .ipynb by piping current buffer lines to jupytext.
+-- args.match is the write target, which differs from the buffer name for
+-- `:w other.ipynb`. --update keeps the outputs already stored in the target.
 -- Fires BufWritePost on success so format-on-save, gitsigns, LSP sync keep working.
 local function on_write(args)
-  local path = vim.api.nvim_buf_get_name(args.buf)
-  if path == "" then path = args.match end
+  local path = vim.fn.fnamemodify(args.match, ":p")
+  -- resolve() both sides: <amatch> can keep symlinks (macOS /var) that the
+  -- buffer name has already resolved.
+  local is_own_file = vim.fn.resolve(path)
+    == vim.fn.resolve(vim.fn.fnamemodify(vim.api.nvim_buf_get_name(args.buf), ":p"))
   local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
   local tmp = vim.fn.tempname() .. ".py"
   local ok, rc = pcall(function()
     if vim.fn.writefile(lines, tmp) ~= 0 then
       error("writefile")
     end
-    vim.fn.system({ "jupytext", "--from", "py:percent", "--to", "ipynb",
+    vim.fn.system({ "jupytext", "--update", "--from", "py:percent", "--to", "ipynb",
                     "--output", path, tmp })
     return vim.v.shell_error
   end)
@@ -45,6 +50,10 @@ local function on_write(args)
   end
   if rc ~= 0 then
     notify_err("jupytext write failed for " .. path)
+    return
+  end
+  -- Like a normal `:w other`, writing a copy leaves the buffer untouched.
+  if not is_own_file then
     return
   end
   vim.bo[args.buf].modified = false

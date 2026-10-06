@@ -5,9 +5,11 @@ This document covers the shell shortcuts configured in `.shell_aliases` for mode
 ## Setup
 
 The `.shell_aliases` file is automatically symlinked to `~/.shell_aliases` by:
+
 - `make cli_tools` (installs tools, creates symlink, and configures shell)
 
 To apply changes after editing:
+
 ```bash
 source ~/.shell_aliases
 # or restart your terminal
@@ -16,6 +18,7 @@ source ~/.shell_aliases
 ## Important Notes
 
 Most tool-backed aliases are conditional - they only activate if the corresponding tool is installed via `make cli_tools`. This means:
+
 - You can source `.shell_aliases` even if tools aren't installed (no errors)
 - Aliases automatically become available when you install the tools
 - The file is safe to use across different machines with different tool sets
@@ -28,14 +31,17 @@ Some AI-tool aliases are installed by `make ai-tools`, not `make cli_tools`.
 Many modern CLI tools **respect `.gitignore` by default** for cleaner output in git repositories:
 
 **Tools configured to show everything by default (for maximum visibility):**
+
 - **eza tree views** (`lt`, `lta`, `ltree`) - Show all files. Use `g` suffix variants (`ltg`, `ltag`, `ltreeg`) to respect `.gitignore`
 
 **Tools that respect `.gitignore` by default (tool behavior):**
+
 - **fd** - Respects `.gitignore` by default; use `fdall` to see everything
 - **ripgrep** - Respects `.gitignore` by default; use `rgall` to search everything
 - **fzf** (via `fcd`) - Respects `.gitignore` when using `fd`; use `fcdall` for all directories
 
 **Quick reference:**
+
 - Want to see everything? Use: `lt`, `ltree`, `fdall`, `rgall`, `fcdall`
 - Want git-aware filtering? Use: `ltg`, `ltreeg`, `fd`, `rg`, `fcd` (default for most tools)
 
@@ -60,6 +66,7 @@ Many modern CLI tools **respect `.gitignore` by default** for cleaner output in 
 | `lS`     | `eza -1 --icons`                                           | Single column listing                |
 
 **Examples:**
+
 ```bash
 ls                    # Quick directory listing
 la                    # Show all files including hidden
@@ -83,6 +90,7 @@ ltreeg src            # Full tree of src (ignores files in .gitignore)
 **Note:** `make cli_tools` installs `fd` via Homebrew (macOS and Linuxbrew) when available. If you install via `apt` on Debian/Ubuntu instead, the package is `fd-find` and the binary is `fdfind` - `.shell_aliases` automatically maps `fd` → `fdfind` when `fd` is not present.
 
 **Examples:**
+
 ```bash
 fd myfile             # Search for files named "myfile" (respects .gitignore)
 fda config            # Search including hidden files
@@ -103,9 +111,11 @@ fde txt               # Find all .txt files
 | `bathelp` | `bat --plain --language=help` | Format help pages       |
 
 **Function:**
+
 - `help <command>` - View command help with syntax highlighting
 
 **Examples:**
+
 ```bash
 cat script.py         # View Python file with highlighting
 batp longfile.txt     # View with paging
@@ -123,6 +133,7 @@ help ls              # View ls help with highlighting
 | `rgall` | `rg --no-ignore -uuu` | Search everything, ignore .gitignore   |
 
 **Examples:**
+
 ```bash
 rg "TODO" src/        # Search for TODO in src (respects .gitignore)
 rgi error logs/       # Case-insensitive search
@@ -142,6 +153,7 @@ rgall "TODO"          # Search everywhere, ignore .gitignore
 | `zi`      | Interactive directory picker                |
 
 **Examples:**
+
 ```bash
 z docs                # Jump to most frecent "docs" directory
 z proj code           # Jump to directory matching "proj" and "code"
@@ -191,11 +203,11 @@ zi                    # Interactive selection
 | `diffside file1 file2` | Side-by-side diff with delta |
 
 **Examples:**
+
 ```bash
 diffview file1.txt file2.txt        # Pretty diff
 diffside -r dir1 dir2               # Side-by-side directory diff
 ```
-
 
 ## Additional Tools
 
@@ -215,6 +227,7 @@ diffside -r dir1 dir2               # Side-by-side directory diff
 | `fo`           | Open selected file(s) via your platform default opener |
 
 **Examples:**
+
 ```bash
 fcd              # Search from current directory (respects .gitignore)
 fcd ~/projects   # Search from ~/projects
@@ -228,6 +241,7 @@ fcdall           # Search all directories, ignore .gitignore
 ### mkcd
 
 Create directory and cd into it:
+
 ```bash
 mkcd new-project      # Creates and enters new-project/
 ```
@@ -235,6 +249,7 @@ mkcd new-project      # Creates and enters new-project/
 ### extract
 
 Extract any archive format:
+
 ```bash
 extract archive.tar.gz
 extract package.zip

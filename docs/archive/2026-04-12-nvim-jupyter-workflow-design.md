@@ -248,6 +248,7 @@ These run identically on Linux (dev host) and via
 Run once on Linux, once on a Windows target:
 
 1. Create a fixture notebook:
+
    ```bash
    cat > /tmp/smoke.py <<'EOF'
    # %%
@@ -258,6 +259,7 @@ Run once on Linux, once on a Windows target:
    EOF
    jupytext --to ipynb /tmp/smoke.py
    ```
+
 2. `nvim /tmp/smoke.ipynb` — confirm Python view with `# %%` markers, not
    JSON.
 3. `]]` and `[[` — confirm cell navigation.

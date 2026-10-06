@@ -21,11 +21,13 @@ Automated setup for Emacs 30.2 with Spacemacs and Neovim, language servers for 1
 ## Quick Start
 
 **One-liner install:**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jlipworth/devenv/master/bootstrap.sh | bash
 ```
 
 **Or manually:**
+
 ```bash
 git clone https://github.com/jlipworth/devenv.git ~/GNU_files
 cd ~/GNU_files
@@ -93,10 +95,12 @@ make neovim-test    # Headless Neovim Lua specs in tests/nvim
 ## Requirements
 
 **macOS:**
+
 - Xcode Command Line Tools
 - Homebrew
 
 **Linux:**
+
 - Debian/Ubuntu and Arch paths are supported in scripts
 - Homebrew on Linux is used for some packages and no-admin flows; Swift falls back to Swiftly when Homebrew is unavailable
 

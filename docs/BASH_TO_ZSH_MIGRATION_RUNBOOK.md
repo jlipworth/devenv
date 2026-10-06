@@ -6,6 +6,7 @@
 > procedure for switching your login shell, not pending repo work.
 
 ## Goal
+
 Switch from bash to zsh safely, while keeping intentional customizations and avoiding shell-startup cruft.
 
 ## What typically transfers vs what does not
@@ -20,6 +21,7 @@ Switch from bash to zsh safely, while keeping intentional customizations and avo
 | Host-specific hacks (WSL path cleanup, custom agents) | No | Manual, case-by-case |
 
 ## Preflight checks
+
 ```bash
 echo "$SHELL"
 getent passwd "$USER" | cut -d: -f7
@@ -30,6 +32,7 @@ cat /etc/shells
 ## Migration process
 
 1. **Back up shell files**
+
    ```bash
    cp ~/.bashrc ~/.bashrc.bak.$(date +%Y%m%d%H%M%S)
    [ -f ~/.zshrc ] && cp ~/.zshrc ~/.zshrc.bak.$(date +%Y%m%d%H%M%S)
@@ -42,17 +45,22 @@ cat /etc/shells
    - openSUSE: `sudo zypper install -y zsh`
 
 3. **Set zsh as login shell**
+
    ```bash
    chsh -s "$(command -v zsh)"
    ```
+
    Restart terminal/session completely.
 
 4. **Run your provisioning/setup flow**
    - If using this repo:
+
      ```zsh
      make cli_tools
      ```
+
    - If your session still has stale `$SHELL`, force target shell:
+
      ```bash
      SHELL="$(command -v zsh)" ./prereq_packages.sh install_cli_tools
      ```
@@ -69,19 +77,25 @@ cat /etc/shells
    Keep one canonical source for each initializer (e.g., NVM, opam, cargo env), not multiple copies across `.profile`, `.bashrc`, `.zshrc`, `.zshenv`.
 
 7. **Validate**
+
    ```zsh
    echo "$SHELL"
    echo "$ZSH_VERSION"
    ```
+
    Confirm prompt, aliases, plugin behavior, and expected PATH entries.
 
 ## Rollback
+
 ```bash
 chsh -s /bin/bash
 ```
+
 Restart session and restore backup dotfiles if needed.
 
 ## Repo-specific note
+
 In this repo, prefer keeping shell wiring centralized in:
+
 - `prereq_packages.sh` (setup logic)
 - `.shell_aliases` (shared aliases/functions)

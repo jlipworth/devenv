@@ -247,7 +247,7 @@ installed unconditionally on Darwin and Linux/Linuxbrew paths at
 
 ### Files touched
 
-```
+```text
 nvim/lua/config/lazy.lua           # +1 line: import octo extra
 nvim/lua/plugins/git.lua           # NEW: neogit + diffview spec + octo overrides
 docs/NEOVIM_KEYBINDINGS.md         # append "Git" section
@@ -409,7 +409,7 @@ the keymap tables from §3 and includes two short explanatory paragraphs:
 > `s`, unstage with `u`, commit with `cc`, push with `Pp`, pull with
 > `Pl`, fetch with `Pf`, rebase with `r`. The full Neogit cheatsheet
 > lives upstream at github.com/NeogitOrg/neogit.
-
+>
 > `<leader>gi` / `<leader>gp` open GitHub issues / PRs via Octo. Octo
 > requires the `gh` CLI to be authenticated — run `gh auth login` once
 > per machine. On Windows this is installed by `setup-dev-tools.ps1`

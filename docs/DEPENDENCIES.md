@@ -72,6 +72,7 @@ make python      # Updates Python packages
 ### Non-Integrated Layers
 
 These use npm global installs, Brewfiles, native installers, or platform package managers and are updated manually:
+
 - JavaScript, Shell, YAML, Vimscript, HTML/CSS, AI Tools
 - LaTeX, C/C++, SQL, OCaml, Terraform, Swift
 - Homebrew packages under `brewfiles/Brewfile.*`; Swift may also be installed by Swiftly on Linux when Homebrew is unavailable
@@ -149,6 +150,7 @@ NEOVIM_MIN_VERSION="0.12.4" # minimum accepted (VimTeX floor)
 ### Emacs (Pinned: 30.2)
 
 **To Change Version**:
+
 1. Edit `EMACS_VERSION` in `versions.conf`
 2. Run `make spacemacs`
 3. Verify Spacemacs compatibility
@@ -156,6 +158,7 @@ NEOVIM_MIN_VERSION="0.12.4" # minimum accepted (VimTeX floor)
 ### GCC (Linux)
 
 **To Change Version**:
+
 - Set `GCC_VERSION="auto"` to detect highest available (default)
 - Or pin to specific version: `GCC_VERSION="14"`
 

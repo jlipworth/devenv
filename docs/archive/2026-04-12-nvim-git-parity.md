@@ -36,6 +36,7 @@ Expected: symlink exists (idempotent; no output if already set).
 ## Task 1: Add the LazyVim octo extra import
 
 **Files:**
+
 - Modify: `nvim/lua/config/lazy.lua`
 
 - [ ] **Step 1: Read the current file**
@@ -45,6 +46,7 @@ cat /home/jlipworth/GNU_files/.worktrees/nvim-git-parity/nvim/lua/config/lazy.lu
 ```
 
 Expected: a `require("lazy").setup({ ... })` block whose `spec` table contains:
+
 ```lua
 spec = {
   { "LazyVim/LazyVim", import = "lazyvim.plugins" },
@@ -58,13 +60,15 @@ If the file has drifted from this shape, STOP and escalate — later steps assum
 - [ ] **Step 2: Insert the octo extra import after the claudecode extra**
 
 Use Edit tool with `old_string`:
-```
+
+```lua
     { import = "lazyvim.plugins.extras.ai.claudecode" },
     { import = "plugins" },
 ```
 
 and `new_string`:
-```
+
+```lua
     { import = "lazyvim.plugins.extras.ai.claudecode" },
     { import = "lazyvim.plugins.extras.util.octo" },
     { import = "plugins" },
@@ -94,6 +98,7 @@ git commit -m "Import LazyVim octo extra for GitHub issues/PRs in Neovim"
 ## Task 2: Create the neogit + diffview + octo-overrides spec
 
 **Files:**
+
 - Create: `nvim/lua/plugins/git.lua`
 
 - [ ] **Step 1: Confirm no file at the target path**
@@ -238,6 +243,7 @@ git commit -m "Add neogit + diffview + octo keymap overrides"
 ## Task 3: Add `gh` CLI install to the Windows setup script
 
 **Files:**
+
 - Modify: `setup-dev-tools.ps1`
 
 - [ ] **Step 1: Locate the right install block**
@@ -275,6 +281,7 @@ if (-not (Test-CommandExists "gh")) {
 ```
 
 Ensure:
+
 - The block is placed in a PowerShell section, not inside a `try/catch` that swallows unrelated errors.
 - The block uses `Test-CommandExists`, `Refresh-SessionPath`, and the same `--accept-*-agreements` flags as the existing winget calls.
 - Indentation matches the surrounding block (the script uses 4 spaces).
@@ -300,6 +307,7 @@ git commit -m "Install GitHub CLI on Windows for octo.nvim"
 ## Task 4: Document the Git bindings
 
 **Files:**
+
 - Modify: `docs/NEOVIM_KEYBINDINGS.md`
 
 - [ ] **Step 1: Inspect the current doc structure**

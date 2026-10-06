@@ -23,6 +23,7 @@
 ## Task 1: Add the LazyVim claudecode extra import
 
 **Files:**
+
 - Modify: `nvim/lua/config/lazy.lua`
 
 - [ ] **Step 1: Read the current file**
@@ -32,6 +33,7 @@ cat /home/jlipworth/GNU_files/.worktrees/nvim-parity/nvim/lua/config/lazy.lua
 ```
 
 Expected: a `require("lazy").setup({ ... })` block whose `spec` table contains:
+
 ```lua
 spec = {
   { "LazyVim/LazyVim", import = "lazyvim.plugins" },
@@ -44,13 +46,15 @@ If the file has drifted from this shape, STOP and escalate — later steps assum
 - [ ] **Step 2: Insert the claudecode extra import between the two existing spec entries**
 
 Use Edit tool with `old_string`:
-```
+
+```lua
     { "LazyVim/LazyVim", import = "lazyvim.plugins" },
     { import = "plugins" },
 ```
 
 and `new_string`:
-```
+
+```lua
     { "LazyVim/LazyVim", import = "lazyvim.plugins" },
     { import = "lazyvim.plugins.extras.ai.claudecode" },
     { import = "plugins" },
@@ -118,6 +122,7 @@ git commit -m "Import LazyVim claudecode extra for Claude Code integration"
 ## Task 2: Document the Claude Code bindings
 
 **Files:**
+
 - Modify: `docs/NEOVIM_KEYBINDINGS.md`
 
 - [ ] **Step 1: Inspect the current doc structure**

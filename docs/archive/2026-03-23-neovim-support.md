@@ -12,9 +12,10 @@
 
 ---
 
-### Task 1: Add NEOVIM_VERSION to versions.conf
+## Task 1: Add NEOVIM_VERSION to versions.conf
 
 **Files:**
+
 - Modify: `versions.conf:15` (append after NODE_VERSION)
 
 - [ ] **Step 1: Add version pin**
@@ -40,9 +41,10 @@ git commit -m "feat(neovim): pin NEOVIM_VERSION=0.11.6 in versions.conf"
 
 ---
 
-### Task 2: Create Neovim config — bootstrap files
+## Task 2: Create Neovim config — bootstrap files
 
 **Files:**
+
 - Create: `nvim/init.lua`
 - Create: `nvim/lua/config/lazy.lua`
 
@@ -101,7 +103,8 @@ require("lazy").setup({
 
 Run: `find nvim/ -type f | sort`
 Expected:
-```
+
+```text
 nvim/init.lua
 nvim/lua/config/lazy.lua
 ```
@@ -115,9 +118,10 @@ git commit -m "feat(neovim): add LazyVim bootstrap (init.lua + config/lazy.lua)"
 
 ---
 
-### Task 3: Create Neovim config — options and keymaps
+## Task 3: Create Neovim config — options and keymaps
 
 **Files:**
+
 - Create: `nvim/lua/config/options.lua`
 - Create: `nvim/lua/config/keymaps.lua`
 
@@ -158,7 +162,8 @@ map({ "n", "x" }, "k", "v:count == 0 && &wrap ? 'gk' : 'k'", { expr = true, sile
 
 Run: `find nvim/lua/config/ -type f | sort`
 Expected:
-```
+
+```text
 nvim/lua/config/keymaps.lua
 nvim/lua/config/lazy.lua
 nvim/lua/config/options.lua
@@ -173,9 +178,10 @@ git commit -m "feat(neovim): add options and keymaps (jk escape, Spacemacs-compa
 
 ---
 
-### Task 4: Create Neovim config — plugin files
+## Task 4: Create Neovim config — plugin files
 
 **Files:**
+
 - Create: `nvim/lua/plugins/colorscheme.lua`
 - Create: `nvim/lua/plugins/editor.lua`
 - Create: `nvim/lua/plugins/lang.lua`
@@ -265,7 +271,8 @@ lazyvim.json
 
 Run: `find nvim/ -name '*.lua' -o -name '.gitignore' | sort`
 Expected:
-```
+
+```text
 nvim/.gitignore
 nvim/lua/plugins/colorscheme.lua
 nvim/lua/plugins/editor.lua
@@ -281,9 +288,10 @@ git commit -m "feat(neovim): add plugin configs (colorscheme, editor, language e
 
 ---
 
-### Task 5: Add install_neovim() to prereq_packages.sh
+## Task 5: Add install_neovim() to prereq_packages.sh
 
 **Files:**
+
 - Modify: `prereq_packages.sh` (add function before `install_all()` at line 1700)
 - Modify: `prereq_packages.sh:1730` (add to `valid_functions` array)
 
@@ -444,18 +452,19 @@ Cross-platform Neovim + lazygit installation:
 
 ---
 
-### Task 6: Add neovim target to makefile
+## Task 6: Add neovim target to makefile
 
 **Files:**
+
 - Modify: `makefile:3-8` (.PHONY declaration)
 - Modify: `makefile` (add target after `ai-tools` target, ~line 164)
 - Modify: `makefile:213-227` (help target)
 
 - [ ] **Step 1: Add `neovim` to `.PHONY` declaration**
 
-Append ` neovim` to the end of line 8 (after `help`). The line should end with:
+Append a space and `neovim` to the end of line 8 (after `help`). The line should end with:
 
-```
+```make
         full-setup noadmin-setup help neovim
 ```
 
@@ -501,9 +510,10 @@ Standalone target, not part of full-setup or prereq-layers-all."
 
 ---
 
-### Task 7: Update setup-dev-tools.ps1 with Neovim + repo clone
+## Task 7: Update setup-dev-tools.ps1 with Neovim + repo clone
 
 **Files:**
+
 - Copy into repo: `setup-dev-tools.ps1` (currently at `~/setup-dev-tools.ps1`, needs to be in `$GNU_DIR/`)
 - Modify: `setup-dev-tools.ps1`
 
@@ -516,6 +526,7 @@ cp ~/setup-dev-tools.ps1 ~/GNU_files/setup-dev-tools.ps1
 - [ ] **Step 1: Update the script**
 
 The script currently has 4 steps. We are adding 3 more (clone devenv, install Neovim, link config) for a total of 7. Update:
+
 - All existing `[1/4]`→`[1/7]`, `[2/4]`→`[2/7]`, `[3/4]`→`[3/7]`, `[4/4]`→`[4/7]`
 - Add 3 new sections after the uv section
 - Update the summary block at the end to include all 7 tools
@@ -622,9 +633,10 @@ Clones devenv repo and creates config junction (fallback: copy for network share
 
 ---
 
-### Task 8: Create keybinding reference doc
+## Task 8: Create keybinding reference doc
 
 **Files:**
+
 - Create: `docs/NEOVIM_KEYBINDINGS.md`
 
 - [ ] **Step 1: Create the reference card**
@@ -755,9 +767,10 @@ git commit -m "docs: add Neovim keybinding reference for Spacemacs users"
 
 ---
 
-### Task 9: Verify no existing targets are modified
+## Task 9: Verify no existing targets are modified
 
 **Files:**
+
 - Read-only verification of: `makefile`, `prereq_packages.sh`
 
 - [ ] **Step 1: Verify full-setup does not include neovim**
@@ -797,7 +810,7 @@ Expected: No output (no changes)
 
 ---
 
-### Task 10: Integration test on Linux
+## Task 10: Integration test on Linux
 
 - [ ] **Step 1: Run `make neovim` (if Neovim not already installed)**
 

@@ -20,7 +20,7 @@ make neovim-test       # Headless Neovim Lua specs (tests/nvim)
 
 ## Directory Structure
 
-```
+```text
 GNU_files/
 ├── makefile                 # Main entry point
 ├── bootstrap.sh             # Initial system bootstrap
