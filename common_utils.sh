@@ -525,19 +525,28 @@ install_lazygit() {
     install_lazygit_release
 }
 
+# Print the latest release version of GitHub repo $1 (owner/name) without the
+# leading "v", or nothing on failure. Reads the releases/latest redirect, which
+# is not subject to api.github.com's 60-requests-per-hour unauthenticated limit
+# that kept failing CI.
+github_latest_release_version() {
+    local url
+    url="$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+        "https://github.com/$1/releases/latest" 2> /dev/null)" || return 0
+    [[ "$url" == */releases/tag/* ]] || return 0
+    url="${url##*/releases/tag/}"
+    printf '%s\n' "${url#v}"
+}
+
 # Download the latest lazygit release tarball into ~/.local/bin (no admin needed).
 install_lazygit_release() {
     log "Installing lazygit from GitHub releases..."
 
-    # `|| true`: callers run with `set -euo pipefail`, and an API failure (e.g.
-    # GitHub's unauthenticated rate limit) must reach the warning below
-    # instead of aborting the whole setup.
     local lg_version
-    lg_version="$(curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest 2> /dev/null |
-        grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')" || true
+    lg_version="$(github_latest_release_version jesseduffield/lazygit)"
 
     if [[ -z "$lg_version" ]]; then
-        log "Failed to determine the latest lazygit version from the GitHub API." "WARNING"
+        log "Failed to determine the latest lazygit version from GitHub." "WARNING"
         log "Install lazygit manually for LazyVim's <leader>gG lazygit view." "WARNING"
         return 0
     fi

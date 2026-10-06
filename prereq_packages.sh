@@ -2285,7 +2285,11 @@ install_opencode() {
         # The native installer keeps OpenCode independent of nvm versions and
         # user-local npm prefix overrides, both of which can defeat detection by
         # `opencode upgrade`.
-        curl -fsSL https://opencode.ai/install | bash || {
+        # Pin the version so the installer skips its own rate-limited GitHub
+        # API lookup (empty VERSION falls back to that lookup).
+        local opencode_version
+        opencode_version="$(github_latest_release_version anomalyco/opencode)"
+        curl -fsSL https://opencode.ai/install | VERSION="$opencode_version" bash || {
             log "Error installing OpenCode via its native installer." "ERROR"
             return 1
         }
