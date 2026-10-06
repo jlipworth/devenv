@@ -2019,11 +2019,26 @@ install_codex_config() {
     else
         log "Codex config not found at $GNU_DIR/.codex_config.toml" "WARNING"
     fi
-    if [[ -f "$GNU_DIR/.codex_instructions.md" ]]; then
-        ln -sf "$GNU_DIR/.codex_instructions.md" "$HOME/.codex/instructions.md"
-        log "Symlinked Codex instructions (tool preferences)."
+    # Codex reads global instructions from ~/.codex/AGENTS.md; share the same
+    # file Claude Code gets as ~/.claude/CLAUDE.md.
+    local global_instructions="$GNU_DIR/.claude_global.md"
+    local codex_agents="$HOME/.codex/AGENTS.md"
+    # Retire the old ~/.codex/instructions.md link. It fed model_instructions_file,
+    # which replaced Codex's built-in instructions instead of adding to them.
+    # (.codex_instructions.md stays as a symlink to .claude_global.md so machines
+    # whose config.toml still names that file keep working until they re-run this.)
+    if [[ -L "$HOME/.codex/instructions.md" ]] &&
+        [[ "$(readlink "$HOME/.codex/instructions.md")" == "$GNU_DIR/"* ]]; then
+        rm -f "$HOME/.codex/instructions.md"
+    fi
+    if [[ ! -f "$global_instructions" ]]; then
+        log "Global agent instructions not found at $global_instructions" "WARNING"
+    elif [[ -s "$codex_agents" && ! -L "$codex_agents" ]]; then
+        # Never clobber hand-written instructions.
+        log "Keeping existing non-empty $codex_agents; not linking repo global instructions." "WARNING"
     else
-        log "Codex instructions not found at $GNU_DIR/.codex_instructions.md" "WARNING"
+        ln -sf "$global_instructions" "$codex_agents"
+        log "Symlinked Codex global instructions (AGENTS.md)."
     fi
 }
 
