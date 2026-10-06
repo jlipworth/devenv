@@ -1,8 +1,12 @@
 # .woodpecker/lint.yml
 # Shell script linting
 
+# Branch pushes are covered by their pull request; running both doubled the
+# load and got steps OOM-killed (exit 137).
 when:
-  event: [push, pull_request, manual]
+  - event: push
+    branch: master
+  - event: [pull_request, manual]
 
 steps:
   - name: shellcheck
