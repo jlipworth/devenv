@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+"""Merge the repo's base Codex config into an existing ~/.codex/config.toml.
+
+usage: codex-config-merge [--drop TABLE]... BASE LOCAL > OUTPUT
+
+Keys the repo defines win. Everything that exists only locally is kept: root
+keys (model overrides, approval/sandbox settings), local-only keys inside repo
+tables, and whole local tables (project trust, Codex app plugins and
+marketplaces, extra MCP servers). --drop removes a local table that must not
+survive, e.g. a repo table that does not apply on this OS.
+
+The merge is line-based so it runs on the system python3 (3.9 on macOS).
+Multi-line strings and arrays of tables are refused rather than guessed at.
+On Python 3.11+ the result is parsed with tomllib before it is printed.
+Exit status 1 (and no output) means LOCAL should be left untouched.
+"""
+
+import re
+import sys
+
+BARE_OR_QUOTED = r"""(?:"[^"]*"|'[^']*'|[A-Za-z0-9_-]+)"""
+DOTTED = BARE_OR_QUOTED + r"(?:\s*\.\s*" + BARE_OR_QUOTED + r")*"
+HEADER = re.compile(r"^\[\s*(" + DOTTED + r")\s*\]\s*(?:#.*)?$")
+KEY = re.compile(r"^\s*(" + DOTTED + r")\s*=")
+
+
+def normalize(dotted):
+    return re.sub(r"\s*\.\s*", ".", dotted.strip())
+
+
+def depth_change(line):
+    """Net [ / { nesting opened by this line, ignoring strings and comments."""
+    depth, quote, i = 0, None, 0
+    while i < len(line):
+        c = line[i]
+        if quote:
+            if c == "\\" and quote == '"':
+                i += 2
+                continue
+            if c == quote:
+                quote = None
+        elif c in "\"'":
+            quote = c
+        elif c == "#":
+            break
+        elif c in "[{":
+            depth += 1
+        elif c in "]}":
+            depth -= 1
+        i += 1
+    return depth
+
+
+def parse(text):
+    """Return [(name, header_line, entries, leading)]; root has name None.
+
+    entries is a list of (key, lines); key is None for comments and blanks.
+    leading holds the comment/blank lines directly above the header, so a
+    comment introducing a table stays with it.
+    """
+    tables = [(None, None, [], [])]
+    depth = 0
+    for line in text.splitlines():
+        if '"""' in line or "'''" in line:
+            raise ValueError("multi-line strings are not supported")
+        entries = tables[-1][2]
+        if depth > 0:
+            entries[-1][1].append(line)
+            depth += depth_change(line)
+            continue
+        if line.startswith("[["):
+            raise ValueError("arrays of tables are not supported: " + line)
+        if line.startswith("["):
+            match = HEADER.match(line)
+            if not match:
+                raise ValueError("unrecognized table header: " + line)
+            leading = []
+            while entries and entries[-1][0] is None:
+                leading = entries.pop()[1] + leading
+            tables.append((normalize(match.group(1)), line.rstrip(), [], leading))
+            continue
+        match = KEY.match(line)
+        if match:
+            entries.append((normalize(match.group(1)), [line]))
+            depth = depth_change(line)
+        else:
+            entries.append((None, [line]))
+    if depth != 0:
+        raise ValueError("unterminated array or inline table")
+    return tables
+
+
+def strip_blank_edges(lines):
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return lines
+
+
+def render(leading, header, entries):
+    lines = strip_blank_edges(list(leading))
+    if header:
+        lines.append(header)
+    for _, entry_lines in entries:
+        lines.extend(entry_lines)
+    return "\n".join(strip_blank_edges(lines))
+
+
+def merge(base_text, local_text, drop):
+    base, local = parse(base_text), parse(local_text)
+    base_names = {name for name, _, _, _ in base}
+    local_by_name = {}
+    for name, _, entries, _ in local:
+        if name not in drop:
+            local_by_name.setdefault(name, []).append(entries)
+
+    sections = []
+    for name, header, entries, leading in base:
+        merged = list(entries)
+        while merged and merged[-1][0] is None and not "".join(merged[-1][1]).strip():
+            merged.pop()
+        seen = {key for key, _ in entries if key}
+        for local_entries in local_by_name.get(name, []):
+            for key, lines in local_entries:
+                if key and key not in seen:
+                    seen.add(key)
+                    merged.append((key, lines))
+        sections.append(render(leading, header, merged))
+    for name, header, entries, leading in local[1:]:
+        if name not in base_names and name not in drop:
+            sections.append(render(leading, header, entries))
+    return "\n\n".join(s for s in sections if s) + "\n"
+
+
+def main(argv):
+    drop, args = set(), []
+    while argv:
+        arg = argv.pop(0)
+        if arg == "--drop" and argv:
+            drop.add(normalize(argv.pop(0)))
+        elif arg.startswith("-"):
+            print(__doc__.strip(), file=sys.stderr)
+            return 2
+        else:
+            args.append(arg)
+    if len(args) != 2:
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    with open(args[0], encoding="utf-8") as base, open(args[1], encoding="utf-8") as local:
+        try:
+            result = merge(base.read(), local.read(), drop)
+        except ValueError as err:
+            print("codex-config-merge: " + str(err), file=sys.stderr)
+            return 1
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        tomllib = None
+    if tomllib:
+        try:
+            tomllib.loads(result)
+        except tomllib.TOMLDecodeError as err:
+            print("codex-config-merge: merged config is not valid TOML: " + str(err), file=sys.stderr)
+            return 1
+    sys.stdout.write(result)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

@@ -13,6 +13,14 @@ trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/darwin-home/.codex" "$tmp/linux-home/.codex"
 cat > "$tmp/darwin-home/.codex/config.toml" << 'EOF'
 model = "local-old-value"
+approval_policy = "never"
+notify = ["/Applications/Some.app/wrapper", "turn-ended"]
+
+[tui]
+screen_reader_detection_done = true
+
+[plugins."browser@openai-bundled"]
+enabled = true
 
 [projects."/tmp/one"]
 trust_level = "trusted"
@@ -42,6 +50,17 @@ assert text.count("[projects.") == 2
 assert "stale-command" not in text
 assert "evaluate_javascript" not in text
 
+# Repo-defined keys win; local-only keys and tables survive.
+assert 'model = "local-old-value"' not in text
+assert text.count("\nmodel = ") == 1
+assert 'approval_policy = "never"' in text
+assert 'notify = ["/Applications/Some.app/wrapper", "turn-ended"]' in text
+assert text.count("[tui]") == 1
+tui = re.search(r"(?ms)^\[tui\]\n(.*?)(?=^\[|\Z)", text).group(1)
+assert "screen_reader_detection_done = true" in tui
+assert "notifications = true" in tui
+assert '[plugins."browser@openai-bundled"]\nenabled = true' in text
+
 expected = "\n".join(
     [
         'command = "/usr/bin/safaridriver"',
@@ -64,13 +83,33 @@ HOME="$tmp/darwin-home" GNU_DIR="$repo_root" CODEX_CONFIG_OS=Darwin \
     "$repo_root/prereq_packages.sh" install_codex_config > "$tmp/reinstall.log"
 cmp "$tmp/first-install.toml" "$tmp/darwin-home/.codex/config.toml"
 
-# Non-macOS installs must remain valid without referencing Apple's executable.
+# Non-macOS installs must remain valid without referencing Apple's executable,
+# including when an older install left a Safari table behind.
+cat > "$tmp/linux-home/.codex/config.toml" << 'EOF'
+[mcp_servers.safari-mcp]
+command = "/usr/bin/safaridriver"
+EOF
 HOME="$tmp/linux-home" GNU_DIR="$repo_root" CODEX_CONFIG_OS=Linux \
     "$repo_root/prereq_packages.sh" install_codex_config > "$tmp/linux-install.log"
 if grep -Eq 'safari-mcp|safaridriver' "$tmp/linux-home/.codex/config.toml"; then
     echo "non-macOS Codex config must omit the Safari MCP server" >&2
     exit 1
 fi
+
+# The merge helper must run on the oldest supported python3 (macOS ships 3.9).
+if [[ -x /usr/bin/python3 ]]; then
+    /usr/bin/python3 "$repo_root/bin/codex-config-merge" "$repo_root/.codex_config.toml" \
+        "$tmp/darwin-home/.codex/config.toml" > /dev/null
+fi
+
+# Unsupported TOML (multi-line strings) leaves the existing config untouched.
+mkdir -p "$tmp/odd-home/.codex"
+printf 'developer_instructions = """\nhello\n"""\n' > "$tmp/odd-home/.codex/config.toml"
+cp "$tmp/odd-home/.codex/config.toml" "$tmp/odd-before.toml"
+HOME="$tmp/odd-home" GNU_DIR="$repo_root" CODEX_CONFIG_OS=Darwin \
+    "$repo_root/prereq_packages.sh" install_codex_config > "$tmp/odd-install.log" 2>&1
+cmp "$tmp/odd-before.toml" "$tmp/odd-home/.codex/config.toml"
+grep -q "left it unchanged" "$tmp/odd-install.log"
 
 # full-setup reaches prereq-layers-all, whose ai-tools layer invokes this installer.
 make -C "$repo_root" -n full-setup > "$tmp/full-setup-dry-run.log"
