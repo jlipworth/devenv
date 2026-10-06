@@ -89,6 +89,11 @@ final smoke therefore exercises both the Emacs binary and the tracked
 `.spacemacs` configuration without touching the runner user's personal editor
 environment.
 
+The smoke fails if Spacemacs reports any package install or load errors. If
+GNU ELPA is unreachable, the GNU and NonGNU archives are fetched from a mirror
+(`MACOS_CI_ELPA_MIRROR`, default the Tsinghua TUNA mirror) with their GPG
+signatures required, so the mirror cannot substitute packages.
+
 For one-off diagnosis, retain the workspace:
 
 ```bash
