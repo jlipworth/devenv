@@ -2,12 +2,37 @@
 # Language/editor layer tests - run in parallel
 # All use the pre-built CI image with dependencies already installed
 
-# Branch pushes are covered by their pull request; running both doubled the
-# load and got steps OOM-killed (exit 137).
+# Branch pushes are covered by their pull request. Changes that cannot affect
+# the installers (docs, Windows and macOS-only files, other workflows) skip
+# this workflow; the weekly cron runs it regardless.
 when:
   - event: push
     branch: master
-  - event: [pull_request, manual]
+    path: &paths
+      exclude:
+        - "**/*.md"
+        - docs/**
+        - LICENSE
+        - .claude/**
+        - "*.ps1"
+        - alacritty.windows.toml
+        - renovate.json
+        - .pre-commit-config.yaml
+        - .woodpecker/build.yml
+        - .woodpecker/lint.yml
+        - .woodpecker/macos.yml
+        - .woodpecker/notify.yml
+        - .woodpecker/renovate.yml
+        - .woodpecker/noadmin.yml
+        - ci/macos-*
+        - ci/spacemacs-smoke.sh
+        - ci/validate-macos-pipeline.py
+        - tests/**
+  - event: pull_request
+    path: *paths
+  - event: manual
+  - event: cron
+    cron: weekly
 
 variables:
   - &ci_image "jlipworth/gnu-files-ci:latest"
@@ -218,21 +243,7 @@ steps:
       CI: "true"
       DEBIAN_FRONTEND: noninteractive
     commands:
-      - ./tests/codex_config_spec.sh
-      - ./tests/ai_tools_spec.sh
-      - ./tests/claude_safari_mcp_spec.sh
-      - ./tests/claude_settings_defaults_spec.sh
       - make ai-tools
-
-  # Guards for the manual macOS pipeline; the spec mocks uname/brew, so it
-  # runs on Linux and catches regressions before a macOS runner is used.
-  - name: macos-ci-guards
-    image: *ci_image
-    depends_on: []
-    environment:
-      CI: "true"
-    commands:
-      - ./tests/ci/macos_ci_spec.sh
 
   - name: layer-cli_tools
     image: *ci_image

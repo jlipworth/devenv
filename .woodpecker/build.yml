@@ -1,12 +1,32 @@
 # .woodpecker/build.yml
 # Core Emacs build, Spacemacs compatibility, and sequential Neovim source-build test
 
-# Branch pushes are covered by their pull request; running both doubled the
-# load and got steps OOM-killed (exit 137).
+# Branch pushes are covered by their pull request. A weekly cron runs every
+# workflow regardless of paths, so drift outside these files is still caught.
 when:
   - event: push
     branch: master
-  - event: [pull_request, manual]
+    path: &paths
+      include:
+        - build_emacs30.sh
+        - build_neovim.sh
+        - common_utils.sh
+        - prereq_packages.sh
+        - versions.conf
+        - makefile
+        - .spacemacs
+        - jal-functions.el
+        - snippets/**
+        - nvim/**
+        - ci/neovim-smoke.sh
+        - ci/nvim-wait-for-mason.lua
+        - ci/spacemacs-smoke.sh
+        - .woodpecker/build.yml
+  - event: pull_request
+    path: *paths
+  - event: manual
+  - event: cron
+    cron: weekly
 
 variables:
   - &gcc_version "12"
@@ -20,6 +40,21 @@ steps:
       CI: "true"
       CI_INSTALL: "true"
       GCC_VERSION: *gcc_version
+    # The Emacs build is the slowest step; skip it when only Neovim or the
+    # shared installer changed. Manual and cron runs ignore paths.
+    when:
+      - event: [push, pull_request]
+        path:
+          include:
+            - build_emacs30.sh
+            - common_utils.sh
+            - versions.conf
+            - .spacemacs
+            - jal-functions.el
+            - snippets/**
+            - ci/spacemacs-smoke.sh
+            - .woodpecker/build.yml
+      - event: [manual, cron]
     commands:
       - set -ex
       - chmod +x build_emacs30.sh common_utils.sh || true
@@ -29,22 +64,23 @@ steps:
           export PATH="$HOME/.local/bin:$PATH"
           test -x "$HOME/.local/bin/emacs"
           "$HOME/.local/bin/emacs" --version
-      - echo "=== Testing Spacemacs compatibility ==="
+      - echo "=== Loading Spacemacs with the tracked .spacemacs ==="
       # Same Spacemacs branch build_emacs30.sh installs (SPACEMACS_BRANCH).
       - git clone --depth 1 --branch working https://github.com/jlipworth/spacemacs ~/.emacs.d
-      - |
-          "$HOME/.local/bin/emacs" --batch --eval "(progn
-              (require 'package)
-              (setq package-archives '((\"melpa\" . \"https://melpa.org/packages/\")
-                                       (\"gnu\" . \"https://elpa.gnu.org/packages/\")))
-              (package-initialize)
-              (message \"Package system initialized successfully\"))"
-      - echo "=== Spacemacs compatibility check passed! ==="
+      - ln -sf "$PWD/.spacemacs" ~/.spacemacs
+      # vterm compiles its module on load; pdf-tools builds epdfinfo.
+      - >-
+        apt-get install -y --no-install-recommends curl libtool-bin
+        libpoppler-glib-dev libpng-dev zlib1g-dev
+      - ./ci/spacemacs-smoke.sh "$HOME/.local/bin/emacs" ~/.emacs.d
 
   - name: build-and-verify-neovim
     image: *emacs_image
+    # Runs after Emacs to limit peak load on the node, or alone when the
+    # Emacs step was skipped.
     depends_on:
-      - build-and-verify-emacs
+      - name: build-and-verify-emacs
+        optional: true
     environment:
       DEBIAN_FRONTEND: noninteractive
       CI: "true"

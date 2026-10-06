@@ -1,12 +1,14 @@
 # .woodpecker/lint.yml
 # Shell script linting
 
-# Branch pushes are covered by their pull request; running both doubled the
-# load and got steps OOM-killed (exit 137).
+# Branch pushes are covered by their pull request. Lint and the fast specs run
+# on every change; they are cheap and notify.yml depends on this workflow.
 when:
   - event: push
     branch: master
   - event: [pull_request, manual]
+  - event: cron
+    cron: weekly
 
 steps:
   - name: shellcheck
@@ -23,3 +25,16 @@ steps:
     image: python:3.14-alpine
     commands:
       - python3 ci/validate-macos-pipeline.py .woodpecker/macos.yml --default-branch master
+
+  # Script-level specs that mock their tools; no installs, so they run on
+  # every change instead of waiting for the heavy layer workflows.
+  - name: specs
+    image: jlipworth/gnu-files-ci:latest
+    environment:
+      CI: "true"
+    commands:
+      - ./tests/codex_config_spec.sh
+      - ./tests/ai_tools_spec.sh
+      - ./tests/claude_safari_mcp_spec.sh
+      - ./tests/claude_settings_defaults_spec.sh
+      - ./tests/ci/macos_ci_spec.sh

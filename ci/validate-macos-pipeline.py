@@ -14,6 +14,8 @@ REQUIRED_LABELS = {
     "purpose": "mac-ci",
 }
 
+ALLOWED_EVENTS = {"push", "manual", "cron"}
+
 
 def block(lines: list[str], name: str) -> list[str]:
     start = next(
@@ -53,12 +55,16 @@ def validate(path: Path, default_branch: str) -> None:
         raise ValueError(f"labels must be exactly {REQUIRED_LABELS}, got {labels}")
 
     conditions = block(lines, "when")
-    if any(re.match(r"^\s+-\s+", line) for line in conditions):
+    if any(re.match(r"^ {0,2}-\s", line) for line in conditions):
         raise ValueError("when must be one restrictive condition, not alternatives")
     when = scalar_map(conditions)
     events = inline_list(when.get("event", ""))
-    if events != ["manual"]:
-        raise ValueError(f"event must be manual-only; got {events}")
+    # Pull requests (and so fork code) must never reach the local backend.
+    # Pushes to the default branch are owner-controlled merges.
+    if not events or not set(events) <= ALLOWED_EVENTS:
+        raise ValueError(f"event must be a subset of {sorted(ALLOWED_EVENTS)}; got {events}")
+    if "cron" in events and not when.get("cron"):
+        raise ValueError("cron runs must name their cron job")
     if when.get("branch") != default_branch:
         raise ValueError(f"branch must be {default_branch!r}; got {when.get('branch')!r}")
 

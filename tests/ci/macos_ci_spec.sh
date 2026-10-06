@@ -58,7 +58,6 @@ grep -q 'blocked mutating Homebrew command' "$tmp/guard.log"
 
 "$repo_root/ci/macos-full-setup.sh" --help | grep -q -- '--preflight'
 "$repo_root/ci/macos-full-setup.sh" --help | grep -q -- '--provision'
-grep -q 'event: \[manual\]' "$repo_root/.woodpecker/macos.yml"
 grep -q 'platform: darwin/arm64' "$repo_root/.woodpecker/macos.yml"
 grep -q 'backend: local' "$repo_root/.woodpecker/macos.yml"
 python3 "$repo_root/ci/validate-macos-pipeline.py" \
@@ -66,8 +65,10 @@ python3 "$repo_root/ci/validate-macos-pipeline.py" \
 grep -q 'MACOS_CI_WORKSPACE' "$repo_root/ci/macos-full-setup.sh"
 grep -q 'EMACS_PREFIX=' "$repo_root/ci/macos-full-setup.sh"
 grep -q 'EMACS_APP_DIR="$HOME/Applications"' "$repo_root/ci/macos-full-setup.sh"
-grep -q 'vterm-always-compile-module t' "$repo_root/ci/macos-full-setup.sh"
-grep -q "advice-add 'pdf-tools-install" "$repo_root/ci/macos-full-setup.sh"
+grep -q 'ci/spacemacs-smoke.sh" "$emacs_bin" "$spacemacs_dir"' "$repo_root/ci/macos-full-setup.sh"
+grep -q 'vterm-always-compile-module t' "$repo_root/ci/spacemacs-smoke.sh"
+grep -q "advice-add 'pdf-tools-install" "$repo_root/ci/spacemacs-smoke.sh"
+grep -q 'configuration-layer-error-count' "$repo_root/ci/spacemacs-smoke.sh"
 grep -q 'chmod -R u+w "$workspace"' "$repo_root/ci/macos-full-setup.sh"
 grep -q '^brew "libgccjit"$' "$repo_root/brewfiles/Brewfile.emacs-30"
 grep -q 'ts_language_version=ts_language_abi_version' "$repo_root/build_emacs30.sh"
@@ -122,6 +123,17 @@ if grep -q 'uv tool install ipykernel' "$repo_root/prereq_packages.sh"; then
 fi
 if grep -Eq '(^|[[:space:]])tac([[:space:]]|$)' "$repo_root/prereq_packages.sh"; then
     echo "prereq_packages.sh must not require GNU tac on macOS" >&2
+    exit 1
+fi
+
+
+# The native runner must never take pull-request (fork) code.
+bad_pipeline="$tmp/macos-pr.yml"
+sed 's/event: \[push, manual, cron\]/event: [push, pull_request]/' \
+    "$repo_root/.woodpecker/macos.yml" > "$bad_pipeline"
+if python3 "$repo_root/ci/validate-macos-pipeline.py" "$bad_pipeline" \
+    --default-branch master 2> /dev/null; then
+    echo "pull_request events must be rejected for the macOS pipeline" >&2
     exit 1
 fi
 

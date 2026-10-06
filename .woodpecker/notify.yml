@@ -2,22 +2,28 @@
 # Single Discord notification after dependent pipelines complete.
 # Always runs so GitHub sees one final status, never leaves PENDING.
 
-# Branch pushes are covered by their pull request; running both doubled the
-# load and got steps OOM-killed (exit 137).
+# Same events as lint.yml, which always runs. The other workflows may be
+# skipped by their path filters, so they are optional dependencies.
 when:
   - event: push
     branch: master
+    status: [success, failure]
   - event: [pull_request, manual]
+    status: [success, failure]
+  - event: cron
+    cron: weekly
+    status: [success, failure]
 
 skip_clone: true
 
 depends_on:
-  - build
-  - layers
   - lint
-  - noadmin
-
-runs_on: [success, failure]
+  - name: build
+    optional: true
+  - name: layers
+    optional: true
+  - name: noadmin
+    optional: true
 
 steps:
   - name: notify-success
