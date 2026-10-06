@@ -120,7 +120,7 @@ macOS has a guarded native pipeline that remains manual-only until the labelled 
 
 | File                                         | Description                                |
 |----------------------------------------------|--------------------------------------------|
-| [CLAUDE.md](CLAUDE.md)                       | AI agent reference and directory structure |
+| [AGENTS.md](AGENTS.md)                       | AI agent reference (CLAUDE.md links to it) |
 | [docs/ALIASES.md](docs/ALIASES.md)           | Shell aliases for modern CLI tools         |
 | [docs/BASH_TO_ZSH_MIGRATION_RUNBOOK.md](docs/BASH_TO_ZSH_MIGRATION_RUNBOOK.md) | Bash to zsh migration runbook |
 | [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md) | Dependency management and Renovate         |
