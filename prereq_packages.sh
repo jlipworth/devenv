@@ -833,6 +833,13 @@ install_r_support() {
         Rscript -e 'dir.create(Sys.getenv("R_LIBS_USER"), showWarnings = FALSE, recursive = TRUE)'
         if [[ "$OS" == "Linux" ]] && is_installed "brew"; then
             configure_r_brew_compiler
+            # languageserver's deps fs and xml2 link libuv and libxml2. Homebrew's
+            # linker does not search the system library dirs, so take both from
+            # Homebrew and let pkg-config report Homebrew's paths.
+            brew install libuv libxml2 || log "Error installing libuv/libxml2 via Homebrew." "WARNING"
+            local brew_prefix
+            brew_prefix="$(brew --prefix)"
+            export PKG_CONFIG_PATH="$(brew --prefix libxml2)/lib/pkgconfig:$brew_prefix/lib/pkgconfig:$brew_prefix/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
         fi
         # Install to user library to avoid permission issues
         Rscript -e 'if (!requireNamespace("languageserver", quietly = TRUE)) install.packages("languageserver", repos = "https://cloud.r-project.org", lib = Sys.getenv("R_LIBS_USER"))' ||
