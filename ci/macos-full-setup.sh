@@ -151,10 +151,15 @@ git -C "$spacemacs_dir" fetch --depth 100 origin \
 
 # Batch mode normally suppresses user init, so load Spacemacs explicitly. This
 # exercises the actual tracked .spacemacs symlink created by `full-setup`.
+# Spacemacs logs package install failures and carries on, so fail on its
+# error count rather than only on a crash.
 "$emacs_bin" --batch \
     --eval '(setq vterm-always-compile-module t)' \
     --eval "(advice-add 'pdf-tools-install :filter-args (lambda (args) (cons t (cdr args))))" \
     --load "$spacemacs_dir/init.el" \
+    --eval '(when (bound-and-true-p configuration-layer-error-count)
+              (message "Spacemacs reported %d install/load errors" configuration-layer-error-count)
+              (kill-emacs 1))' \
     --eval '(progn (message "GNU_files macOS Spacemacs smoke passed") (kill-emacs 0))'
 
 if [[ -s "$guard_log" ]]; then
