@@ -5,7 +5,7 @@
         latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools ai-notifications-native claude-settings \
         latex_tooling latex_distribution \
         cli_tools cli_tools_core cli_tools_system step-cli starship syntax-highlighting update-deps \
-        full-setup noadmin-setup macos-ci-setup macos-ci-preflight help neovim neovim-source neovim-package neovim-test windows-terminal-tooling
+        full-setup noadmin-setup macos-ci-setup macos-ci-preflight macos-ci-provision help neovim neovim-source neovim-package neovim-test windows-terminal-tooling
 
 # Default target to install all prerequisite layers
 prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript elisp latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools
@@ -219,6 +219,9 @@ macos-ci-setup:
 macos-ci-preflight:
 	@./ci/macos-full-setup.sh --preflight
 
+macos-ci-provision:
+	@./ci/macos-full-setup.sh --provision
+
 # Help target
 help:
 	@echo "JAL Emacs Installation Makefile"
@@ -228,6 +231,7 @@ help:
 	@echo "  noadmin-setup     - Full setup without sudo (skips system packages)"
 	@echo "  macos-ci-setup    - Isolated native macOS full setup + Spacemacs smoke"
 	@echo "  macos-ci-preflight - Check the runner's preinstalled macOS prerequisites"
+	@echo "  macos-ci-provision - Install missing runner prerequisites (as the Homebrew owner)"
 	@echo "  spacemacs         - Build Emacs 30.2 from source + install Spacemacs"
 	@echo "  editor-symlinks   - Create symlinks for .vimrc and .spacemacs"
 	@echo "  system-prereq     - Install system packages (git, nodejs, CLI tools)"
