@@ -8,7 +8,7 @@ trap 'rm -rf "$tmp"' EXIT
 cat > "$tmp/brew" << 'EOF'
 #!/usr/bin/env bash
 case "$1" in
-    bundle) [[ "$2" == check ]] ;;
+    bundle) [[ "$2" == check && "$3" == --no-upgrade ]] ;;
     list) [[ "$*" == *missing* ]] && exit 1 || printf 'present 1.0\n' ;;
     tap) printf 'hashicorp/tap\n' ;;
     --prefix) printf '/opt/homebrew\n' ;;

@@ -18,6 +18,8 @@ case "$command_name" in
     bundle)
         # `bundle check` is read-only. Convert install-oriented calls in the
         # setup scripts to a verification of runner-provisioned dependencies.
+        # --no-upgrade: an installed but outdated (or untrusted-tap) formula
+        # is still provisioned; upgrading it is the runner's job.
         args=("$@")
         filtered=()
         skip_next=false
@@ -34,7 +36,7 @@ case "$command_name" in
                 *) filtered+=("$arg") ;;
             esac
         done
-        if ! "$real_brew" bundle check "${filtered[@]}"; then
+        if ! "$real_brew" bundle check --no-upgrade "${filtered[@]}"; then
             note_failure "missing dependency from: brew bundle ${filtered[*]}"
             exit 69
         fi
