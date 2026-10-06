@@ -2299,12 +2299,26 @@ install_opencode() {
     log "OpenCode installation complete." "SUCCESS"
 }
 
+install_claude_code() {
+    # An existing native install updates itself in place; the installer only
+    # runs when there is none (or the update fails).
+    local claude_bin="$HOME/.local/bin/claude"
+    if [[ -x "$claude_bin" && "$(readlink "$claude_bin")" == "$HOME/.local/share/claude/"* ]]; then
+        log "Updating Claude Code ($("$claude_bin" --version 2> /dev/null))..."
+        if "$claude_bin" update; then
+            return 0
+        fi
+        log "claude update failed; re-running the native installer." "WARNING"
+    else
+        log "Installing Claude Code via native installer..."
+    fi
+    curl -fsSL https://claude.ai/install.sh | bash || log "Error installing Claude Code." "WARNING"
+}
+
 install_ai_tools() {
     log "Installing AI coding assistant tools..."
 
-    # Claude Code - native installer (recommended over npm)
-    log "Installing Claude Code via native installer..."
-    curl -fsSL https://claude.ai/install.sh | bash || log "Error installing Claude Code." "WARNING"
+    install_claude_code
 
     # Codex CLI - official standalone installer
     install_codex_cli_native
@@ -2738,6 +2752,7 @@ main() {
         "install_editor_prereqs"
         "install_codex_cli_native"
         "install_codex_config"
+        "install_claude_code"
         "install_claude_safari_mcp"
         "install_opencode"
         "install_ai_tools"
