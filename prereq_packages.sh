@@ -1969,31 +1969,21 @@ install_codex_cli_native() {
 }
 
 install_codex_config() {
-    # Copy Codex config (not symlink) — preserves local [projects.*] trust entries
+    # Merge the repo's base config into ~/.codex/config.toml (copy, not
+    # symlink): repo-defined keys win, local-only keys and tables survive.
     log "Setting up Codex config..."
     mkdir -p "$HOME/.codex"
     if [[ -f "$GNU_DIR/.codex_config.toml" ]]; then
         local codex_target="$HOME/.codex/config.toml"
-        local codex_tmp
         local codex_config_os="${CODEX_CONFIG_OS:-$OS}"
+        local codex_base codex_tmp
+        codex_base="$(mktemp "$HOME/.codex/config.base.XXXXXX")"
         codex_tmp="$(mktemp "$HOME/.codex/config.toml.XXXXXX")"
-
-        # Extract only local [projects.*] blocks from the existing config. Do not
-        # retain other tables: repo-managed sections (including MCP allowlists)
-        # must replace stale local copies without producing duplicate TOML tables.
-        local project_blocks=""
-        if [[ -f "$codex_target" ]] && [[ -s "$codex_target" ]]; then
-            project_blocks="$(awk '
-                /^\[projects\./ { in_projects = 1 }
-                /^\[/ && !/^\[projects\./ { in_projects = 0 }
-                in_projects { print }
-            ' "$codex_target")"
-        fi
 
         # Remove existing symlink if present (prevents writing through to repo)
         [[ -L "$codex_target" ]] && rm -f "$codex_target"
 
-        # Write the shared base config. Safari's MCP transport exists only on
+        # Build the shared base config. Safari's MCP transport exists only on
         # macOS, so omit its table elsewhere rather than leaving Codex to spawn
         # a missing /usr/bin/safaridriver executable at startup.
         sed '/^\[projects\./,$d' "$GNU_DIR/.codex_config.toml" |
@@ -2004,18 +1994,25 @@ install_codex_config() {
                 }
                 skip_safari && /^\[/ { skip_safari = 0 }
                 !skip_safari { print }
-            ' |
-            # Strip trailing blank lines from base to ensure idempotent output.
-            awk '{a[NR]=$0} END{e=NR; while(e>0&&a[e]=="")e--; for(i=1;i<=e;i++)print a[i]}' > "$codex_tmp"
+            ' > "$codex_base"
 
-        # Append preserved local project blocks with single blank separator
-        if [[ -n "$project_blocks" ]]; then
-            printf '\n\n%s\n' "$project_blocks" >> "$codex_tmp"
+        local merge_args=()
+        [[ "$codex_config_os" != "Darwin" ]] && merge_args+=(--drop mcp_servers.safari-mcp)
+        local local_config="/dev/null"
+        [[ -s "$codex_target" ]] && local_config="$codex_target"
+
+        # Repo-defined keys (including the Safari MCP allowlist) replace stale
+        # local values; local-only settings such as [projects.*] trust, Codex
+        # app plugins, and model/approval overrides are preserved.
+        if python3 "$GNU_DIR/bin/codex-config-merge" ${merge_args[@]+"${merge_args[@]}"} \
+            "$codex_base" "$local_config" > "$codex_tmp"; then
+            mv "$codex_tmp" "$codex_target"
+            log "Merged Codex config (repo settings synced, local settings preserved)."
+        else
+            rm -f "$codex_tmp"
+            log "Could not merge $codex_target; left it unchanged." "WARNING"
         fi
-
-        # Atomic move
-        mv "$codex_tmp" "$codex_target"
-        log "Copied Codex config (base settings synced, local project trust preserved)."
+        rm -f "$codex_base"
     else
         log "Codex config not found at $GNU_DIR/.codex_config.toml" "WARNING"
     fi
