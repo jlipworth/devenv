@@ -117,6 +117,9 @@ return {
       opts.ensure_installed = opts.ensure_installed or {}
       vim.list_extend(opts.ensure_installed, {
         "shellcheck",
+        -- Exception to the rule above: ruff is also the python extra's LSP, but
+        -- it is listed here so conform's ruff_format/ruff_organize_imports keep
+        -- their binary even if that LSP is disabled (mason dedups the install).
         "ruff",
         "prettier",
       })
@@ -157,6 +160,26 @@ return {
             end
           end
         end
+      end
+
+      -- .ipynb buffers hold jupytext py:percent text (nvim/lua/jupyter), but
+      -- ruff picks its parser from --stdin-filename and would expect notebook
+      -- JSON. Hand it a .py name for those buffers.
+      opts.formatters = opts.formatters or {}
+      for _, name in ipairs({ "ruff_format", "ruff_organize_imports" }) do
+        opts.formatters[name] = vim.tbl_extend("force", opts.formatters[name] or {}, {
+          args = function(_, ctx)
+            local args = vim.deepcopy(require("conform.formatters." .. name).args)
+            if ctx.filename:match("%.ipynb$") then
+              for i, arg in ipairs(args) do
+                if arg == "$FILENAME" then
+                  args[i] = (ctx.filename:gsub("%.ipynb$", ".py"))
+                end
+              end
+            end
+            return args
+          end,
+        })
       end
     end,
   },

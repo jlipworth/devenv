@@ -56,6 +56,10 @@ FULL_IMAGE="${DOCKERHUB_USER}/${IMAGE_NAME}:${TAG}"
 
 cd "$(dirname "$0")/.." # Go to repo root
 
+# Keep the image's Node major in sync with versions.conf (used by ci/Dockerfile).
+NODE_MAJOR="$(sed -n 's/^NODE_VERSION="\([0-9][0-9]*\)"$/\1/p' versions.conf)"
+NODE_MAJOR="${NODE_MAJOR:-26}"
+
 # ============================================================================
 # Build
 # ============================================================================
@@ -71,6 +75,7 @@ if [[ "$PUSH_IMAGE" == "true" ]]; then
 
     docker buildx build \
         --platform linux/amd64,linux/arm64 \
+        --build-arg "NODE_MAJOR=${NODE_MAJOR}" \
         -t "${FULL_IMAGE}" \
         -t "${DOCKERHUB_USER}/${IMAGE_NAME}:${DATE_TAG}" \
         -f "${DOCKERFILE}" \
@@ -86,6 +91,7 @@ else
     echo "Building image for local arch: ${FULL_IMAGE}"
 
     docker build \
+        --build-arg "NODE_MAJOR=${NODE_MAJOR}" \
         -t "${FULL_IMAGE}" \
         -f "${DOCKERFILE}" \
         .

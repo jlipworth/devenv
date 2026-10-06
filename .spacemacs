@@ -59,7 +59,9 @@ This function should only modify configuration layer settings."
                      )
 
      (git :variables
-          git-enable-magit-delta-plugin t
+          ;; magit-delta shells out to `delta' on every diff; git-delta is only
+          ;; installed via Homebrew, so enable it only where it exists.
+          git-enable-magit-delta-plugin (and (executable-find "delta") t)
           )
 
      (auto-completion :variables
@@ -824,8 +826,9 @@ before packages are loaded."
       "cg" 'grip-mode))  ;; SPC m c g or , c g
 
   ;; OS-variable settings
-  (if (string= system-type "gnu/linux")
-      (setenv "SUDO_ASKPASS" "/usr/bin/ksshaskpass"))
+  (when (and (string= system-type "gnu/linux")
+             (file-executable-p "/usr/bin/ksshaskpass"))
+    (setenv "SUDO_ASKPASS" "/usr/bin/ksshaskpass"))
 
   ;; C++20 module file extensions
   (add-to-list 'auto-mode-alist '("\\.cppm\\'" . c++-mode))

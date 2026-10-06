@@ -613,3 +613,34 @@ ensure_tree_sitter_cli() {
         log "tree-sitter CLI unavailable; nvim-treesitter cannot build grammars until it is installed." "WARNING"
     fi
 }
+
+# Symlink ~/.config/nvim to the repo LazyVim config (used by build_neovim.sh
+# and install_neovim).
+link_nvim_config() {
+    local nvim_config_dir="$HOME/.config/nvim"
+    local nvim_source="$GNU_DIR/nvim"
+
+    # A link into a git worktree dangles once the worktree is removed, so
+    # only the main checkout manages ~/.config/nvim (override with
+    # NVIM_LINK_FROM_WORKTREE=true when deliberately testing a worktree).
+    if [[ "$GNU_DIR" == */.worktrees/* ]] && [[ "${NVIM_LINK_FROM_WORKTREE:-false}" != "true" ]]; then
+        log "GNU_DIR is a worktree ($GNU_DIR); not relinking $nvim_config_dir. Run 'make neovim' from the main checkout." "WARNING"
+        return 0
+    fi
+
+    mkdir -p "$HOME/.config"
+
+    if [ -L "$nvim_config_dir" ]; then
+        log "A symbolic link already exists at $nvim_config_dir. Replacing it."
+        rm "$nvim_config_dir"
+    elif [ -d "$nvim_config_dir" ]; then
+        log "A directory exists at $nvim_config_dir. Backing it up."
+        mv "$nvim_config_dir" "${nvim_config_dir}_backup_$(date +%Y%m%d%H%M%S)"
+    elif [ -e "$nvim_config_dir" ]; then
+        log "A non-directory file exists at $nvim_config_dir. Backing it up."
+        mv "$nvim_config_dir" "${nvim_config_dir}_backup_$(date +%Y%m%d%H%M%S)"
+    fi
+
+    ln -s "$nvim_source" "$nvim_config_dir"
+    log "Neovim config symlinked: $nvim_config_dir -> $nvim_source" "SUCCESS"
+}

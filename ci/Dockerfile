@@ -28,10 +28,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # =============================================================================
-# Node.js LTS (for npm-based language servers)
+# Node.js (for npm-based language servers). ci/build-image.sh passes the
+# NODE_VERSION major from versions.conf so CI matches what users install.
 # =============================================================================
+ARG NODE_MAJOR=26
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+RUN curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 

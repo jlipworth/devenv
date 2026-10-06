@@ -30,7 +30,8 @@ end
 -- Write .ipynb by piping current buffer lines to jupytext.
 -- args.match is the write target, which differs from the buffer name for
 -- `:w other.ipynb`. --update keeps the outputs already stored in the target.
--- Fires BufWritePost on success so format-on-save, gitsigns, LSP sync keep working.
+-- BufWriteCmd replaces the whole write, so fire BufWritePre/BufWritePost
+-- ourselves to keep format-on-save, gitsigns and LSP sync working.
 local function on_write(args)
   if vim.b[args.buf].jupyter_read_failed then
     notify_err("not saving: this notebook failed to load (:e to retry)")
@@ -41,6 +42,10 @@ local function on_write(args)
   -- buffer name has already resolved.
   local is_own_file = vim.fn.resolve(path)
     == vim.fn.resolve(vim.fn.fnamemodify(vim.api.nvim_buf_get_name(args.buf), ":p"))
+  if is_own_file then
+    -- Runs LazyVim/conform format-on-save; read the lines only afterwards.
+    vim.api.nvim_exec_autocmds("BufWritePre", { buffer = args.buf, modeline = false })
+  end
   local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
   local tmp = vim.fn.tempname() .. ".py"
   local ok, rc = pcall(function()

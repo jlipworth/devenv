@@ -1,7 +1,6 @@
-# Codex global defaults (copied to ~/.codex/config.toml by make ai-tools)
+# Codex global defaults (merged into ~/.codex/config.toml by make ai-tools;
+# keys set here win, settings that exist only locally are kept)
 personality = "pragmatic"
-model = "gpt-6-astra"
-model_reasoning_effort = "high"
 
 [agents]
 max_threads = 20

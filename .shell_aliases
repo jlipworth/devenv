@@ -80,8 +80,9 @@ if command -v bat &> /dev/null; then
     alias batp='bat'  # bat with paging enabled
     alias bathelp='bat --plain --language=help'  # Use bat for help pages
 
-    # Helper function for help pages with bat
-    help() {
+    # Helper function for help pages with bat. Not named `help`, which would
+    # shadow bash's builtin of that name.
+    bhelp() {
         "$@" --help 2>&1 | bathelp
     }
 fi

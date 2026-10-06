@@ -342,27 +342,6 @@ build_configured_neovim() {
     cmake --build build --parallel "$nproc"
 }
 
-link_nvim_config() {
-    local nvim_config_dir="$HOME/.config/nvim"
-    local nvim_source="$GNU_DIR/nvim"
-
-    mkdir -p "$HOME/.config"
-
-    if [ -L "$nvim_config_dir" ]; then
-        log "A symbolic link already exists at $nvim_config_dir. Replacing it."
-        rm "$nvim_config_dir"
-    elif [ -d "$nvim_config_dir" ]; then
-        log "A directory exists at $nvim_config_dir. Backing it up."
-        mv "$nvim_config_dir" "${nvim_config_dir}_backup_$(date +%Y%m%d%H%M%S)"
-    elif [ -e "$nvim_config_dir" ]; then
-        log "A non-directory file exists at $nvim_config_dir. Backing it up."
-        mv "$nvim_config_dir" "${nvim_config_dir}_backup_$(date +%Y%m%d%H%M%S)"
-    fi
-
-    ln -s "$nvim_source" "$nvim_config_dir"
-    log "Neovim config symlinked: $nvim_config_dir -> $nvim_source" "SUCCESS"
-}
-
 installed_prefix_version() {
     if [[ ! -x "$NEOVIM_PREFIX/bin/nvim" ]]; then
         return 1
