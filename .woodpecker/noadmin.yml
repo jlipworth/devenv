@@ -17,8 +17,12 @@
 # - Steps run under the image's /bin/sh (dash), which has no pipefail, so each
 #   `cmd | tee log` runs in bash -o pipefail to keep cmd's exit status.
 
+# Branch pushes are covered by their pull request; running both doubled the
+# load and got steps OOM-killed (exit 137).
 when:
-  event: [push, pull_request, manual]
+  - event: push
+    branch: master
+  - event: [pull_request, manual]
 
 variables:
   - &noadmin_image "jlipworth/gnu-files-noadmin:latest"
