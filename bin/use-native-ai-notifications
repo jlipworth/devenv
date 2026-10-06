@@ -6,7 +6,11 @@ import os
 import pathlib
 import re
 import sys
-import tomllib
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python < 3.11 (macOS system python3, Ubuntu 22.04)
+    tomllib = None
 
 
 HOME = pathlib.Path.home()
@@ -59,7 +63,13 @@ def codex():
                 match = re.search(r'("--previous-notify"\s*,\s*)("(?:\\.|[^"\\])*")', line)
                 if match:
                     try:
-                        previous = json.loads(tomllib.loads("value = " + match.group(2))["value"])
+                        if tomllib:
+                            encoded_previous = tomllib.loads("value = " + match.group(2))["value"]
+                        else:
+                            # This value was written with json.dumps, so its
+                            # TOML basic-string escapes are also valid JSON.
+                            encoded_previous = json.loads(match.group(2))
+                        previous = json.loads(encoded_previous)
                         if isinstance(previous, list) and SHIM in previous:
                             previous = [item for item in previous if item != SHIM]
                             encoded = json.dumps(json.dumps(previous))

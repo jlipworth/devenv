@@ -2698,14 +2698,18 @@ main() {
         "install_all"
     )
 
-    # Check if the provided function is valid
-    if [[ " ${valid_functions[*]} " =~ $1 ]]; then
-        "$1" # Call the function dynamically
-    else
-        echo "Unknown function: $1"
-        exit 1
-    fi
+    # Only call an exact allowlist entry; a pattern match would let any
+    # substring (e.g. "ls") through and run it as a command.
+    local fn
+    for fn in "${valid_functions[@]}"; do
+        if [[ "$1" == "$fn" ]]; then
+            "$1" # Call the function dynamically
+            return
+        fi
+    done
+    echo "Unknown function: $1"
+    exit 1
 }
 
 # Run main with the provided argument
-main "$1"
+main "${1:-}"

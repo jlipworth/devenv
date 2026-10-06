@@ -184,7 +184,7 @@ zi                    # Interactive selection
 |-------|---------------------|--------------------------|
 | `ps`  | `procs`             | Modern process listing   |
 | `psa` | `procs --tree`      | Show process tree        |
-| `psg` | `procs --keyword`   | Search processes by term |
+| `psg` | `procs`             | Search processes by term |
 
 ## Version Control
 

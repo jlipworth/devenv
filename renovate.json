@@ -11,7 +11,8 @@
     {
       "description": "Group Python packages",
       "matchManagers": ["pip_requirements"],
-      "groupName": "python dependencies"
+      "groupName": "python dependencies",
+      "rangeStrategy": "bump"
     },
     {
       "description": "Auto-merge minor and patch updates",
@@ -34,8 +35,13 @@
 
   "enabledManagers": [
     "pip_requirements",
-    "dockerfile"
+    "dockerfile",
+    "pre-commit"
   ],
+
+  "pre-commit": {
+    "enabled": true
+  },
 
   "prConcurrentLimit": 5,
   "prCreation": "not-pending",

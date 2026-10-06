@@ -184,7 +184,8 @@ ensure_build_dependencies() {
             pacman_cmd="pacman"
         fi
 
-        $pacman_cmd -Sy
+        # No bare -Sy: syncing without upgrading is an Arch partial upgrade.
+        # Full upgrades stay explicit (see UPDATE_CMD in common_utils.sh).
         $pacman_cmd -S --needed --noconfirm \
             base-devel cmake ninja curl git gettext ccache pkgconf tree-sitter-cli
         log "Dependencies installed successfully" "SUCCESS"

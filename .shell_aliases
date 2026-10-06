@@ -134,7 +134,7 @@ fi
 if command -v procs &> /dev/null; then
     alias ps='procs'
     alias psa='procs --tree'  # Show process tree
-    alias psg='procs --keyword'  # Search processes by keyword
+    alias psg='procs'  # Search processes by keyword (procs takes keywords positionally)
 fi
 
 # ======================================================================
