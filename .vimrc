@@ -6,6 +6,10 @@
 " =============================================================================
 
 set nocompatible
+" Before any non-ASCII below: without a UTF-8 locale Vim defaults to latin1,
+" and the split char in fillchars then reads as three characters (E1511).
+set encoding=utf-8
+scriptencoding utf-8
 filetype off
 
 " Match the current Spacemacs leader model
@@ -156,7 +160,6 @@ set smartcase                 " ...unless uppercase used
 " UI
 set laststatus=2              " Always show statusline
 set fillchars+=vert:\│        " Nicer vertical split char
-set encoding=utf-8
 set timeoutlen=200            " Match Spacemacs evil-escape-delay
 
 " Remove GUI clutter (if applicable)

@@ -1864,7 +1864,10 @@ install_editor_prereqs() {
     # 4. Install Vim plugins
     if command -v vim &> /dev/null; then
         log "Installing Vim plugins..."
-        vim +PlugInstall +qall || log "Vim plugin installation failed." "WARNING"
+        # Silent Ex mode with stdin closed: a vimrc error otherwise leaves Vim
+        # waiting at a prompt with no terminal (a hung CI job).
+        vim -Es -u "$HOME/.vimrc" -i NONE +PlugInstall +qall < /dev/null ||
+            log "Vim plugin installation failed." "WARNING"
     else
         log "Vim is not installed. Skipping plugin installation." "WARNING"
     fi
