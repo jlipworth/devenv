@@ -32,7 +32,11 @@ requests must never run on this local backend.
 - sets `NO_ADMIN=true`, `CI=true`, and `CI_INSTALL=true`;
 - replaces `brew` with a read-only facade;
 - replaces `sudo` with a deny guard;
-- deletes the workspace after the job, including on failure.
+- deletes the workspace after the job, including on failure. Under Woodpecker
+  the workspace lives in the agent's per-job directory, which the agent removes
+  even when a cancelled step is SIGKILLed past the script's trap. The Go module
+  cache is kept writable (`GOFLAGS=-modcacherw`) so that removal succeeds, and
+  workspaces left in `TMPDIR` by older cancelled runs are removed at start.
 
 Homebrew dependencies are runner prerequisites. The CI job may query them, but
 it cannot install, update, remove, link, or start Homebrew services. Calls such

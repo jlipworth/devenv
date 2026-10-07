@@ -70,6 +70,10 @@ grep -q 'vterm-always-compile-module t' "$repo_root/ci/spacemacs-smoke.sh"
 grep -q "advice-add 'pdf-tools-install" "$repo_root/ci/spacemacs-smoke.sh"
 grep -q 'configuration-layer-error-count' "$repo_root/ci/spacemacs-smoke.sh"
 grep -q 'chmod -R u+w "$workspace"' "$repo_root/ci/macos-full-setup.sh"
+# Cancelled runs are SIGKILLed past the trap; the agent's job-dir cleanup must
+# cover the workspace, and the Go module cache must stay deletable.
+grep -q 'woodpecker_job_dir="$(dirname "$CI_WORKSPACE")"' "$repo_root/ci/macos-full-setup.sh"
+grep -q -- '-modcacherw' "$repo_root/ci/macos-full-setup.sh"
 grep -q '^brew "libgccjit"$' "$repo_root/brewfiles/Brewfile.emacs-30"
 grep -q 'ts_language_version=ts_language_abi_version' "$repo_root/build_emacs30.sh"
 grep -q 'managed snippets-only ~/.emacs.d skeleton' "$repo_root/build_emacs30.sh"
