@@ -243,15 +243,21 @@ When Renovate creates PRs that update dependencies in `ci/Dockerfile` or when yo
 
 1. Review the changes in `ci/Dockerfile`
 2. Test locally: `./ci/build-image.sh` (builds for local arch only)
-3. Build and push multi-arch: `./ci/build-image.sh --push`
-4. Verify the new image works: trigger a manual CI run
+3. Build and push multi-arch: `./ci/build-image.sh --push` (and
+   `--image noadmin --push`). This pushes only today's dated tag.
+4. Point `.woodpecker/*.yml` at the new tag in a PR; its CI is the test
 5. Merge the Renovate PR after CI passes
+
+The images set `HOMEBREW_NO_AUTO_UPDATE=1`, so CI installs the formulae from the
+Homebrew index baked at build time. Rebuild to move it forward (schedule:
+issue #78).
 
 ### Image Details
 
 - **Registry:** Docker Hub (`jlipworth/gnu-files-ci`)
 - **Platforms:** linux/amd64, linux/arm64
-- **Tags:** `latest` and date-based (e.g., `2024.01.15`)
+- **Tags:** date-based (e.g., `2026.10.06`), pinned in the workflows. `latest`
+  is no longer moved.
 
 ## Resources
 

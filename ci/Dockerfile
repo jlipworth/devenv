@@ -9,6 +9,9 @@ FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
+# Use the Homebrew baked into this image as-is. Auto-update made every layer
+# step refresh a months-old index first; rebuild the image to move it forward.
+ENV HOMEBREW_NO_AUTO_UPDATE=1
 
 # =============================================================================
 # Base system packages (needed by most layers)

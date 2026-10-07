@@ -14,7 +14,8 @@ set -e
 # CONFIGURATION
 # ============================================================================
 DOCKERHUB_USER="${DOCKERHUB_USER:-jlipworth}"
-TAG="${TAG:-latest}"
+# Workflows pin dated tags; bump them in .woodpecker/*.yml after a push.
+TAG="${TAG:-$(date +%Y.%m.%d)}"
 IMAGE_VARIANT="default"
 PUSH_IMAGE="false"
 
@@ -65,9 +66,7 @@ NODE_MAJOR="${NODE_MAJOR:-26}"
 # ============================================================================
 if [[ "$PUSH_IMAGE" == "true" ]]; then
     # Multi-architecture build (amd64 + arm64) - requires buildx
-    DATE_TAG=$(date +%Y.%m.%d)
     echo "Building multi-arch image: ${FULL_IMAGE}"
-    echo "Also tagging as: ${DOCKERHUB_USER}/${IMAGE_NAME}:${DATE_TAG}"
     echo "Platforms: linux/amd64, linux/arm64"
 
     # Create buildx builder if it doesn't exist
@@ -77,14 +76,14 @@ if [[ "$PUSH_IMAGE" == "true" ]]; then
         --platform linux/amd64,linux/arm64 \
         --build-arg "NODE_MAJOR=${NODE_MAJOR}" \
         -t "${FULL_IMAGE}" \
-        -t "${DOCKERHUB_USER}/${IMAGE_NAME}:${DATE_TAG}" \
         -f "${DOCKERFILE}" \
         --push \
         .
 
     echo ""
     echo "Multi-arch build and push complete!"
-    echo "Tags pushed: latest, ${DATE_TAG}"
+    echo "Tag pushed: ${TAG}"
+    echo "Next: point .woodpecker/*.yml at ${IMAGE_NAME}:${TAG} in a PR"
     echo "Image available at: https://hub.docker.com/r/${DOCKERHUB_USER}/${IMAGE_NAME}"
 else
     # Local build only (current architecture)
