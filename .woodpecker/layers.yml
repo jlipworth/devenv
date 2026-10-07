@@ -35,7 +35,7 @@ when:
     cron: weekly
 
 variables:
-  - &ci_image "jlipworth/gnu-files-ci:latest"
+  - &ci_image "jlipworth/gnu-files-ci:2026.10.06"
 
 steps:
   - name: layer-editor

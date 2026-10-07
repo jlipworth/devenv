@@ -50,7 +50,7 @@ when:
     cron: weekly
 
 variables:
-  - &noadmin_image "jlipworth/gnu-files-noadmin:latest"
+  - &noadmin_image "jlipworth/gnu-files-noadmin:2026.10.06"
 
 steps:
   - name: noadmin-cli-tools
