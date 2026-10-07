@@ -196,11 +196,9 @@ This function should only modify configuration layer settings."
            rustic-format-trigger 'on-save
            )
 
-     (swift :variables
-            ;; Fall back to the bare name (lsp-sourcekit's default) so a
-            ;; missing server gets lsp-mode's normal prompt, not a nil error.
-            swift-lsp-executable-path (or (executable-find "sourcekit-lsp")
-                                          "sourcekit-lsp"))
+     ;; swift-lsp-executable-path is set in user-config: as a layer variable
+     ;; it must name an existing file, so it errors at startup without Swift.
+     swift
 
      (docker :variables
              docker-dockerfile-backend 'lsp
@@ -808,6 +806,12 @@ before packages are loaded."
   ;; Prefer loading newer .el over stale .elc (useful while iterating on
   ;; jal-functions.el without re-byte-compiling).
   (setq load-prefer-newer t)
+
+  ;; Read by the swift layer when lsp-sourcekit loads. Fall back to the bare
+  ;; name (lsp-sourcekit's default) so a missing server gets lsp-mode's
+  ;; normal prompt, not a nil error.
+  (setq swift-lsp-executable-path
+        (or (executable-find "sourcekit-lsp") "sourcekit-lsp"))
 
   ;; Load custom functions
   (require 'jal-functions)
