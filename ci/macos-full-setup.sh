@@ -77,7 +77,27 @@ if [[ "$mode" != "run" ]]; then
     exit 0
 fi
 
-workspace="${MACOS_CI_WORKSPACE:-$(mktemp -d "${TMPDIR:-/tmp}/gnu-files-macos-ci.XXXXXX")}"
+# Under the Woodpecker local backend, build inside the job's base directory
+# (the parent of CI_WORKSPACE). The agent removes that directory when the job
+# ends, including on cancel, when the step is SIGKILLed and the trap below
+# never runs. Elsewhere (make macos-ci-setup), use TMPDIR.
+workspace_parent="${TMPDIR:-/tmp}"
+if [[ -n "${CI_WORKSPACE:-}" ]]; then
+    woodpecker_job_dir="$(dirname "$CI_WORKSPACE")"
+    if [[ "$(basename "$woodpecker_job_dir")" == woodpecker-local-* ]]; then
+        workspace_parent="$woodpecker_job_dir"
+        # Runs before this fix kept the workspace in TMPDIR, so a cancelled one
+        # was never removed. The agent runs one job at a time, so none of
+        # these can belong to a live run.
+        for stale in "${TMPDIR:-/tmp}"/gnu-files-macos-ci.*; do
+            [[ -d "$stale" ]] || continue
+            echo "removing workspace left by an earlier cancelled run: $stale" >&2
+            chmod -R u+w "$stale" 2> /dev/null || true
+            rm -rf "$stale"
+        done
+    fi
+fi
+workspace="${MACOS_CI_WORKSPACE:-$(mktemp -d "$workspace_parent/gnu-files-macos-ci.XXXXXX")}"
 keep_workspace="${MACOS_CI_KEEP_WORKSPACE:-false}"
 guard_bin="$workspace/guard-bin"
 guard_log="$workspace/host-mutation-attempts.log"
@@ -112,6 +132,11 @@ export CI=true
 export CI_INSTALL=true
 export MACOS_CI_REAL_BREW="$real_brew"
 export MACOS_CI_GUARD_LOG="$guard_log"
+# Keep temporary files inside the workspace, and keep the Go module cache
+# writable so a plain recursive delete (the agent's, on cancel) can remove it.
+mkdir -p "$workspace/tmp"
+export TMPDIR="$workspace/tmp"
+export GOFLAGS="${GOFLAGS:+$GOFLAGS }-modcacherw"
 export npm_config_prefix="$HOME/.npm-global"
 export NPM_CONFIG_PREFIX="$npm_config_prefix"
 export PATH="$guard_bin:$EMACS_PREFIX/bin:$HOME/.local/bin:$npm_config_prefix/bin:$PATH"
