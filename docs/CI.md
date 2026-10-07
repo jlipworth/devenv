@@ -11,7 +11,7 @@ covers them.
 | `layers` | Anything an installer can read changes | `make <layer>` for each layer in the CI image |
 | `noadmin` | Same as `layers` | `NO_ADMIN=true` installs without sudo |
 | `macos` | Setup files change on `master` (never PRs) | Full isolated setup on a Mac runner ([MACOS_CI.md](MACOS_CI.md)) |
-| `notify` | After `lint` (and whichever others ran) | Discord status |
+| `notify` | After `lint` (and whichever others ran) | Discord status, read from the workflows' GitHub commit statuses (`ci/notify-discord.py`) |
 | `renovate` | `renovate` cron | Dependency update PRs |
 
 Path filters are in each workflow's `when:` block. `layers` and `noadmin` use

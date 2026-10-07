@@ -1,5 +1,5 @@
 # .woodpecker/notify.yml
-# Single Discord notification after dependent pipelines complete.
+# Single Discord notification after the other workflows complete.
 # Always runs so GitHub sees one final status, never leaves PENDING.
 
 # Same events as lint.yml, which always runs. The other workflows may be
@@ -14,7 +14,6 @@ when:
     cron: weekly
     status: [success, failure]
 
-skip_clone: true
 
 depends_on:
   - lint
@@ -26,30 +25,14 @@ depends_on:
     optional: true
 
 steps:
-  - name: notify-success
-    image: appleboy/drone-discord
-    when:
-      status: [success]
-    settings:
-      webhook_id:
+  # One step for both outcomes: step-level status filters only see this
+  # workflow, which always succeeds, so the result comes from GitHub statuses.
+  - name: notify
+    image: python:3.14-alpine
+    environment:
+      DISCORD_ID:
         from_secret: discord_id
-      webhook_token:
+      DISCORD_TOKEN:
         from_secret: discord_token
-      message: >
-        ✅ **Success**: {{repo.name}} ({{commit.branch}})
-        {{commit.message}}
-        {{build.link}}
-
-  - name: notify-failure
-    image: appleboy/drone-discord
-    when:
-      status: [failure]
-    settings:
-      webhook_id:
-        from_secret: discord_id
-      webhook_token:
-        from_secret: discord_token
-      message: >
-        ❌ **Failed**: {{repo.name}} ({{commit.branch}})
-        {{commit.message}}
-        {{build.link}}
+    commands:
+      - python3 ci/notify-discord.py
