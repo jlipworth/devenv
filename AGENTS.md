@@ -33,3 +33,12 @@ make neovim-test       # Headless Neovim Lua specs (tests/nvim)
 - **Neovim config**: LazyVim extras are imported from `nvim/lua/config/lazy.lua`
   only — importing them from `nvim/lua/plugins/` trips LazyVim's import-order
   warning. `nvim/lazy-lock.json` is tracked; commit lockfile changes deliberately
+
+## CI
+
+- After pushing big changes (setup scripts, `.spacemacs`, `nvim/`, versions,
+  CI itself), watch the Woodpecker pipelines in `.woodpecker/` (build, layers,
+  lint, macos, noadmin) until they pass. A clean local check is not enough.
+- Do not call a pushed change done while CI is still running or red. If a
+  pipeline fails, fix it in a follow-up commit and re-watch; if you cannot
+  watch CI to completion, say so explicitly instead of reporting success.
