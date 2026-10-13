@@ -1,6 +1,11 @@
 # Codex global defaults (merged into ~/.codex/config.toml by make ai-tools;
 # keys set here win, settings that exist only locally are kept)
 personality = "pragmatic"
+# Normal speed and medium effort unless a session explicitly picks otherwise.
+# Harnesses such as T3 Code inherit these when they send no tier or effort,
+# so a stale local Fast toggle would otherwise bill every such thread at Fast.
+service_tier = "default"
+model_reasoning_effort = "medium"
 
 [agents]
 max_threads = 20
