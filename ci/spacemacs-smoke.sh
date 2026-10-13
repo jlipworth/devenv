@@ -28,9 +28,17 @@ fi
 export SPACEMACS_SMOKE_ACTIVE_ELPA_MIRROR="$elpa_mirror"
 
 # Batch mode normally suppresses user init, so load Spacemacs explicitly.
+# That also skips early-init.el, which is now the only place Spacemacs
+# defines `dotspacemacs-directory'; loading init.el alone fails with a
+# void-variable error in core-dotspacemacs.el.
 # Spacemacs logs package install failures and carries on, so fail on its
 # error count rather than only on a crash.
+early_init_load=()
+if [[ -f "$spacemacs_dir/early-init.el" ]]; then
+    early_init_load=(--load "$spacemacs_dir/early-init.el")
+fi
 "$emacs_bin" --batch \
+    "${early_init_load[@]}" \
     --eval '(setq vterm-always-compile-module t)' \
     --eval "(advice-add 'pdf-tools-install :filter-args (lambda (args) (cons t (cdr args))))" \
     --eval '(let ((mirror (getenv "SPACEMACS_SMOKE_ACTIVE_ELPA_MIRROR")))

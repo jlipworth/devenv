@@ -1129,7 +1129,19 @@ install_rust_support() {
     # Install rustup (Rust toolchain manager)
     if ! is_installed "rustup"; then
         log "Installing rustup (Rust toolchain manager)..."
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+        # Download first instead of piping into sh: a failed curl in a pipe
+        # still lets sh exit 0 on empty input, which reported success and
+        # only failed later with "rustup not found".
+        local rustup_init
+        rustup_init="$(mktemp "${TMPDIR:-/tmp}/rustup-init.XXXXXX")"
+        if ! curl --proto '=https' --tlsv1.2 -fsSL --retry 3 --retry-delay 5 \
+            -o "$rustup_init" https://sh.rustup.rs ||
+            ! sh "$rustup_init" -y --default-toolchain stable; then
+            rm -f "$rustup_init"
+            log "rustup installation failed." "ERROR"
+            return 1
+        fi
+        rm -f "$rustup_init"
 
         # Source cargo environment for current session
         # shellcheck disable=SC1091

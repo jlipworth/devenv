@@ -66,6 +66,7 @@ grep -q 'MACOS_CI_WORKSPACE' "$repo_root/ci/macos-full-setup.sh"
 grep -q 'EMACS_PREFIX=' "$repo_root/ci/macos-full-setup.sh"
 grep -q 'EMACS_APP_DIR="$HOME/Applications"' "$repo_root/ci/macos-full-setup.sh"
 grep -q 'ci/spacemacs-smoke.sh" "$emacs_bin" "$spacemacs_dir"' "$repo_root/ci/macos-full-setup.sh"
+grep -q 'early_init_load=(--load "$spacemacs_dir/early-init.el")' "$repo_root/ci/spacemacs-smoke.sh"
 grep -q 'vterm-always-compile-module t' "$repo_root/ci/spacemacs-smoke.sh"
 grep -q "advice-add 'pdf-tools-install" "$repo_root/ci/spacemacs-smoke.sh"
 grep -q 'configuration-layer-error-count' "$repo_root/ci/spacemacs-smoke.sh"
@@ -125,6 +126,11 @@ if grep -q 'uv tool install ipykernel' "$repo_root/prereq_packages.sh"; then
     echo "ipykernel must be injected into a tool environment, not installed as a standalone uv tool" >&2
     exit 1
 fi
+if grep -q 'sh.rustup.rs | sh' "$repo_root/prereq_packages.sh"; then
+    echo "rustup must not be installed via curl | sh: a failed download exits 0 in sh" >&2
+    exit 1
+fi
+grep -q -- '-o "$rustup_init" https://sh.rustup.rs' "$repo_root/prereq_packages.sh"
 if grep -Eq '(^|[[:space:]])tac([[:space:]]|$)' "$repo_root/prereq_packages.sh"; then
     echo "prereq_packages.sh must not require GNU tac on macOS" >&2
     exit 1
