@@ -24,6 +24,20 @@ EOF
     exit 1
 fi
 
+tier_lines="$(awk '/^\[/ { exit } /^[[:space:]]*service_tier[[:space:]]*=/ { print }' "$config_file")"
+if [ "$tier_lines" != 'service_tier = "default"' ]; then
+    if grep -nE '^[[:space:]]*service_tier[[:space:]]*=.*(priority|fast)' "$config_file" >&2; then
+        echo "ERROR: .codex_config.toml must not default Codex to Fast/priority/ultrafast." >&2
+    fi
+    cat >&2 << 'EOF'
+ERROR: .codex_config.toml must set exactly one top-level line:
+  service_tier = "default"
+Fast/priority/ultrafast must remain an explicit per-session choice; the shared
+base pins normal speed so a stale local Fast toggle cannot survive make ai-tools.
+EOF
+    exit 1
+fi
+
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-config-guard.XXXXXX")"
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
 
@@ -48,4 +62,4 @@ if ! awk '
     exit 1
 fi
 
-echo "Codex config guard passed: shared-only config and restricted Safari MCP allowlist verified."
+echo "Codex config guard passed: shared-only config, normal service tier, and restricted Safari MCP allowlist verified."

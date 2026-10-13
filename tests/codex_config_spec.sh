@@ -13,6 +13,8 @@ trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/darwin-home/.codex" "$tmp/linux-home/.codex"
 cat > "$tmp/darwin-home/.codex/config.toml" << 'EOF'
 model = "local-old-value"
+service_tier = "priority"
+model_reasoning_effort = "low"
 model_instructions_file = "~/.codex/instructions.md"
 approval_policy = "never"
 notify = ["/Applications/Some.app/wrapper", "turn-ended"]
@@ -67,6 +69,12 @@ tui = re.search(r"(?ms)^\[tui\]\n(.*?)(?=^\[|\Z)", text).group(1)
 assert "screen_reader_detection_done = true" in tui
 assert "notifications = true" in tui
 assert '[plugins."browser@openai-bundled"]\nenabled = true' in text
+# A stale local Fast toggle and low effort are reset to the shared defaults.
+settings = [line for line in text.splitlines() if not line.startswith("#")]
+assert [line for line in settings if "service_tier" in line] == ['service_tier = "default"']
+assert [line for line in settings if line.startswith("model_reasoning_effort")] == [
+    'model_reasoning_effort = "medium"'
+]
 # The legacy key pointed at the link the installer retires.
 assert "model_instructions_file" not in text
 
