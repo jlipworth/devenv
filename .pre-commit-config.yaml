@@ -87,7 +87,7 @@ repos:
 
   # Check for common misspellings
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.1
+    rev: v2.4.3
     hooks:
       - id: codespell
         args: ['-L', 'crate,hda,ser,thru,ot,noice,fo']  # Ignore false positives
