@@ -228,13 +228,6 @@ This function should only modify configuration layer settings."
       (recipe :fetcher github
               :repo "jlipworth/helm-c-yasnippet"
               :commit "fc96d728cbc4098475e1f3cf3ce0a8c514bfe754"))
-     ;; Temporary fork while the magic-latex-buffer performance work is
-     ;; reviewed upstream.  Pin the exact commit so testing is reproducible.
-     (magic-latex-buffer
-      :location
-      (recipe :fetcher github
-              :repo "jlipworth/magic-latex-buffer"
-              :commit "cce5de92d6c23ecbdf4abaae0fdf479aea68c1c2"))
      exec-path-from-shell
      mermaid-mode
      ob-mermaid
