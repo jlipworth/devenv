@@ -997,46 +997,28 @@ install_ocaml_support() {
         install_packages "ocaml" "opam"
     fi
 
-    # Initialize opam if needed
+    # Initialise metadata without building the default compiler first. The
+    # language server may require an older compiler than opam's default.
     if ! opam var root &> /dev/null; then
         log "Initializing opam..."
-        # opam sandboxing is intentionally disabled. opam's bubblewrap (bwrap)
-        # sandbox cannot initialize inside this repo's CI container or under
-        # WSL (no unprivileged user namespaces / CAP_SYS_ADMIN), and the OCaml
-        # toolchain here is dev tooling installed from trusted opam
-        # repositories -- so build isolation is not worth breaking those
-        # environments. See docs/DEPENDENCIES.md (opam sandboxing).
-        opam init --disable-sandboxing -a || log "Error initializing opam." "WARNING"
+        # CI containers and WSL cannot always provide bubblewrap's namespaces.
+        # See docs/DEPENDENCIES.md (opam sandboxing).
+        opam init --bare --disable-sandboxing -a -y || return 1
     fi
 
-    # Load opam env into current shell
-    eval "$(opam env)" || true
-
-    # Persist opam env to user shell RC
-    add_to_shell_rc 'eval "$(opam env)"' "opam"
-
-    # Update opam repositories and upgrade installed packages
-    opam update && opam upgrade -y || log "opam update/upgrade encountered issues." "WARNING"
-
-    # Install all OCaml tools in one command for optimal dependency resolution
-    # Order matters: ocp-indent first (pulls cmdliner) to avoid recompilation cascade
-    log "Installing OCaml development tools via opam..."
-    opam install -y ocp-indent merlin utop ocamlformat ||
-        log "Some opam packages failed to install." "WARNING"
-
-    # LSP tooling for the Neovim/Emacs OCaml layers. opam install is itself
-    # idempotent, but skip the call entirely when both are already present.
-    if command -v opam &> /dev/null; then
-        if command -v ocamllsp &> /dev/null && command -v ocamlformat &> /dev/null; then
-            log "ocaml-lsp-server and ocamlformat are already installed."
-        else
-            log "Installing ocaml-lsp-server and ocamlformat via opam..."
-            opam install -y ocaml-lsp-server ocamlformat ||
-                log "Error installing ocaml-lsp-server/ocamlformat via opam." "WARNING"
-        fi
+    local ocaml_tools=(ocp-indent merlin utop ocamlformat ocaml-lsp-server)
+    if ! opam switch show &> /dev/null; then
+        # An empty switch lets the solver select the compiler and every tool
+        # together, rather than compiling a default that is later replaced.
+        opam switch create default --empty -y || return 1
+        opam install -y ocaml-base-compiler "${ocaml_tools[@]}" || return 1
     else
-        log "opam is not available; skipping ocaml-lsp-server/ocamlformat." "WARNING"
+        opam update && opam upgrade -y || log "opam update/upgrade encountered issues." "WARNING"
+        opam install -y "${ocaml_tools[@]}" || return 1
     fi
+
+    eval "$(opam env)"
+    add_to_shell_rc 'eval "$(opam env)"' "opam"
 
     log "OCaml support installed successfully." "SUCCESS"
 }

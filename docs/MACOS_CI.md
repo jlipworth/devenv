@@ -69,6 +69,25 @@ make macos-ci-preflight   # read-only check
 Both runners (`macmini01`, `macstudio01`) carry the same labels, so a job can
 land on either; provision both after a Brewfile gains an entry.
 
+### Download caches
+
+Each runner retains npm downloads, Cargo crate archives and Git downloads, and
+opam source archives under the CI account's
+`~/Library/Caches/gnu-files-ci/downloads-v1`. Override the location with
+`MACOS_CI_DOWNLOAD_CACHE`. The directory is created by the CI account without
+administrator access and can be deleted between runs to force fresh downloads.
+
+These caches do not contain installed tools, compiler outputs, Cargo extracted
+sources, opam switches, or Spacemacs packages. Every run still installs into a
+disposable home. npm, Cargo, and opam retain their normal metadata refresh and
+archive verification behavior. Cache contents are local to each runner; the
+first run on each machine is cold. Spacemacs package downloads remain uncached
+in this first pass.
+
+Fresh opam installations create an empty switch, then resolve the compiler and
+all OCaml tools (including the language server) in one install transaction. This
+avoids building the default compiler only to replace it for tool compatibility.
+
 The preflight requires:
 
 - macOS and working Xcode Command Line Tools;

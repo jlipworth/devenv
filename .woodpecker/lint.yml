@@ -38,3 +38,5 @@ steps:
       - ./tests/claude_safari_mcp_spec.sh
       - ./tests/claude_settings_defaults_spec.sh
       - ./tests/ci/macos_ci_spec.sh
+      - ./tests/ci/download_cache_spec.sh
+      - ./tests/ci/ocaml_install_spec.sh

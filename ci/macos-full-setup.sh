@@ -122,6 +122,10 @@ mkdir -p "$guard_bin" "$ci_home" "$ci_home/Library/Fonts"
 ln -s "$repo_root/ci/macos-brew-readonly" "$guard_bin/brew"
 ln -s "$repo_root/ci/macos-sudo-deny" "$guard_bin/sudo"
 
+# Capture the runner's cache location before switching to the disposable HOME.
+# Only download stores survive; installed tools and build trees remain fresh.
+download_cache="${MACOS_CI_DOWNLOAD_CACHE:-$HOME/Library/Caches/gnu-files-ci/downloads-v1}"
+
 export HOME="$ci_home"
 export GNU_DIR="$repo_root"
 export EMACS_PREFIX="$HOME/.local/emacs"
@@ -140,6 +144,11 @@ export GOFLAGS="${GOFLAGS:+$GOFLAGS }-modcacherw"
 export npm_config_prefix="$HOME/.npm-global"
 export NPM_CONFIG_PREFIX="$npm_config_prefix"
 export PATH="$guard_bin:$EMACS_PREFIX/bin:$HOME/.local/bin:$npm_config_prefix/bin:$PATH"
+
+# Keep the implementation shared with the portable isolation tests.
+# shellcheck source=ci/macos-download-cache.sh
+source "$repo_root/ci/macos-download-cache.sh"
+macos_ci_download_cache "$download_cache"
 
 make -C "$repo_root" full-setup
 
