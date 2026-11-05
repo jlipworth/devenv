@@ -28,7 +28,7 @@ for run in first second; do
             [[ ! -e "$HOME/.opam/default" ]]
         fi
     )
-    rm -rf "$tmp/$run"
+    rm -rf "${tmp:?}/$run"
 done
 [[ -f "$tmp/downloads/cargo-archives/crate" ]]
 
