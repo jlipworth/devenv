@@ -5,7 +5,7 @@
         latex python python-env r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools ai-notifications-native claude-settings \
         latex_tooling latex_distribution \
         cli_tools cli_tools_core cli_tools_system step-cli starship syntax-highlighting update-deps \
-        full-setup noadmin-setup macos-ci-setup macos-ci-preflight macos-ci-provision help neovim neovim-source neovim-package neovim-test windows-terminal-tooling
+        full-setup verify-fonts noadmin-setup macos-ci-setup macos-ci-preflight macos-ci-provision help neovim neovim-source neovim-package neovim-test windows-terminal-tooling
 
 # Default target to install all prerequisite layers
 prereq-layers-all: editor shell-layer git-layer yaml markdown completion vimscript elisp latex python r c_cpp sql js html_css docker kubernetes ocaml terraform rust swift ai-tools
@@ -48,6 +48,9 @@ editor-symlinks:
 editor:
 	@echo "Installing editor fonts and vim-plug..."
 	@./prereq_packages.sh install_editor_prereqs
+
+verify-fonts:
+	@python3 ./bundled_fonts.py verify $(if $(filter true,$(CI)),--skip-icons,)
 
 
 # System prerequisite installations
@@ -205,6 +208,7 @@ full-setup:
 	@$(MAKE) python-env
 	@$(MAKE) neovim
 	@$(MAKE) spacemacs
+	@$(MAKE) verify-fonts
 	@echo "Completed full system setup."
 
 # No-admin setup: full install without sudo-requiring steps

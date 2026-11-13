@@ -1791,36 +1791,13 @@ install_python_env() {
 install_editor_prereqs() {
     log "Installing editor fonts, all-the-icons fonts, and vim-plug..."
 
-    local font_dir="$GNU_DIR/good_fonts"
     local need_fc_cache=false
 
-    # 1. Install fonts from good_fonts/
-    if [[ -d "$font_dir" ]]; then
-        if [[ "$OS" == "Darwin" ]]; then
-            log "Installing fonts for macOS..."
-            while IFS= read -r -d '' font; do
-                if cp "$font" "$HOME/Library/Fonts/" 2> /dev/null; then
-                    log "Installed: $(basename "$font")"
-                else
-                    log "Failed to install: $font" "WARNING"
-                fi
-            done < <(find "$font_dir" -type f \( -name "*.ttf" -o -name "*.otf" \) -print0)
-            log "Fonts installed for macOS."
-        else
-            log "Installing fonts for Linux..."
-            mkdir -p "$HOME/.fonts"
-            while IFS= read -r -d '' font; do
-                if cp "$font" "$HOME/.fonts/" 2> /dev/null; then
-                    log "Installed: $(basename "$font")"
-                else
-                    log "Failed to install: $font" "WARNING"
-                fi
-            done < <(find "$font_dir" -type f \( -name "*.ttf" -o -name "*.otf" \) -print0)
-            need_fc_cache=true
-            log "Fonts installed for Linux."
-        fi
-    else
-        log "Font directory $font_dir does not exist. Skipping font installation." "WARNING"
+    # 1. Create the OS font destination before copying and fail on any missing
+    # source, copy error, or byte mismatch; warnings must not hide absent fonts.
+    python3 "$GNU_DIR/bundled_fonts.py" install || return 1
+    if [[ "$OS" != "Darwin" ]]; then
+        need_fc_cache=true
     fi
 
     # 2. Install all-the-icons fonts for Spacemacs/Emacs (best-effort).

@@ -40,3 +40,4 @@ steps:
       - ./tests/ci/macos_ci_spec.sh
       - ./tests/ci/download_cache_spec.sh
       - ./tests/ci/ocaml_install_spec.sh
+      - ./tests/ci/fonts_spec.sh
