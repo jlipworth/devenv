@@ -1122,19 +1122,19 @@ install_rust_support() {
     # Install stable Rust toolchain
     if is_installed "rustup"; then
         log "Installing Rust stable toolchain..."
-        rustup install stable
-        rustup default stable
+        rustup install stable || return 1
+        rustup default stable || return 1
         log "Rust stable toolchain installed." "SUCCESS"
 
         # Install essential Rust components
         log "Installing rust-analyzer LSP server..."
-        rustup component add rust-analyzer
+        rustup component add rust-analyzer || return 1
 
         log "Installing rustfmt formatter..."
-        rustup component add rustfmt
+        rustup component add rustfmt || return 1
 
         log "Installing clippy linter..."
-        rustup component add clippy
+        rustup component add clippy || return 1
 
         log "Rust components installed successfully." "SUCCESS"
     else
@@ -1150,10 +1150,23 @@ install_rust_support() {
 
     # Install cargo extensions
     log "Installing cargo-edit (add/remove dependencies)..."
-    cargo install cargo-edit || log "Failed to install cargo-edit." "WARNING"
+    cargo install cargo-edit || {
+        log "Failed to install required cargo-edit tools." "ERROR"
+        return 1
+    }
 
     log "Installing cargo-outdated (check for outdated dependencies)..."
-    cargo install cargo-outdated || log "Failed to install cargo-outdated." "WARNING"
+    # Its current openssl-sys dependency does not support Homebrew's default
+    # OpenSSL 4. Use the upstream-supported vendored feature for this tool only;
+    # do not downgrade system SSL or change global native-library settings.
+    cargo install cargo-outdated --features vendored-openssl || {
+        log "Failed to install required cargo-outdated." "ERROR"
+        return 1
+    }
+    if ! cargo upgrade --help >/dev/null 2>&1 || ! cargo outdated --version >/dev/null 2>&1; then
+        log "Rust Cargo extensions did not pass their installed-command checks." "ERROR"
+        return 1
+    fi
 
     # Install debugger support
     if [[ "$OS" == "Darwin" ]]; then

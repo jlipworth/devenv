@@ -41,3 +41,4 @@ steps:
       - ./tests/ci/download_cache_spec.sh
       - ./tests/ci/ocaml_install_spec.sh
       - ./tests/ci/fonts_spec.sh
+      - ./tests/ci/rust_install_spec.sh
