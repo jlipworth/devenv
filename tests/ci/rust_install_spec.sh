@@ -31,8 +31,8 @@ EOF
 chmod +x "$tmp/bin/"*
 
 run_install() {
-    HOME="$tmp/home" GNU_DIR="$repo_root" PATH="$tmp/bin:/usr/bin:/bin" \
-        "$repo_root/prereq_packages.sh" install_rust_support >"$tmp/output" 2>&1
+  HOME="$tmp/home" GNU_DIR="$repo_root" PATH="$tmp/bin:/usr/bin:/bin" \
+    "$repo_root/prereq_packages.sh" install_rust_support >"$tmp/output" 2>&1
 }
 
 export RUST_TEST_LOG="$tmp/success.log"
@@ -44,28 +44,28 @@ grep -Fq 'Rust development environment setup complete' "$tmp/output"
 
 # A failed compiler/component install must not continue into extensions.
 for step in 'install stable' 'default stable' 'component add rust-analyzer' 'component add rustfmt' 'component add clippy'; do
-    export RUST_TEST_LOG="$tmp/rustup-failure.log"
-    : >"$RUST_TEST_LOG"
-    if RUST_TEST_FAIL_RUSTUP="$step" run_install; then
-        printf 'failed rustup step reported success: %s\n' "$step" >&2
-        exit 1
-    fi
-    if grep -q '^cargo ' "$RUST_TEST_LOG"; then
-        printf 'failed rustup step continued to Cargo extensions\n' >&2
-        exit 1
-    fi
+  export RUST_TEST_LOG="$tmp/rustup-failure.log"
+  : >"$RUST_TEST_LOG"
+  if RUST_TEST_FAIL_RUSTUP="$step" run_install; then
+    printf 'failed rustup step reported success: %s\n' "$step" >&2
+    exit 1
+  fi
+  if grep -q '^cargo ' "$RUST_TEST_LOG"; then
+    printf 'failed rustup step continued to Cargo extensions\n' >&2
+    exit 1
+  fi
 done
 
 for fault in RUST_TEST_FAIL_EDIT RUST_TEST_FAIL_OUTDATED RUST_TEST_MISSING_OUTDATED RUST_TEST_MISSING_EDIT; do
-    export RUST_TEST_LOG="$tmp/$fault.log"
-    if env "$fault=9" HOME="$tmp/home" GNU_DIR="$repo_root" PATH="$tmp/bin:/usr/bin:/bin" \
-        "$repo_root/prereq_packages.sh" install_rust_support >"$tmp/output" 2>&1; then
-        printf '%s was swallowed as successful Rust setup\n' "$fault" >&2
-        exit 1
-    fi
-    if grep -Fq 'Rust development environment setup complete' "$tmp/output"; then
-        printf '%s printed a false success\n' "$fault" >&2
-        exit 1
-    fi
+  export RUST_TEST_LOG="$tmp/$fault.log"
+  if env "$fault=9" HOME="$tmp/home" GNU_DIR="$repo_root" PATH="$tmp/bin:/usr/bin:/bin" \
+    "$repo_root/prereq_packages.sh" install_rust_support >"$tmp/output" 2>&1; then
+    printf '%s was swallowed as successful Rust setup\n' "$fault" >&2
+    exit 1
+  fi
+  if grep -Fq 'Rust development environment setup complete' "$tmp/output"; then
+    printf '%s printed a false success\n' "$fault" >&2
+    exit 1
+  fi
 done
 printf 'Rust native dependency compatibility and required-tool failure checks passed\n'
