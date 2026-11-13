@@ -997,25 +997,7 @@ install_ocaml_support() {
         install_packages "ocaml" "opam"
     fi
 
-    # Initialise metadata without building the default compiler first. The
-    # language server may require an older compiler than opam's default.
-    if ! opam var root &> /dev/null; then
-        log "Initializing opam..."
-        # CI containers and WSL cannot always provide bubblewrap's namespaces.
-        # See docs/DEPENDENCIES.md (opam sandboxing).
-        opam init --bare --disable-sandboxing -a -y || return 1
-    fi
-
-    local ocaml_tools=(ocp-indent merlin utop ocamlformat ocaml-lsp-server)
-    if ! opam switch show &> /dev/null; then
-        # An empty switch lets the solver select the compiler and every tool
-        # together, rather than compiling a default that is later replaced.
-        opam switch create default --empty -y || return 1
-        opam install -y ocaml-base-compiler "${ocaml_tools[@]}" || return 1
-    else
-        opam update && opam upgrade -y || log "opam update/upgrade encountered issues." "WARNING"
-        opam install -y "${ocaml_tools[@]}" || return 1
-    fi
+    "$GNU_DIR/install_ocaml_toolchain.sh" || return 1
 
     eval "$(opam env)"
     add_to_shell_rc 'eval "$(opam env)"' "opam"

@@ -170,7 +170,7 @@ NEOVIM_MIN_VERSION="0.12.4" # minimum accepted (VimTeX floor)
 
 ### Rolling Latest (not pinned)
 
-- All language servers
+- Language servers except the compatible OCaml editor toolchain in `versions.conf`
 - All npm/Python/Homebrew packages
 
 ## Dependency Inventory
@@ -183,6 +183,19 @@ NEOVIM_MIN_VERSION="0.12.4" # minimum accepted (VimTeX floor)
 | apt | 30+ | System libraries, compilers |
 | Go | 1+ | sqls |
 | OCaml | 4+ | merlin, utop, ocamlformat |
+
+The OCaml compiler, Dune, Stdune, LSP, Merlin, formatter, REPL, and indenter
+are pinned together in `versions.conf`. `install_ocaml_toolchain.sh` installs
+the set in one opam solve on initial setup and resume. It never runs an
+unconstrained `opam upgrade` before applying compatibility constraints.
+LSP 1.26.1 uses `Stdune.Pid.of_int`, available in Stdune 3.22.2 but removed
+in 3.25.0. A fresh install using latest dependencies therefore compiled most
+tools but failed building the language server. The compatible 5.4.1/1.26.1/
+3.22.2 set avoids that mismatch without upgrading the compiler to OCaml 5.5.
+See the [Dune 3.22.2 API](https://github.com/ocaml/dune/blob/3.22.2/otherlibs/stdune/src/pid.mli)
+and [upstream LSP fix](https://github.com/ocaml/ocaml-lsp/pull/1608), released
+with the OCaml-5.5-only LSP 1.27 line. Upgrade these pins as a set and verify
+`opam exec -- ocamllsp --version`; package metadata alone is insufficient.
 
 > **opam sandboxing:** `install_ocaml_support()` runs `opam init
 > --disable-sandboxing`. opam's bubblewrap (`bwrap`) sandbox cannot initialize
