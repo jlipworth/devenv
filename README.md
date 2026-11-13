@@ -7,6 +7,15 @@
 
 Personal editor environment, dotfiles, and fonts.
 
+Bundled fonts are installed into `~/Library/Fonts` on macOS and `~/.fonts` on
+Linux. The installer creates the destination first and fails on absent sources,
+copy errors, or byte mismatches. `make verify-fonts` independently checks every
+bundled font and all six all-the-icons fonts after Emacs setup; `full-setup`
+runs this check before reporting success. CI explicitly skips icon downloads
+and reports that verification as `SKIPPED BY POLICY` while still checking all
+bundled fonts. Existing editor processes may need restarting to discover newly
+installed font families.
+
 Automated setup for Emacs 30.2 with Spacemacs and Neovim, language servers for 13+ languages, and cross-platform support on macOS and Linux.
 
 ## Features

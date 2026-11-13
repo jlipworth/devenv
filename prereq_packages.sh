@@ -997,25 +997,7 @@ install_ocaml_support() {
         install_packages "ocaml" "opam"
     fi
 
-    # Initialise metadata without building the default compiler first. The
-    # language server may require an older compiler than opam's default.
-    if ! opam var root &> /dev/null; then
-        log "Initializing opam..."
-        # CI containers and WSL cannot always provide bubblewrap's namespaces.
-        # See docs/DEPENDENCIES.md (opam sandboxing).
-        opam init --bare --disable-sandboxing -a -y || return 1
-    fi
-
-    local ocaml_tools=(ocp-indent merlin utop ocamlformat ocaml-lsp-server)
-    if ! opam switch show &> /dev/null; then
-        # An empty switch lets the solver select the compiler and every tool
-        # together, rather than compiling a default that is later replaced.
-        opam switch create default --empty -y || return 1
-        opam install -y ocaml-base-compiler "${ocaml_tools[@]}" || return 1
-    else
-        opam update && opam upgrade -y || log "opam update/upgrade encountered issues." "WARNING"
-        opam install -y "${ocaml_tools[@]}" || return 1
-    fi
+    "$GNU_DIR/install_ocaml_toolchain.sh" || return 1
 
     eval "$(opam env)"
     add_to_shell_rc 'eval "$(opam env)"' "opam"
@@ -1140,19 +1122,19 @@ install_rust_support() {
     # Install stable Rust toolchain
     if is_installed "rustup"; then
         log "Installing Rust stable toolchain..."
-        rustup install stable
-        rustup default stable
+        rustup install stable || return 1
+        rustup default stable || return 1
         log "Rust stable toolchain installed." "SUCCESS"
 
         # Install essential Rust components
         log "Installing rust-analyzer LSP server..."
-        rustup component add rust-analyzer
+        rustup component add rust-analyzer || return 1
 
         log "Installing rustfmt formatter..."
-        rustup component add rustfmt
+        rustup component add rustfmt || return 1
 
         log "Installing clippy linter..."
-        rustup component add clippy
+        rustup component add clippy || return 1
 
         log "Rust components installed successfully." "SUCCESS"
     else
@@ -1168,10 +1150,23 @@ install_rust_support() {
 
     # Install cargo extensions
     log "Installing cargo-edit (add/remove dependencies)..."
-    cargo install cargo-edit || log "Failed to install cargo-edit." "WARNING"
+    cargo install cargo-edit || {
+        log "Failed to install required cargo-edit tools." "ERROR"
+        return 1
+    }
 
     log "Installing cargo-outdated (check for outdated dependencies)..."
-    cargo install cargo-outdated || log "Failed to install cargo-outdated." "WARNING"
+    # Its current openssl-sys dependency does not support Homebrew's default
+    # OpenSSL 4. Use the upstream-supported vendored feature for this tool only;
+    # do not downgrade system SSL or change global native-library settings.
+    cargo install cargo-outdated --features vendored-openssl || {
+        log "Failed to install required cargo-outdated." "ERROR"
+        return 1
+    }
+    if ! cargo upgrade --help >/dev/null 2>&1 || ! cargo outdated --version >/dev/null 2>&1; then
+        log "Rust Cargo extensions did not pass their installed-command checks." "ERROR"
+        return 1
+    fi
 
     # Install debugger support
     if [[ "$OS" == "Darwin" ]]; then
@@ -1809,36 +1804,13 @@ install_python_env() {
 install_editor_prereqs() {
     log "Installing editor fonts, all-the-icons fonts, and vim-plug..."
 
-    local font_dir="$GNU_DIR/good_fonts"
     local need_fc_cache=false
 
-    # 1. Install fonts from good_fonts/
-    if [[ -d "$font_dir" ]]; then
-        if [[ "$OS" == "Darwin" ]]; then
-            log "Installing fonts for macOS..."
-            while IFS= read -r -d '' font; do
-                if cp "$font" "$HOME/Library/Fonts/" 2> /dev/null; then
-                    log "Installed: $(basename "$font")"
-                else
-                    log "Failed to install: $font" "WARNING"
-                fi
-            done < <(find "$font_dir" -type f \( -name "*.ttf" -o -name "*.otf" \) -print0)
-            log "Fonts installed for macOS."
-        else
-            log "Installing fonts for Linux..."
-            mkdir -p "$HOME/.fonts"
-            while IFS= read -r -d '' font; do
-                if cp "$font" "$HOME/.fonts/" 2> /dev/null; then
-                    log "Installed: $(basename "$font")"
-                else
-                    log "Failed to install: $font" "WARNING"
-                fi
-            done < <(find "$font_dir" -type f \( -name "*.ttf" -o -name "*.otf" \) -print0)
-            need_fc_cache=true
-            log "Fonts installed for Linux."
-        fi
-    else
-        log "Font directory $font_dir does not exist. Skipping font installation." "WARNING"
+    # 1. Create the OS font destination before copying and fail on any missing
+    # source, copy error, or byte mismatch; warnings must not hide absent fonts.
+    python3 "$GNU_DIR/bundled_fonts.py" install || return 1
+    if [[ "$OS" != "Darwin" ]]; then
+        need_fc_cache=true
     fi
 
     # 2. Install all-the-icons fonts for Spacemacs/Emacs (best-effort).
