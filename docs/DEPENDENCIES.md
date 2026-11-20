@@ -108,6 +108,26 @@ brew outdated                  # Check for updates
 native installer on Linux. This keeps OpenCode independent of the active nvm
 version and allows `opencode upgrade` to identify its installation method.
 
+### Antigravity CLI
+
+`make ai-tools` installs the Antigravity CLI (`agy`) as the `antigravity-cli`
+Homebrew cask on macOS (update with `brew upgrade --cask antigravity-cli`) and
+with Google's self-updating installer into `~/.local/bin` on Linux. It replaces
+the deprecated Gemini CLI; any npm-installed `@google/gemini-cli` is removed
+from every Homebrew, `/usr/local`, `~/.npm-global`, and nvm prefix.
+
+T3 Code's Antigravity provider does not discover `agy` on `PATH`; left on
+**Automatic** it downloads a second, self-managed copy (~220 MB) into
+`~/.t3/tools/antigravity-acp/`. Point it at the Homebrew install instead:
+Settings → Providers → Antigravity → **Binary path** = `/opt/homebrew/bin/agy`
+(stored as `providerInstances.antigravity.config.binaryPath` in
+`~/.t3/userdata/settings.json`, which T3 reloads live; on fleet Macs
+`make t3-antigravity` in mac-setup does this and the cleanup below). T3 runs it
+as `agy acp`,
+and the stable Homebrew link keeps working across `brew upgrade`. Then delete
+`~/.t3/tools/antigravity-acp/` (its version directory is read-only; `chmod -R
+u+w` first). On Linux use `~/.local/bin/agy`.
+
 ### apt Packages (Linux)
 
 ```bash

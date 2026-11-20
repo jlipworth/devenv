@@ -280,8 +280,8 @@ if command -v codex &> /dev/null; then
     alias codey='codex --yolo'
 fi
 
-if command -v gemini &> /dev/null; then
-    alias geminy='gemini --yolo'
+if command -v agy &> /dev/null; then
+    alias agyy='agy --dangerously-skip-permissions'
 fi
 
 # ======================================================================
