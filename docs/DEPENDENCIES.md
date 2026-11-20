@@ -108,6 +108,14 @@ brew outdated                  # Check for updates
 native installer on Linux. This keeps OpenCode independent of the active nvm
 version and allows `opencode upgrade` to identify its installation method.
 
+### Antigravity CLI
+
+`make ai-tools` installs the Antigravity CLI (`agy`) as the `antigravity-cli`
+Homebrew cask on macOS (update with `brew upgrade --cask antigravity-cli`) and
+with Google's self-updating installer into `~/.local/bin` on Linux. It replaces
+the deprecated Gemini CLI; any npm-installed `@google/gemini-cli` is removed
+from every Homebrew, `/usr/local`, `~/.npm-global`, and nvm prefix.
+
 ### apt Packages (Linux)
 
 ```bash

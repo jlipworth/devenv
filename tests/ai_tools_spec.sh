@@ -75,6 +75,8 @@ EOF
 cat > "$install_bin/brew" << EOF
 #!/usr/bin/env bash
 printf 'brew %s\n' "\$*" >> "$install_log"
+# Report nothing as installed so install paths are exercised.
+[[ "\${1:-}" == list ]] && exit 1
 exit 0
 EOF
 cat > "$install_bin/uname" << 'EOF'
@@ -101,5 +103,35 @@ grep -Fq "npm uninstall -g --prefix $legacy_prefix opencode-ai" "$install_log"
 grep -Fq 'brew tap anomalyco/tap' "$install_log"
 grep -Fq 'brew trust --formula anomalyco/tap/opencode' "$install_log"
 grep -Fq "brew bundle --file=$repo_root/brewfiles/Brewfile.ai_tools" "$install_log"
+
+# Gemini CLI is replaced by the Antigravity CLI: it must not be reinstalled via
+# npm, the legacy package must be removed, and agy installs via the cask on
+# macOS and the official installer on Linux.
+if grep -Eq 'ai_packages=.*gemini-cli|install -g .*gemini-cli' "$repo_root/prereq_packages.sh"; then
+    echo "Gemini CLI must not be installed anymore" >&2
+    exit 1
+fi
+grep -q '^cask "antigravity-cli"$' "$repo_root/brewfiles/Brewfile.ai_tools"
+grep -q 'https://antigravity.google/cli/install.sh' "$repo_root/prereq_packages.sh"
+grep -q "alias agyy='agy --dangerously-skip-permissions'" "$repo_root/.shell_aliases"
+if grep -q 'geminy' "$repo_root/.shell_aliases"; then
+    echo "geminy alias must be removed" >&2
+    exit 1
+fi
+
+agy_log="$tmp/agy-install.log"
+gemini_prefix="$tmp/gemini-prefix"
+mkdir -p "$gemini_prefix/lib/node_modules/@google/gemini-cli"
+sed -i.bak "s|$install_log|$agy_log|" "$install_bin/npm" "$install_bin/brew"
+env -u NVM_BIN -u NVM_DIR HOME="$tmp/install-home" GNU_DIR="$repo_root" \
+    GEMINI_LEGACY_NPM_PREFIX="$gemini_prefix" \
+    PATH="$install_bin:/usr/bin:/bin" \
+    "$repo_root/prereq_packages.sh" install_antigravity_cli > "$tmp/agy-output.log" || {
+    cat "$tmp/agy-output.log" >&2
+    exit 1
+}
+
+grep -Fq "npm uninstall -g --prefix $gemini_prefix @google/gemini-cli" "$agy_log"
+grep -Fq 'brew install --cask antigravity-cli' "$agy_log"
 
 echo "AI tools installation tests passed"

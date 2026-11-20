@@ -2186,12 +2186,18 @@ else:
 PY
 }
 
-remove_legacy_opencode_npm_installations() {
+# Remove a globally installed npm package from every prefix it may have landed
+# in (Homebrew node, /usr/local, ~/.npm-global, each nvm version). Usage:
+#   remove_legacy_npm_global_package <npm-package> <label> [override-prefix]
+remove_legacy_npm_global_package() {
+    local package="$1"
+    local label="$2"
+    local override_prefix="${3:-}"
     local prefix
     local prefixes=()
 
-    if [[ -n "${OPENCODE_LEGACY_NPM_PREFIX:-}" ]]; then
-        prefixes+=("$OPENCODE_LEGACY_NPM_PREFIX")
+    if [[ -n "$override_prefix" ]]; then
+        prefixes+=("$override_prefix")
     else
         prefixes=(
             "/opt/homebrew"
@@ -2207,16 +2213,58 @@ remove_legacy_opencode_npm_installations() {
     fi
 
     for prefix in "${prefixes[@]}"; do
-        if [[ ! -d "$prefix/lib/node_modules/opencode-ai" ]]; then
+        if [[ ! -d "$prefix/lib/node_modules/$package" ]]; then
             continue
         fi
 
-        log "Removing legacy npm-managed OpenCode from $prefix..."
-        if ! "$NODE_CMD" uninstall -g --prefix "$prefix" opencode-ai; then
-            log "Failed to remove legacy OpenCode from $prefix." "ERROR"
+        log "Removing legacy npm-managed $label from $prefix..."
+        if ! "$NODE_CMD" uninstall -g --prefix "$prefix" "$package"; then
+            log "Failed to remove legacy $label from $prefix." "ERROR"
             return 1
         fi
     done
+}
+
+remove_legacy_opencode_npm_installations() {
+    remove_legacy_npm_global_package opencode-ai OpenCode "${OPENCODE_LEGACY_NPM_PREFIX:-}"
+}
+
+# Gemini CLI is deprecated upstream in favour of the Antigravity CLI (`agy`).
+remove_legacy_gemini_cli_installations() {
+    remove_legacy_npm_global_package @google/gemini-cli "Gemini CLI" "${GEMINI_LEGACY_NPM_PREFIX:-}"
+}
+
+install_antigravity_cli() {
+    log "Installing Antigravity CLI (agy)..."
+
+    remove_legacy_gemini_cli_installations || return 1
+
+    if [[ "$OS" == "Darwin" ]]; then
+        if ! command -v brew &> /dev/null; then
+            log "Homebrew is required to install Antigravity CLI on macOS." "ERROR"
+            return 1
+        fi
+        # The cask wraps agy with auto-update disabled; `brew upgrade` owns it.
+        # Installed via Brewfile.ai_tools from install_opencode's brew bundle.
+        if brew list --cask antigravity-cli &> /dev/null; then
+            log "Antigravity CLI already installed via Homebrew."
+        else
+            brew install --cask antigravity-cli || {
+                log "Error installing antigravity-cli cask." "ERROR"
+                return 1
+            }
+        fi
+    else
+        # The official installer drops a self-updating binary in ~/.local/bin
+        # and exits early when one already exists.
+        curl -fsSL https://antigravity.google/cli/install.sh | bash || {
+            log "Error installing Antigravity CLI via its native installer." "ERROR"
+            return 1
+        }
+        add_to_path "$HOME/.local/bin" "Antigravity CLI"
+    fi
+
+    log "Antigravity CLI installation complete." "SUCCESS"
 }
 
 install_opencode() {
@@ -2292,15 +2340,11 @@ install_ai_tools() {
     # Codex CLI - official standalone installer
     install_codex_cli_native
 
-    # Gemini CLI via npm. OpenCode is intentionally installed separately below
-    # so its self-updater can identify the owning package manager reliably.
-    ai_packages=("@google/gemini-cli")
-    for pkg in "${ai_packages[@]}"; do
-        log "Installing $pkg via npm..."
-        $NODE_CMD install -g "$pkg" || log "Error installing $pkg." "WARNING"
-    done
-
+    # OpenCode and Antigravity are installed by their own functions so each
+    # self-updater can identify the owning package manager reliably.
     install_opencode || return 1
+
+    install_antigravity_cli || return 1
 
     # Create Claude Code config links/defaults. Keep mutable settings local:
     # Claude Code rewrites settings.json, so symlinking it into the repo causes
@@ -2724,6 +2768,7 @@ main() {
         "install_claude_code"
         "install_claude_safari_mcp"
         "install_opencode"
+        "install_antigravity_cli"
         "install_ai_tools"
         "install_starship"
         "install_syntax_highlighting"

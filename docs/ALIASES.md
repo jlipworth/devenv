@@ -272,7 +272,7 @@ These are conditional on the corresponding CLI being installed:
 |----------|------------------------------------------|---------------------|
 | `claud`  | `claude --dangerously-skip-permissions` | `make ai-tools`     |
 | `codey`  | `codex --yolo`                          | `make ai-tools`     |
-| `geminy` | `gemini --yolo`                         | `make ai-tools`     |
+| `agyy`   | `agy --dangerously-skip-permissions`    | `make ai-tools`     |
 
 ## Customization
 
