@@ -121,7 +121,9 @@ T3 Code's Antigravity provider does not discover `agy` on `PATH`; left on
 `~/.t3/tools/antigravity-acp/`. Point it at the Homebrew install instead:
 Settings → Providers → Antigravity → **Binary path** = `/opt/homebrew/bin/agy`
 (stored as `providerInstances.antigravity.config.binaryPath` in
-`~/.t3/userdata/settings.json`, which T3 reloads live). T3 runs it as `agy acp`,
+`~/.t3/userdata/settings.json`, which T3 reloads live; on fleet Macs
+`make t3-antigravity` in mac-setup does this and the cleanup below). T3 runs it
+as `agy acp`,
 and the stable Homebrew link keeps working across `brew upgrade`. Then delete
 `~/.t3/tools/antigravity-acp/` (its version directory is read-only; `chmod -R
 u+w` first). On Linux use `~/.local/bin/agy`.
