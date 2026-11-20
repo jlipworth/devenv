@@ -116,6 +116,16 @@ with Google's self-updating installer into `~/.local/bin` on Linux. It replaces
 the deprecated Gemini CLI; any npm-installed `@google/gemini-cli` is removed
 from every Homebrew, `/usr/local`, `~/.npm-global`, and nvm prefix.
 
+T3 Code's Antigravity provider does not discover `agy` on `PATH`; left on
+**Automatic** it downloads a second, self-managed copy (~220 MB) into
+`~/.t3/tools/antigravity-acp/`. Point it at the Homebrew install instead:
+Settings → Providers → Antigravity → **Binary path** = `/opt/homebrew/bin/agy`
+(stored as `providerInstances.antigravity.config.binaryPath` in
+`~/.t3/userdata/settings.json`, which T3 reloads live). T3 runs it as `agy acp`,
+and the stable Homebrew link keeps working across `brew upgrade`. Then delete
+`~/.t3/tools/antigravity-acp/` (its version directory is read-only; `chmod -R
+u+w` first). On Linux use `~/.local/bin/agy`.
+
 ### apt Packages (Linux)
 
 ```bash
