@@ -728,6 +728,28 @@ variables declared in `~/.spacemacs.env' or `~/.spacemacs.d/.spacemacs.env'.
 See the header of this file for more information."
   (spacemacs/load-spacemacs-env)
 
+  ;; This Emacs uses Arch's libgccjit. A Homebrew-first PATH can make its
+  ;; native compiler use Homebrew's linker and miss Arch's GCC runtime files.
+  ;; Keep ordinary tool lookup unchanged; select the matching compiler paths
+  ;; only for native compilation, deriving the GCC version from the system.
+  ;; A failing gcc probe must not abort the rest of user-init.
+  (when (and (eq system-type 'gnu/linux)
+             (fboundp 'native-comp-available-p)
+             (native-comp-available-p)
+             (file-executable-p "/usr/bin/gcc")
+             (file-exists-p "/usr/lib/libgccjit.so.0"))
+    (require 'comp)
+    (let ((crt (ignore-errors
+                 (car (process-lines "/usr/bin/gcc"
+                                     "-print-file-name=crtbeginS.o")))))
+      ;; gcc echoes the bare name back when it cannot find the file.
+      (when (and crt (file-name-absolute-p crt) (file-exists-p crt))
+        (setq native-comp-driver-options
+              (delete-dups
+               (append (list (concat "-B" (file-name-directory crt))
+                             "-B/usr/bin/")
+                       native-comp-driver-options))))))
+
   ;; Homebrew's LLVM is keg-only on macOS, so GUI/daemon Emacs may not see
   ;; tools such as lldb-dap on PATH. Add the LLVM bin directory to Emacs' PATH
   ;; instead of overriding dap-lldb-debug-program; dap-mode now probes for
