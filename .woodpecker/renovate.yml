@@ -15,8 +15,7 @@ steps:
       RENOVATE_PLATFORM: github
       RENOVATE_REPOSITORIES: jlipworth/devenv
       RENOVATE_GIT_AUTHOR: "Renovate Bot <renovate@noreply.github.com>"
-      # TEMPORARY: debug to surface the real error behind repository-changed aborts.
-      LOG_LEVEL: debug
+      LOG_LEVEL: info
       # Exit non-zero when the repo run ends in a known error state (e.g.
       # repository-changed -> 6), so a broken run turns the step red instead
       # of passing silently. Experimental option; see Renovate self-hosted docs.
